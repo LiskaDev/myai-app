@@ -107,6 +107,7 @@ function resetCustomStyle() {
               <label class="block text-sm text-gray-300 mb-2">📝 输出长度偏好 (Response Length)</label>
               <select v-model="globalSettings.responseLength"
                       class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition">
+                <option value="auto">Auto (AI 自己决定)</option>
                 <option value="short">Concise (日常/短回复 50-150字)</option>
                 <option value="normal">Standard (标准模式 200-400字)</option>
                 <option value="long">Novel Mode (沉浸小说 400+字)</option>

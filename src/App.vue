@@ -8,7 +8,6 @@ import { useTTS } from './composables/useTTS';
 // Import Components
 import ChatWindow from './components/ChatWindow.vue';
 import SettingsModal from './components/SettingsModal.vue';
-import LorebookEditor from './components/LorebookEditor.vue';
 
 // Initialize State
 const appState = useAppState();
@@ -122,12 +121,6 @@ onUnmounted(() => {
 });
 
 // ========================================
-// 📚 世界书系统
-// ========================================
-
-// 控制世界书编辑器是否显示
-const showLorebook = ref(false);
-
 // Toggle Thinking/Select are now emitted from ChatWindow
 function handleToggleSelect(index) {
   activeMessageIndex.value = (activeMessageIndex.value === index) ? null : index;
@@ -328,11 +321,6 @@ function handleAvatarError(type, roleId) {
             ➕ 创建新角色
           </button>
         </div>
-        
-        <!-- 📚 世界书入口 -->
-        <button @click="showLorebook = true" class="w-full mt-3 glass bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 rounded-xl px-4 py-2 text-center hover:from-amber-500/30 hover:to-orange-500/30 transition border border-amber-500/30 text-sm">
-          📚 世界书 / Lorebook
-        </button>
       </div>
     </div>
 
@@ -486,11 +474,5 @@ function handleAvatarError(type, roleId) {
         {{ toast.message }}
       </div>
     </Transition>
-
-    <!-- 📚 世界书编辑器 -->
-    <LorebookEditor
-      v-model:show="showLorebook"
-      :app-state="appState"
-    />
   </div>
 </template>

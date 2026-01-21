@@ -7,7 +7,6 @@ import {
     formatSummaryForPrompt,
     SUMMARY_CONFIG,
 } from '../utils/summary';
-import { useWorld } from './useWorld';
 
 // 🛡️ 超时配置
 const FETCH_TIMEOUT_MS = 30000; // 30秒超时
@@ -17,9 +16,6 @@ let isSending = false;
 
 // 🧠 摩要状态 - 防止重复触发
 let isSummarizing = false;
-
-// 🌍 世界书实例（单例）
-let worldInstance = null;
 
 // 聊天功能组合式函数 - 纯前端直连 API 模式
 export function useChat(appState) {
@@ -60,22 +56,6 @@ Remember: You are an actor playing a role. The USER is the co-author, not someon
             role: 'system',
             content: roleplayFrame,
         });
-
-        // 🌍 Step 0.5: 世界书注入（关键词触发）
-        // 只有对话中提到相关关键词的条目才会被注入
-        if (!worldInstance) {
-            worldInstance = useWorld(appState);
-        }
-        const lorebookContent = worldInstance.getInjectionContent(
-            userInput.value,
-            messages.value
-        );
-        if (lorebookContent) {
-            apiMessages.push({
-                role: 'system',
-                content: lorebookContent,
-            });
-        }
 
         // Step 1: System Prompt (角色人设)
         if (role.systemPrompt) {
@@ -363,6 +343,7 @@ Example format:
                     effectiveMaxTokens = Math.max(effectiveMaxTokens, 4000);
                     frequencyPenalty = 0.3; // 防止长文重复
                 }
+                // 'auto' 模式：不添加任何长度指令，让 AI 自己决定
 
                 apiMessages[lastMsgIndex].content += modelSpecificPrompt + lengthInstruction;
             }
@@ -382,6 +363,7 @@ Example format:
             // Short mode: slightly lower temperature for consistency
             effectiveTemperature = Math.min(effectiveTemperature, 0.9);
         }
+        // 'auto' 模式：保持用户设置的参数，不做调整
 
         // 创建 AbortController - 🛡️ 组合用户中止和超时信号
         abortController.value = new AbortController();
