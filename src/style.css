@@ -1,0 +1,1680 @@
+@import "tailwindcss";
+
+/* ============== v6.0 现代设计系统 ============== */
+:root {
+  /* 背景层次 - 靛紫渐变色调 */
+  --bg-primary: #1e1e2e;
+  --bg-secondary: #252538;
+  --bg-elevated: #2d2d42;
+  --bg-surface: #35354c;
+  --bg-hover: #3d3d56;
+
+  /* 强调色 - 紫蓝渐变 */
+  --accent-primary: #6366f1;
+  --accent-secondary: #818cf8;
+  --accent-tertiary: #a5b4fc;
+  --accent-soft: rgba(99, 102, 241, 0.12);
+  --accent-glow: rgba(99, 102, 241, 0.25);
+
+  /* 语义色 */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+
+  /* 文字层次 */
+  --text-primary: #f0f0f8;
+  --text-secondary: #a8a8b8;
+  --text-muted: #6b6b7d;
+  --text-disabled: #4a4a58;
+
+  /* 边框 */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-hover: rgba(255, 255, 255, 0.15);
+
+  /* 间距 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 20px var(--accent-glow);
+}
+
+@theme {
+  --color-primary: #6366f1;
+  --color-secondary: #8b5cf6;
+  --color-dark-100: #1a1a24;
+  --color-dark-200: #12121a;
+  --color-dark-300: #0a0a0f;
+}
+
+/* ============== 基础样式重置 ============== */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overscroll-behavior: none;
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============== 全屏背景层 ============== */
+.fullscreen-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: -1;
+  background-color: var(--bg-primary);
+  transition: background-image 0.4s ease;
+}
+
+.fullscreen-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 10, 15, 0.7) 0%, rgba(10, 10, 15, 0.4) 50%, rgba(10, 10, 15, 0.8) 100%);
+  z-index: 1;
+}
+
+/* ============== 磨砂玻璃效果 (优化版) ============== */
+.glass {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.glass-strong {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-light {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ============== 半透明背景色 (使用变量) ============== */
+.bg-glass-dark {
+  background: var(--bg-secondary);
+}
+
+.bg-glass-light {
+  background: var(--bg-elevated);
+}
+
+.bg-glass-message {
+  background: var(--bg-surface);
+}
+
+.bg-glass-user {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+
+/* ============== 文字阴影 ============== */
+.text-shadow {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.text-shadow-light {
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+/* ============== 滚动条美化 ============== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.6), rgba(139, 92, 246, 0.6));
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.8), rgba(139, 92, 246, 0.8));
+}
+
+/* ============== 消息气泡动画 ============== */
+.message-enter-active,
+.message-leave-active {
+  transition: all 0.3s ease-out;
+}
+
+.message-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.message-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+/* ============== 打字机光标 ============== */
+.typing-cursor::after {
+  content: '▋';
+  animation: blink 1s infinite;
+  color: #8b5cf6;
+}
+
+@keyframes blink {
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ============== Markdown 样式 ============== */
+.markdown-body {
+  line-height: 1.6;
+}
+
+.markdown-body p {
+  margin: 0.5em 0;
+}
+
+.markdown-body p:first-child {
+  margin-top: 0;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body code {
+  background: rgba(139, 92, 246, 0.3);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.markdown-body pre {
+  background: rgba(17, 17, 27, 0.9);
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid #6366f1;
+  padding-left: 1em;
+  margin: 0.5em 0;
+  color: #a0a0c0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+/* ============== 头像样式 (v6.0 现代圆角方形) ============== */
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  border: none;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.avatar:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-lg);
+}
+
+.avatar-placeholder {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  border: none;
+  box-shadow: var(--shadow-md);
+}
+
+.avatar-user {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.avatar-ai {
+  background: linear-gradient(135deg, #8b5cf6, #a855f7);
+}
+
+/* ============== Toggle Switch (v6.0) ============== */
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-switch.active {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border-color: var(--accent-primary);
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.toggle-switch.active::after {
+  transform: translateX(20px);
+}
+
+/* ============== 正在输入动画 ============== */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+}
+
+.typing-indicator .dot {
+  width: 6px;
+  height: 6px;
+  margin: 0 3px;
+  background-color: #a0a0c0;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator .dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator .dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+
+  40% {
+    transform: scale(1.0);
+  }
+}
+
+/* ============== Thinking Panel ============== */
+.thinking-panel {
+  background: rgba(60, 60, 80, 0.4);
+  border-left: 3px solid #6b7280;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* ============== Message Toolbar ============== */
+.message-toolbar {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.2s ease, margin-top 0.3s ease;
+  margin-top: 0;
+}
+
+.message-toolbar.active {
+  max-height: 60px;
+  opacity: 1;
+  margin-top: 8px;
+}
+
+.toolbar-inner {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(30, 30, 46, 0.95);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #a0a0c0;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+  background: rgba(99, 102, 241, 0.3);
+  color: white;
+}
+
+.toolbar-btn.pin {
+  color: #f59e0b;
+}
+
+.toolbar-btn.pin:hover {
+  background: rgba(245, 158, 11, 0.3);
+}
+
+.toolbar-btn.pin.pinned {
+  background: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.toolbar-btn.regenerate:hover {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+.toolbar-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.toolbar-btn.tts {
+  color: #10b981;
+}
+
+.toolbar-btn.tts:hover {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+.toolbar-btn.tts.playing {
+  background: rgba(16, 185, 129, 0.4);
+  color: white;
+}
+
+/* ============== Visual Novel Styles ============== */
+.thought-cloud {
+  position: relative;
+  background: linear-gradient(135deg, rgba(255, 182, 193, 0.15), rgba(173, 216, 230, 0.15));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 2px dashed rgba(255, 182, 193, 0.4);
+  border-radius: 20px;
+  padding: 10px 16px 10px 32px;
+  margin-bottom: 12px;
+  font-size: 0.88rem;
+  font-style: italic;
+  color: rgba(255, 200, 210, 0.9);
+  line-height: 1.5;
+  animation: cloudFloat 4s ease-in-out infinite;
+}
+
+.thought-cloud::before {
+  content: '💭';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+}
+
+@keyframes cloudFloat {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* ============== v6.0 现代消息气泡 ============== */
+.speech-bubble {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border-bottom-left-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  padding: 14px 18px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.speech-bubble:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-md);
+}
+
+.speech-bubble.selected {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary), var(--shadow-md);
+}
+
+.user-speech-bubble {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-sm);
+  border: none;
+  padding: 14px 18px;
+  box-shadow: var(--shadow-md);
+  color: #fff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.user-speech-bubble:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg), 0 0 20px var(--accent-glow);
+}
+
+.user-speech-bubble.selected {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5), var(--shadow-lg);
+}
+
+.vn-body {
+  line-height: 1.75;
+  font-size: 0.925rem;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+}
+
+.vn-body p {
+  margin: 0.6em 0;
+}
+
+/* ============== v4.9 Four-Style Typography System ============== */
+
+/* === STYLE 1: Simple (简约符号) === */
+.style-simple .rp-action {
+  color: #a1a1aa;
+  font-style: italic;
+}
+
+.style-simple .rp-action::before {
+  content: "*";
+  opacity: 0.6;
+}
+
+.style-simple .rp-action::after {
+  content: "*";
+  opacity: 0.6;
+}
+
+.style-simple .rp-thought {
+  color: #78716c;
+  font-size: 0.9em;
+}
+
+.style-simple .rp-thought::before {
+  content: "(";
+  opacity: 0.6;
+}
+
+.style-simple .rp-thought::after {
+  content: ")";
+  opacity: 0.6;
+}
+
+.style-simple .rp-dialogue {
+  color: #e5e7eb;
+}
+
+.style-simple .rp-dialogue::before {
+  content: '"';
+  opacity: 0.8;
+}
+
+.style-simple .rp-dialogue::after {
+  content: '"';
+  opacity: 0.8;
+}
+
+.style-simple .rp-status {
+  display: inline;
+  color: #6b7280;
+  font-size: 0.9em;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-right: 4px;
+}
+
+.style-simple .rp-status::before {
+  content: "[";
+  opacity: 0.5;
+}
+
+.style-simple .rp-status::after {
+  content: "]";
+  opacity: 0.5;
+}
+
+/* Simple - Dark Mode */
+.style-simple.speech-bubble .rp-action {
+  color: #a1a1aa;
+}
+
+.style-simple.speech-bubble .rp-thought {
+  color: #a1a1aa;
+}
+
+.style-simple.speech-bubble .rp-status {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* === STYLE 2: Moonlight (月光夜曲) === */
+.style-moonlight .rp-action {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.style-moonlight .rp-action::before {
+  content: "☽ ";
+  opacity: 0.5;
+}
+
+.style-moonlight .rp-thought {
+  color: #7dd3fc;
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+.style-moonlight .rp-thought::before {
+  content: "✧ ";
+  opacity: 0.6;
+}
+
+.style-moonlight .rp-status {
+  display: inline;
+  color: #fbbf24;
+  font-size: 0.85em;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-right: 4px;
+}
+
+.style-moonlight .rp-status::before {
+  content: "⋆ ";
+  opacity: 0.7;
+}
+
+.style-moonlight .rp-status::after {
+  content: none;
+}
+
+/* Moonlight - Dark Mode */
+.style-moonlight.speech-bubble .rp-action {
+  color: #cbd5e1;
+}
+
+.style-moonlight.speech-bubble .rp-thought {
+  color: #7dd3fc;
+}
+
+.style-moonlight.speech-bubble .rp-status {
+  color: #fcd34d;
+}
+
+/* === STYLE 3: Dreamy (Soft & Romantic) === */
+.style-dreamy .rp-action {
+  color: #a78bfa;
+  font-style: italic;
+}
+
+.style-dreamy .rp-thought {
+  color: #f472b6;
+  font-size: 0.88em;
+  font-style: italic;
+}
+
+.style-dreamy .rp-thought::before {
+  content: "♡ ";
+  opacity: 0.5;
+}
+
+.style-dreamy .rp-status {
+  display: inline-block;
+  background: linear-gradient(135deg, rgba(244, 114, 182, 0.15), rgba(167, 139, 250, 0.15));
+  color: #c084fc;
+  font-size: 0.75em;
+  font-weight: 500;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(196, 132, 252, 0.2);
+  margin-right: 6px;
+}
+
+.style-dreamy .rp-status::before,
+.style-dreamy .rp-status::after {
+  content: none;
+}
+
+/* Dreamy - Dark Mode */
+.style-dreamy.speech-bubble .rp-action {
+  color: #c4b5fd;
+}
+
+.style-dreamy.speech-bubble .rp-thought {
+  color: #f9a8d4;
+}
+
+.style-dreamy.speech-bubble .rp-status {
+  background: linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(167, 139, 250, 0.2));
+  color: #e9d5ff;
+  border-color: rgba(196, 132, 252, 0.3);
+}
+
+/* === STYLE 4: Crystal (清透水晶) === */
+.style-crystal .rp-action {
+  color: #38bdf8;
+  font-style: italic;
+}
+
+.style-crystal .rp-action::before {
+  content: "✦ ";
+  opacity: 0.6;
+}
+
+.style-crystal .rp-thought {
+  color: #94a3b8;
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+.style-crystal .rp-thought::before {
+  content: "༄ ";
+  opacity: 0.5;
+}
+
+.style-crystal .rp-status {
+  display: inline-block;
+  background: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+  font-size: 0.75em;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-right: 6px;
+}
+
+.style-crystal .rp-status::before {
+  content: "◈ ";
+  opacity: 0.7;
+}
+
+.style-crystal .rp-status::after {
+  content: none;
+}
+
+/* Crystal - Dark Mode */
+.style-crystal.speech-bubble .rp-action {
+  color: #7dd3fc;
+}
+
+.style-crystal.speech-bubble .rp-thought {
+  color: #cbd5e1;
+}
+
+.style-crystal.speech-bubble .rp-status {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+}
+
+/* === STYLE 5: Custom (用户自定义) === */
+.style-custom .rp-action {
+  color: var(--rp-action-color, #a1a1aa);
+  font-style: italic;
+}
+
+.style-custom .rp-action::before {
+  content: var(--rp-action-symbol, '*');
+  opacity: 0.7;
+}
+
+.style-custom .rp-action::after {
+  content: var(--rp-action-symbol, '*');
+  opacity: 0.7;
+}
+
+.style-custom .rp-thought {
+  color: var(--rp-thought-color, #78716c);
+  font-size: 0.9em;
+}
+
+.style-custom .rp-thought::before {
+  content: var(--rp-thought-symbol, '(');
+  opacity: 0.7;
+}
+
+.style-custom .rp-thought::after {
+  content: var(--rp-thought-symbol, ')');
+  opacity: 0.7;
+}
+
+/* v5.2: 自定义状态使用胶囊样式 */
+.style-custom .rp-status {
+  display: inline-block;
+  color: var(--rp-status-color, #d1d5db);
+  font-size: 0.8em;
+  font-weight: 500;
+  background: rgba(31, 41, 55, 0.8);
+  padding: 3px 12px;
+  border-radius: 9999px;
+  margin-right: 8px;
+  margin-bottom: 4px;
+  border: 1px solid rgba(75, 85, 99, 0.4);
+}
+
+.style-custom .rp-status::before,
+.style-custom .rp-status::after {
+  content: none;
+}
+
+.style-custom .vn-body {
+  font-size: calc(1em * var(--rp-font-scale, 1));
+}
+
+/* v5.2: Custom dialogue styling */
+.style-custom .rp-dialogue {
+  color: var(--rp-dialogue-color, #e5e7eb);
+}
+
+.style-custom .rp-dialogue::before {
+  content: var(--rp-dialogue-open, '"');
+  opacity: 0.8;
+}
+
+.style-custom .rp-dialogue::after {
+  content: var(--rp-dialogue-close, '"');
+  opacity: 0.8;
+}
+
+/* === Base fallback (no style class) - use Simple === */
+.rp-action {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.rp-action::before {
+  content: "*";
+  opacity: 0.6;
+}
+
+.rp-action::after {
+  content: "*";
+  opacity: 0.6;
+}
+
+.rp-thought {
+  color: #94a3b8;
+  font-size: 0.9em;
+}
+
+.rp-thought::before {
+  content: "(";
+  opacity: 0.6;
+}
+
+.rp-thought::after {
+  content: ")";
+  opacity: 0.6;
+}
+
+/* v5.2: 胶囊状态标签 - 类似用户参考图片的样式 */
+.rp-status {
+  display: inline-block;
+  background: rgba(31, 41, 55, 0.8);
+  color: #d1d5db;
+  font-size: 0.8em;
+  font-weight: 500;
+  padding: 3px 12px;
+  border-radius: 9999px;
+  margin-right: 8px;
+  margin-bottom: 4px;
+  border: 1px solid rgba(75, 85, 99, 0.4);
+}
+
+.rp-status::before,
+.rp-status::after {
+  content: none;
+}
+
+.rp-dialogue {
+  color: #e5e7eb;
+}
+
+.rp-dialogue::before {
+  content: '"';
+  opacity: 0.8;
+}
+
+.rp-dialogue::after {
+  content: '"';
+  opacity: 0.8;
+}
+
+/* ============== v4.6 Immersive Mode ============== */
+.mode-immersive .rp-thought {
+  display: none;
+}
+
+.mode-immersive .rp-status {
+  display: none;
+}
+
+.mode-immersive .rp-action {
+  opacity: 0.7;
+}
+
+.mode-immersive .thought-cloud {
+  display: none;
+}
+
+.message-content {
+  color: #ffffff;
+}
+
+.message-body {
+  color: inherit;
+}
+
+.action-text {
+  color: #aaaaaa;
+  font-style: italic;
+  font-size: 0.9em;
+  opacity: 0.95;
+}
+
+.dialogue-text {
+  color: #e0e0e0;
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+.char-inner {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(30, 30, 46, 0.6);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  color: #e8e8f0;
+  font-style: italic;
+  line-height: 1.6;
+}
+
+/* ============== Logic Tag ============== */
+.logic-tag-wrapper {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 4px;
+  position: relative;
+  z-index: 10;
+}
+
+.logic-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 10px;
+  font-size: 11px;
+  color: #8888a0;
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.logic-tag:hover {
+  background: rgba(99, 102, 241, 0.2);
+  color: #9999bb;
+}
+
+.logic-tag-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 8px;
+  width: 280px;
+  max-height: 200px;
+  background: rgba(25, 25, 35, 0.95);
+  backdrop-filter: blur(16px);
+  border-radius: 10px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 10px 12px;
+  font-family: 'Consolas', monospace;
+  font-size: 0.72rem;
+  color: #a0a0b0;
+  overflow-y: auto;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: all 0.2s ease;
+  z-index: 50;
+}
+
+.logic-tag-wrapper:hover .logic-tag-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* ============== Reasoning Block (🧠 Collapsible Icon) ============== */
+details.reasoning-block {
+  margin-bottom: 8px;
+}
+
+details.reasoning-block>summary {
+  list-style: none;
+  /* Chrome/Safari */
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+  width: fit-content;
+  font-size: 1.2rem;
+  user-select: none;
+}
+
+details.reasoning-block>summary::-webkit-details-marker {
+  display: none;
+}
+
+details.reasoning-block>summary:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+details.reasoning-block[open]>summary {
+  opacity: 1;
+}
+
+.reasoning-icon {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.reasoning-icon.streaming {
+  animation: iconPulse 1s ease-in-out infinite;
+}
+
+.reasoning-content {
+  font-size: 0.82em;
+  color: #888;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-top: 6px;
+  border-left: 3px solid #666;
+  max-height: 300px;
+  overflow-y: auto;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ============== Settings Panel ============== */
+.settings-panel {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  z-index: 9999 !important;
+}
+
+.settings-panel.hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ============== Sidebar ============== */
+.sidebar {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.sidebar.hidden {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.role-item {
+  transition: all 0.2s ease;
+}
+
+.role-item:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.role-item.active {
+  background: rgba(99, 102, 241, 0.3);
+  border-left: 3px solid #6366f1;
+}
+
+/* ============== Memory System ============== */
+.memory-item {
+  transition: all 0.2s ease;
+}
+
+.memory-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.memory-edit-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: 8px;
+  padding: 8px 12px;
+  width: 100%;
+  color: #e0e0e0;
+  font-size: 0.8rem;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.memory-edit-input:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.8);
+}
+
+.memory-action-btn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.memory-action-btn.refine {
+  background: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+}
+
+.memory-action-btn.edit {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.memory-action-btn.save {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.memory-action-btn.cancel {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.memory-action-btn.delete {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.memory-add-btn {
+  width: 100%;
+  padding: 10px;
+  border: 2px dashed rgba(139, 92, 246, 0.4);
+  border-radius: 10px;
+  background: transparent;
+  color: #a78bfa;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.memory-add-btn:hover {
+  border-color: rgba(139, 92, 246, 0.8);
+  background: rgba(139, 92, 246, 0.1);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ============== TTS Wave ============== */
+.tts-wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 12px;
+}
+
+.tts-wave span {
+  width: 2px;
+  height: 100%;
+  background: #10b981;
+  animation: ttsWave 0.5s ease-in-out infinite;
+}
+
+.tts-wave span:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.tts-wave span:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.tts-wave span:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+@keyframes ttsWave {
+
+  0%,
+  100% {
+    transform: scaleY(0.5);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* ============== Blur Background ============== */
+.blur-background {
+  filter: blur(4px);
+  pointer-events: none;
+  opacity: 0.6;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* ============== Input Focus ============== */
+.input-focus:focus {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+}
+
+/* ============== Send Button ============== */
+.send-btn:active {
+  transform: scale(0.95);
+}
+
+/* ============== Delete Button ============== */
+.delete-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.role-item:hover .delete-btn {
+  opacity: 1;
+}
+
+/* ============== Toast Animation ============== */
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px);
+}
+
+/* ============== Message Bubble ============== */
+.message-bubble {
+  margin-bottom: 20px !important;
+}
+
+.message-bubble:last-child {
+  margin-bottom: 8px !important;
+}
+
+/* ============== User Speech Bubble Selected ============== */
+.user-speech-bubble.selected {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ============== Logic Tag Streaming ============== */
+.logic-tag.streaming .tag-icon {
+  animation: iconPulse 1s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ============== Thought Cloud Tail ============== */
+.thought-cloud::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 20px;
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 182, 193, 0.2);
+  border: 2px dashed rgba(255, 182, 193, 0.3);
+  border-radius: 50%;
+}
+
+/* ============== Mobile Responsive ============== */
+@media (max-width: 640px) {
+  .logic-tag-tooltip {
+    position: fixed;
+    top: auto;
+    bottom: 80px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-width: none;
+    margin-left: 0;
+    transform: translateY(10px);
+  }
+
+  .logic-tag-wrapper:hover .logic-tag-tooltip {
+    transform: translateY(0);
+  }
+}
+
+/* ============== Message Wrapper ============== */
+.message-wrapper {
+  position: relative;
+}
+
+/* ============== Primary Color Classes ============== */
+.text-primary {
+  color: #6366f1;
+}
+
+.text-secondary {
+  color: #8b5cf6;
+}
+
+.bg-primary {
+  background-color: #6366f1;
+}
+
+.from-primary {
+  --tw-gradient-from: #6366f1;
+}
+
+.to-secondary {
+  --tw-gradient-to: #8b5cf6;
+}
+
+.accent-primary {
+  accent-color: #6366f1;
+}
+
+.focus\:border-primary:focus {
+  border-color: #6366f1;
+}
+
+/* ============== v5.6 UI Polish (from Design Critique) ============== */
+
+/* P1: Enhanced Send Button */
+.send-btn {
+  width: 56px !important;
+  height: 56px !important;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.send-btn:hover:not(:disabled) {
+  transform: scale(1.08);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.6);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* P1: Toolbar Button Click Feedback */
+.toolbar-btn {
+  transition: all 0.15s ease;
+}
+
+.toolbar-btn:active {
+  transform: scale(0.9);
+}
+
+/* P1: Toolbar Button Hierarchy (secondary ops less prominent) */
+.toolbar-btn.delete,
+.toolbar-btn.regenerate {
+  opacity: 0.7;
+}
+
+.message-toolbar:hover .toolbar-btn.delete,
+.message-toolbar:hover .toolbar-btn.regenerate,
+.message-toolbar.active .toolbar-btn.delete,
+.message-toolbar.active .toolbar-btn.regenerate {
+  opacity: 1;
+}
+
+/* P1: Improved Message Spacing */
+.message-bubble {
+  margin-bottom: 24px;
+}
+
+/* P1: Improved Bubble Padding */
+.speech-bubble {
+  padding: 18px 22px;
+}
+
+/* P1: Form Spacing in Settings */
+.settings-panel .space-y-3 {
+  gap: 16px;
+}
+
+.settings-panel .space-y-4 {
+  gap: 20px;
+}
+
+/* P2: Thought Cloud Border Softer */
+.thought-cloud {
+  border-width: 1px;
+}
+
+/* P2: Memory Item Feedback */
+.memory-item {
+  transition: all 0.2s ease;
+}
+
+.memory-item:active {
+  transform: scale(0.98);
+}
+
+/* P2: Memory Action Buttons Larger */
+.memory-action-btn {
+  min-height: 32px;
+  padding: 6px 12px;
+}
+
+/* ============== Mobile Responsiveness ============== */
+@media (max-width: 640px) {
+
+  /* Sidebar width limit */
+  .sidebar {
+    width: 85vw !important;
+    max-width: 320px;
+  }
+
+  /* Toolbar buttons larger touch target */
+  .toolbar-btn {
+    padding: 8px 12px !important;
+    min-height: 40px;
+  }
+
+  /* Header compact */
+  header {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  /* Bubble padding compact */
+  .speech-bubble {
+    padding: 14px 16px !important;
+  }
+
+  /* Message spacing compact */
+  .message-bubble {
+    margin-bottom: 16px;
+  }
+
+  /* Settings bottom safe area */
+  .settings-panel {
+    padding-bottom: 100px;
+  }
+}
+
+/* Memory list height on short screens */
+@media (max-height: 700px) {
+  .memory-list {
+    max-height: 180px;
+  }
+}
+
+/* ============== v6.0 Settings Panel Styles ============== */
+.settings-panel {
+  background: var(--bg-primary);
+}
+
+.settings-header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 16px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.settings-card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  margin-bottom: var(--spacing-md);
+}
+
+.settings-card-header {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-card-header .icon {
+  font-size: 1.1rem;
+}
+
+.settings-card-body {
+  padding: 18px;
+}
+
+/* Form Controls */
+.form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+  font-weight: 500;
+}
+
+.form-input {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-select {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Settings Toggle Row */
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.settings-toggle-row:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.settings-toggle-info h4 {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 2px 0;
+}
+
+.settings-toggle-info p {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Action Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg), 0 0 20px var(--accent-glow);
+}
+
+.btn-secondary {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--error);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}

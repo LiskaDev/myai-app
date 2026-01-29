@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="description" content="MyAI-RolePlay v5.6 - AI 角色扮演沉浸式视觉小说体验，支持深度角色定制、智能记忆和多样化对话风格">
+  <title>MyAI-RolePlay v5.6</title>
+
+  <!-- SEO: Open Graph -->
+  <meta property="og:title" content="MyAI-RolePlay - AI 沉浸式角色扮演">
+  <meta property="og:description" content="与 AI 角色进行沉浸式视觉小说体验，支持深度角色定制和智能记忆系统">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://myai-app-eight.vercel.app">
+  
+  <!-- SEO: Twitter Card -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="MyAI-RolePlay v5.6">
+  <meta name="twitter:description" content="AI 角色扮演沉浸式视觉小说体验">
+
+  <!-- Original Emoji Favicon -->
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🎭</text></svg>" />
+
+  <!-- PWA: iOS Standalone Mode -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MyAI RP">
+
+  <!-- PWA Injector -->
+  <script>
+    (function () {
+      const manifest = {
+        name: "MyAI-RolePlay",
+        short_name: "MyAI",
+        description: "AI角色扮演沉浸式体验",
+        start_url: "/",
+        display: "standalone",
+        orientation: "portrait",
+        theme_color: "#1a1a2e",
+        background_color: "#1a1a2e",
+        icons: [
+          {
+            src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a1a2e' width='100' height='100'/><text y='70' x='15' font-size='60'>🎭</text></svg>",
+            sizes: "192x192",
+            type: "image/svg+xml",
+            purpose: "any maskable"
+          },
+          {
+            src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a1a2e' width='100' height='100'/><text y='70' x='15' font-size='60'>🎭</text></svg>",
+            sizes: "512x512",
+            type: "image/svg+xml",
+            purpose: "any maskable"
+          }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = URL.createObjectURL(blob);
+      document.head.appendChild(link);
+    })();
+  </script>
+</head>
+
+<body class="text-gray-100 h-screen overflow-hidden">
+  <div id="app" class="h-full"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
