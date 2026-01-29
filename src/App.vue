@@ -114,10 +114,77 @@ watch(() => messages.value.length, () => {
   }
 });
 
+// ========================================
+// 🎤 语音输入功能 (Speech-to-Text)
+// ========================================
+const isRecording = ref(false);
+let recognition = null;
+
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.warn('浏览器不支持语音识别');
+    return null;
+  }
+  
+  const r = new SpeechRecognition();
+  r.lang = 'zh-CN';
+  r.continuous = false;
+  r.interimResults = true;
+  
+  r.onresult = (event) => {
+    let transcript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+    }
+    userInput.value = transcript;
+  };
+  
+  r.onend = () => {
+    isRecording.value = false;
+  };
+  
+  r.onerror = (event) => {
+    console.error('语音识别错误:', event.error);
+    isRecording.value = false;
+    if (event.error === 'not-allowed') {
+      showToast('请允许麦克风权限', 'error');
+    }
+  };
+  
+  return r;
+}
+
+function toggleVoiceInput() {
+  if (!recognition) {
+    recognition = initSpeechRecognition();
+  }
+  
+  if (!recognition) {
+    showToast('您的浏览器不支持语音输入', 'error');
+    return;
+  }
+  
+  if (isRecording.value) {
+    recognition.stop();
+    isRecording.value = false;
+  } else {
+    try {
+      recognition.start();
+      isRecording.value = true;
+    } catch (e) {
+      console.error('启动语音识别失败:', e);
+    }
+  }
+}
+
 // 🛡️ 清理 Timer 和 Storage 监听器
 onUnmounted(() => {
   cleanupTimers();
   cleanupStorageListener();
+  if (recognition) {
+    recognition.stop();
+  }
 });
 
 // ========================================
@@ -347,22 +414,35 @@ function handleAvatarError(type, roleId) {
       @play-tts="playTTS"
     />
 
-    <!-- 底部输入区域 -->
-    <footer class="glass-strong bg-glass-dark border-t border-white/10 p-3 flex-shrink-0">
+    <!-- 底部输入区域 v6.0 -->
+    <footer class="bg-glass-dark border-t border-white/10 p-3 flex-shrink-0">
       <form @submit.prevent="sendMessage" class="flex items-end space-x-2">
         <div class="flex-1 relative">
           <textarea ref="inputArea" v-model="userInput"
                     @keydown.enter.exact.prevent="sendMessage"
                     @keydown.enter.shift.exact="handleShiftEnter"
-                    :disabled="isStreaming"
-                    :placeholder="`与 ${currentRole.name || 'AI'} 对话...`"
+                    :disabled="isStreaming || isRecording"
+                    :placeholder="isRecording ? '🎤 正在录音...' : `与 ${currentRole.name || 'AI'} 对话...`"
                     rows="1"
-                    class="w-full glass-light bg-glass-light text-gray-100 rounded-2xl px-4 py-3 resize-none input-focus outline-none border border-white/10 focus:border-primary transition max-h-32 overflow-y-auto text-shadow-light"
+                    class="w-full form-input rounded-2xl px-4 py-3 resize-none max-h-32 overflow-y-auto"
+                    :class="{ 'border-red-500': isRecording }"
                     style="min-height: 48px;"></textarea>
         </div>
+        
+        <!-- 🎤 语音输入按钮 -->
+        <button type="button" @click="toggleVoiceInput"
+                :disabled="isStreaming"
+                class="voice-btn w-11 h-11 rounded-full flex items-center justify-center transition"
+                :class="isRecording ? 'bg-red-500 animate-pulse' : 'bg-white/10 hover:bg-white/20'"
+                :title="isRecording ? '停止录音' : '语音输入'">
+          <svg class="w-5 h-5" :class="isRecording ? 'text-white' : 'text-gray-300'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+          </svg>
+        </button>
+        
         <!-- 发送按钮 -->
         <button type="submit" :disabled="!userInput.trim() || isStreaming"
-                class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed"
+                class="send-btn w-11 h-11 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed"
                 v-if="!isStreaming">
           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
@@ -370,7 +450,7 @@ function handleAvatarError(type, roleId) {
         </button>
         <!-- 停止按钮 -->
         <button type="button" @click="stopGeneration"
-                class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center transition hover:from-red-600 hover:to-red-700"
+                class="send-btn w-11 h-11 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center transition hover:from-red-600 hover:to-red-700"
                 v-else title="停止生成">
           <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
             <rect x="6" y="6" width="12" height="12" rx="2"></rect>

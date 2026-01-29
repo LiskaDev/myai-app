@@ -2,12 +2,12 @@
 
 /* ============== v6.0 现代设计系统 ============== */
 :root {
-  /* 背景层次 - 深色但不是纯黑 */
-  --bg-primary: #14141f;
-  --bg-secondary: #1a1a28;
-  --bg-elevated: #222232;
-  --bg-surface: #2a2a3c;
-  --bg-hover: #32324a;
+  /* 背景层次 - 靛紫渐变色调 */
+  --bg-primary: #1e1e2e;
+  --bg-secondary: #252538;
+  --bg-elevated: #2d2d42;
+  --bg-surface: #35354c;
+  --bg-hover: #3d3d56;
 
   /* 强调色 - 紫蓝渐变 */
   --accent-primary: #6366f1;
