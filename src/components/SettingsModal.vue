@@ -46,50 +46,50 @@ function resetCustomStyle() {
 </script>
 
 <template>
-  <!-- 设置面板 - 全屏覆盖式 -->
-  <div class="settings-panel fixed inset-0 glass-strong bg-glass-dark z-50 overflow-y-auto">
+  <!-- 设置面板 - 全屏覆盖式 v6.0 -->
+  <div class="settings-panel fixed inset-0 z-50 overflow-y-auto">
     <div class="min-h-full">
       <!-- 设置头部 -->
-      <header class="glass-strong bg-glass-dark px-4 py-3 flex items-center justify-between border-b border-white/10 sticky top-0 z-10">
-        <h2 class="font-bold text-lg text-shadow">⚙️ 设置</h2>
-        <button @click="$emit('close')" class="p-2 rounded-full hover:bg-white/10 transition">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <header class="settings-header flex items-center justify-between">
+        <h2 class="font-semibold text-lg">⚙️ 设置</h2>
+        <button @click="$emit('close')" class="p-2 rounded-lg hover:bg-white/10 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
       </header>
 
-      <div class="p-4 space-y-6">
-        <!-- 全局设置 -->
-        <section class="glass bg-glass-message rounded-xl p-4 space-y-4">
-          <h3 class="font-semibold text-primary flex items-center text-shadow">
-            <span class="mr-2">🌐</span> 全局设置
-          </h3>
-
-          <div class="space-y-3">
-            <div>
-              <label class="block text-sm text-gray-300 mb-1">Base URL</label>
+      <div class="p-5 space-y-5">
+        <!-- 全局设置 v6.0 -->
+        <section class="settings-card">
+          <div class="settings-card-header">
+            <span class="icon">🌐</span>
+            <span>全局设置</span>
+          </div>
+          <div class="settings-card-body space-y-4">
+            <div class="form-group">
+              <label class="form-label">Base URL</label>
               <input v-model="globalSettings.baseUrl" type="text" placeholder="https://api.deepseek.com"
-                     class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light">
+                     class="form-input">
             </div>
 
-            <div>
-              <label class="block text-sm text-gray-300 mb-1">API Key</label>
+            <div class="form-group">
+              <label class="form-label">API Key</label>
               <input v-model="globalSettings.apiKey" type="password" placeholder="sk-..."
-                     class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light">
+                     class="form-input">
             </div>
 
-            <div>
-              <label class="block text-sm text-gray-300 mb-1">Model Name</label>
+            <div class="form-group">
+              <label class="form-label">Model Name</label>
               <input v-model="globalSettings.model" type="text" placeholder="deepseek-reasoner"
-                     class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light">
+                     class="form-input">
             </div>
 
-            <div>
-              <label class="block text-sm text-gray-300 mb-1">User Avatar URL (用户头像)</label>
+            <div class="form-group">
+              <label class="form-label">用户头像 URL</label>
               <input v-model="globalSettings.userAvatar" type="text" placeholder="/static/wo.jpg"
-                     class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light">
-              <p class="text-xs text-gray-400 mt-1">⚠️ 请输入图片 URL，不要上传图片文件</p>
+                     class="form-input">
+              <p class="form-hint">⚠️ 请输入图片 URL，不要上传图片文件</p>
             </div>
 
             <!-- 自动朗读 -->
