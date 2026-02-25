@@ -119,13 +119,27 @@ export function useGroupChat(appState) {
     function sendDirectorMessage(content) {
         if (!content.trim() || !currentGroup.value) return;
 
+        const trimmed = content.trim();
+
         groupMessages.value.push({
             role: 'director',
-            content: content.trim(),
+            content: trimmed,
             timestamp: Date.now(),
         });
 
         saveGroups();
+
+        // @ 提及解析：如果导演消息中 @了某角色，自动让该角色回复
+        const mentionMatch = trimmed.match(/@(\S+)/);
+        if (mentionMatch) {
+            const mentionedName = mentionMatch[1];
+            const mentionedRole = participants.value.find(
+                r => r.name === mentionedName
+            );
+            if (mentionedRole) {
+                speakAsRole(mentionedRole.id);
+            }
+        }
     }
 
     // ============== 核心：继续一轮 ==============
@@ -136,16 +150,21 @@ export function useGroupChat(appState) {
             return;
         }
 
-        const activeParticipants = participants.value;
+        const activeParticipants = [...participants.value];
         if (activeParticipants.length === 0) {
             showToast('群聊中没有有效角色', 'error');
             return;
         }
 
+        // 洗牌：随机打乱发言顺序
+        for (let i = activeParticipants.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [activeParticipants[i], activeParticipants[j]] = [activeParticipants[j], activeParticipants[i]];
+        }
+
         isGroupStreaming.value = true;
 
         try {
-            // 按顺序让每个角色发言
             for (const role of activeParticipants) {
                 currentSpeakingRole.value = role.name;
 
@@ -154,6 +173,38 @@ export function useGroupChat(appState) {
                 // 检查是否被中止
                 if (!isGroupStreaming.value) break;
             }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                const errorMsg = error.name === 'TimeoutError'
+                    ? '请求超时，请检查网络' : `错误: ${error.message}`;
+                showToast(errorMsg, 'error');
+            }
+        } finally {
+            isGroupStreaming.value = false;
+            currentSpeakingRole.value = null;
+            groupAbortController.value = null;
+        }
+    }
+
+    // 让单个角色发言（💬 按钮）
+    async function speakAsRole(roleId) {
+        if (isGroupStreaming.value || !currentGroup.value) return;
+        if (!globalSettings.apiKey) {
+            showToast('请先在设置中配置 API Key', 'error');
+            return;
+        }
+
+        const role = participants.value.find(r => r.id === roleId);
+        if (!role) {
+            showToast('角色未找到', 'error');
+            return;
+        }
+
+        isGroupStreaming.value = true;
+        currentSpeakingRole.value = role.name;
+
+        try {
+            await generateRoleResponse(role);
         } catch (error) {
             if (error.name !== 'AbortError') {
                 const errorMsg = error.name === 'TimeoutError'
@@ -283,6 +334,17 @@ export function useGroupChat(appState) {
 
         groupMessages.value[msgIndex].rawContent = fullContent;
 
+        // [PASS] 弃权机制：如果角色回复了 [PASS]，删掉占位消息
+        const cleanContent = fullContent
+            .replace(/<think>[\s\S]*?<\/think>/g, '')
+            .replace(/<inner>[\s\S]*?<\/inner>/g, '')
+            .trim();
+        if (cleanContent === '[PASS]' || cleanContent === 'PASS') {
+            groupMessages.value.splice(msgIndex, 1);
+            saveGroups();
+            return; // 静默跳过
+        }
+
         // Fallback
         if (!groupMessages.value[msgIndex].content && fullContent) {
             let fallback = fullContent
@@ -326,7 +388,8 @@ export function useGroupChat(appState) {
 1. 始终以「${targetRole.name}」的身份和语气回复
 2. 你可以回应其他角色的发言，也可以主动发起新话题
 3. 保持对话自然，像真正的群聊一样
-4. 简洁有力，不要长篇大论（群聊节奏要快）`;
+4. 简洁有力，不要长篇大论（群聊节奏要快）
+5. 如果当前话题与你无关，或者你没什么想补充的，请直接只回复 [PASS]（不要加任何其他内容）`;
 
         // Roleplay framework
         apiMessages.push({
@@ -430,6 +493,7 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         exitGroupMode,
         sendDirectorMessage,
         continueOneRound,
+        speakAsRole,
         stopGroupGeneration,
         clearGroupChat,
     };

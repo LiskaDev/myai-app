@@ -454,6 +454,7 @@ function handleAvatarError(type, roleId) {
         @send-director="groupChat.sendDirectorMessage"
         @continue-round="groupChat.continueOneRound"
         @stop-generation="groupChat.stopGroupGeneration"
+        @speak-as-role="groupChat.speakAsRole"
       />
     </template>
 
