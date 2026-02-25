@@ -481,7 +481,7 @@ function handleAvatarError(type, roleId) {
       v-if="showEditGroupModal && groupChat.currentGroup.value"
       :group="groupChat.currentGroup.value"
       :roleList="roleList"
-      @save="(id, name, ids, desc) => { groupChat.updateGroupChat(id, name, ids, desc); showEditGroupModal = false; }"
+      @save="(id, name, ids, desc, model, maxTokens) => { groupChat.updateGroupChat(id, name, ids, desc, model, maxTokens); showEditGroupModal = false; }"
       @close="showEditGroupModal = false"
     />
 

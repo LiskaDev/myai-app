@@ -10,11 +10,29 @@ const emit = defineEmits(['save', 'close']);
 
 const groupName = ref('');
 const groupDescription = ref('');
+const groupModel = ref('');
+const groupMaxTokens = ref(0);
 const selectedIds = ref([]);
+
+const MODEL_OPTIONS = [
+    { value: '', label: '跟随全局设置' },
+    { value: 'deepseek-chat', label: 'DeepSeek Chat (V3)' },
+    { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner (R1)' },
+];
+
+const TOKEN_PRESETS = [
+    { value: 0, label: '跟随角色设置' },
+    { value: 500, label: '简短 (500)' },
+    { value: 1000, label: '适中 (1000)' },
+    { value: 2000, label: '较长 (2000)' },
+    { value: 4000, label: '长文 (4000)' },
+];
 
 onMounted(() => {
     groupName.value = props.group?.name || '';
     groupDescription.value = props.group?.description || '';
+    groupModel.value = props.group?.model || '';
+    groupMaxTokens.value = props.group?.maxTokens || 0;
     selectedIds.value = [...(props.group?.participantIds || [])];
 });
 
@@ -30,7 +48,7 @@ function toggleRole(roleId) {
 
 function handleSave() {
     if (!canSave.value) return;
-    emit('save', props.group.id, groupName.value.trim(), [...selectedIds.value], groupDescription.value.trim());
+    emit('save', props.group.id, groupName.value.trim(), [...selectedIds.value], groupDescription.value.trim(), groupModel.value, groupMaxTokens.value);
 }
 </script>
 
@@ -77,6 +95,24 @@ function handleSave() {
                             <div v-else class="w-7 h-7 rounded-full bg-primary/30 flex items-center justify-center text-xs">🎭</div>
                             <span class="text-sm">{{ role.name }}</span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 模型 & 回复长度设置 -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">🧠 模型</label>
+                        <select v-model="groupModel"
+                                class="w-full glass-light bg-glass-light rounded-xl px-3 py-2.5 text-gray-100 text-sm outline-none border border-white/10 focus:border-primary transition appearance-none cursor-pointer">
+                            <option v-for="opt in MODEL_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">📏 回复长度</label>
+                        <select v-model.number="groupMaxTokens"
+                                class="w-full glass-light bg-glass-light rounded-xl px-3 py-2.5 text-gray-100 text-sm outline-none border border-white/10 focus:border-primary transition appearance-none cursor-pointer">
+                            <option v-for="preset in TOKEN_PRESETS" :key="preset.value" :value="preset.value">{{ preset.label }}</option>
+                        </select>
                     </div>
                 </div>
 

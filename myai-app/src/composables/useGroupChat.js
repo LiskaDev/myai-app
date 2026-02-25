@@ -92,6 +92,8 @@ export function useGroupChat(appState) {
             id: generateUUID(),
             name: name || '群聊',
             description: description || '',
+            model: '',       // 空 = 用全局设置
+            maxTokens: 0,    // 0 = 用角色默认
             participantIds,
             chatHistory: [],
             createdAt: new Date().toISOString(),
@@ -265,8 +267,14 @@ export function useGroupChat(appState) {
     async function generateRoleResponse(role) {
         const apiMessages = buildGroupPrompt(role);
 
-        const model = globalSettings.model || 'deepseek-reasoner';
+        const group = currentGroup.value;
+        const model = group?.model || globalSettings.model || 'deepseek-reasoner';
         const isReasoner = model.includes('reasoner');
+
+        // 回复长度优先级：群聊设置 > 角色设置 > 默认
+        const maxTokens = (group?.maxTokens && group.maxTokens > 0)
+            ? group.maxTokens
+            : (role.maxTokens || 2000);
 
         // 创建 AbortController
         groupAbortController.value = new AbortController();
@@ -289,7 +297,7 @@ export function useGroupChat(appState) {
                 model: model,
                 messages: apiMessages,
                 temperature: role.temperature || 1.0,
-                max_tokens: role.maxTokens || 2000,
+                max_tokens: maxTokens,
                 stream: true,
             }),
             signal: combinedSignal,
@@ -656,7 +664,7 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
     }
 
     // 编辑群聊（改名 + 增减成员）
-    function updateGroupChat(groupId, newName, newParticipantIds, newDescription) {
+    function updateGroupChat(groupId, newName, newParticipantIds, newDescription, newModel, newMaxTokens) {
         const group = groupChats.value.find(g => g.id === groupId);
         if (!group) return;
 
@@ -668,6 +676,8 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         group.name = newName || group.name;
         group.participantIds = newParticipantIds;
         if (newDescription !== undefined) group.description = newDescription;
+        if (newModel !== undefined) group.model = newModel;
+        if (newMaxTokens !== undefined) group.maxTokens = newMaxTokens;
         saveGroups();
         showToast('群聊已更新');
     }

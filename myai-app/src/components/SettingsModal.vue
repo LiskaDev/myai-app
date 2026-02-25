@@ -69,6 +69,16 @@ defineEmits([
                 <label class="block text-sm text-gray-400 mb-1">群聊描述</label>
                 <div class="text-gray-300 text-sm leading-relaxed">{{ currentGroup.description }}</div>
               </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-sm text-gray-400 mb-1">🧠 模型</label>
+                  <div class="text-gray-200 text-sm">{{ currentGroup.model || '跟随全局' }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-400 mb-1">📏 回复长度</label>
+                  <div class="text-gray-200 text-sm">{{ currentGroup.maxTokens ? currentGroup.maxTokens + ' tokens' : '跟随角色' }}</div>
+                </div>
+              </div>
               <div>
                 <label class="block text-sm text-gray-400 mb-2">参与角色（{{ participants?.length || 0 }} 人）</label>
                 <div class="flex flex-wrap gap-2">
