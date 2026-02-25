@@ -36,6 +36,6 @@ export default defineConfig({
         },
 
         // 模拟 localStorage 和其他浏览器 API
-        setupFiles: ['./tests/setup.js'],
+        setupFiles: [path.resolve(__dirname, './tests/setup.js')],
     },
 });
