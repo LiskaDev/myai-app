@@ -1,6 +1,6 @@
 # 🎭 MyAI-RolePlay
 
-> **沉浸式 AI 角色扮演对话平台** — 与 AI 角色进行视觉小说体验，支持深度角色定制和智能记忆系统
+> **沉浸式 AI 角色扮演对话平台** — 与 AI 角色进行视觉小说体验，支持多角色群聊、深度角色定制和智能记忆系统
 
 ![Vue 3](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs)
 ![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite)
@@ -26,15 +26,25 @@
 - **滑动窗口记忆** — 可调节的上下文窗口（5-30 轮对话）
 - **永久记忆（📌）** — 手动钉选重要对话，AI 始终记住
 - **AI 记忆精简** — 一键用 AI 压缩冗长记忆，节省 Token
-- **自动摘要** — 对话过长时自动生成剧情摘要
+- **自动摘要** — 对话过长时自动生成剧情摘要（单聊 & 群聊均支持）
 
-### 🔊 语音 & 交互
+### � 多角色群聊
+- **群聊创建** — 选择 2-8 个角色组建群聊，设置群名和主题描述
+- **导演模式** — 作为"导演"引导话题，发消息后 AI 自动回复
+- **@提及** — 导演消息中 @某角色 → 仅该角色回复
+- **智能 PASS** — AI 判断无关话题时自动跳过，不强行发言
+- **群聊自动摘要** — 消息超出窗口时自动压缩，保持长期记忆
+- **消息管理** — 群聊中也支持编辑/删除消息
+- **上下文感知设置** — 群聊模式下设置面板显示群信息和角色预览
+
+### �🔊 语音 & 交互
 - **TTS 语音朗读** — 支持 Web Speech API，可选声线
 - **自动朗读模式** — AI 回复完自动播放语音
 - **消息管理** — 编辑、删除、重新生成消息
 
 ### 💾 数据管理
 - **本地持久化** — 全部数据存储在 localStorage，无需服务器
+- **Session 恢复** — 刷新浏览器自动回到上次的角色/群聊
 - **一键导出/导入** — JSON 格式备份恢复所有角色和设置
 - **跨标签页同步** — 多窗口实时状态同步
 
@@ -50,8 +60,8 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/your-username/MyAI-RolePlay.git
-cd MyAI-RolePlay/myai-app
+git clone https://github.com/LiskaDev/myai-app.git
+cd myai-app
 
 # 安装依赖
 npm install
@@ -96,8 +106,11 @@ myai-app/
 │   ├── App.vue                    # 主应用（路由、布局）
 │   ├── components/
 │   │   ├── ChatWindow.vue         # 聊天消息列表
-│   │   ├── SettingsModal.vue      # 设置面板（Shell）
+│   │   ├── GroupChatWindow.vue    # 群聊消息列表
+│   │   ├── SettingsModal.vue      # 设置面板（群聊/单聊自适应）
 │   │   ├── RoleSidebar.vue        # 角色列表侧边栏
+│   │   ├── CreateGroupModal.vue   # 创建群聊弹窗
+│   │   ├── EditGroupModal.vue     # 编辑群聊弹窗
 │   │   ├── EditMessageModal.vue   # 编辑消息弹窗
 │   │   ├── ImportDataModal.vue    # 数据导入弹窗
 │   │   └── settings/              # 设置子组件
@@ -109,9 +122,10 @@ myai-app/
 │   │       └── MemoryManager.vue
 │   ├── composables/               # 组合式函数
 │   │   ├── useChat.js             # 核心聊天逻辑（流式 SSE）
+│   │   ├── useGroupChat.js        # 群聊逻辑（多角色、摘要）
 │   │   ├── usePromptBuilder.js    # API Prompt 构建
-│   │   ├── useAutoSummary.js      # 自动摘要
-│   │   ├── useAppState.js         # 全局状态管理
+│   │   ├── useAutoSummary.js      # 单聊自动摘要
+│   │   ├── useAppState.js         # 全局状态 + Session 持久化
 │   │   ├── useMemory.js           # 记忆系统
 │   │   └── useTTS.js              # 语音朗读
 │   └── utils/
