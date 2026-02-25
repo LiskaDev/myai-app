@@ -149,8 +149,12 @@ export function useGroupChat(appState) {
             );
             if (mentionedRole) {
                 speakAsRole(mentionedRole.id);
+                return;
             }
         }
+
+        // 没有 @ 提及 → 自动触发全员一轮
+        continueOneRound();
     }
 
     // ============== 核心：继续一轮 ==============
