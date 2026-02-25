@@ -21,6 +21,7 @@ const emit = defineEmits([
     'edit-message',
     'inject-world-event',
     'send-whisper',
+    'generate-director-event',
 ]);
 
 const containerRef = ref(null);
@@ -487,6 +488,16 @@ function handleSend() {
                 <div class="p-3 border-b border-white/10 flex items-center justify-between">
                     <span class="text-sm font-medium text-gray-200">🌍 注入世界事件</span>
                     <button @click="showEventPanel = false" class="text-gray-400 hover:text-white transition text-xs">✖</button>
+                </div>
+                <!-- 🎬 AI 智能生成 -->
+                <div class="p-3 border-b border-white/10">
+                    <button @click="emit('generate-director-event'); showEventPanel = false;"
+                            :disabled="isStreaming"
+                            class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600/80 to-orange-600/80 hover:from-amber-500/90 hover:to-orange-500/90 transition text-sm text-white font-medium disabled:opacity-40 flex items-center justify-center gap-2">
+                        <span>🎬</span>
+                        <span>影子导演智能生成</span>
+                    </button>
+                    <p class="text-[11px] text-gray-500 mt-1.5 text-center">根据当前剧情和基调，由 AI 生成一个恰到好处的突发事件</p>
                 </div>
                 <div v-for="cat in WORLD_EVENTS" :key="cat.category" class="border-b border-white/5 last:border-0">
                     <div class="text-xs text-gray-500 px-3 pt-2 pb-1">{{ cat.category }}</div>

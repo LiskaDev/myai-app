@@ -92,6 +92,7 @@ export function useGroupChat(appState) {
             id: generateUUID(),
             name: name || '群聊',
             description: description || '',
+            genre: '',        // 剧本基调：校园恋爱/搞笑日常/废土生存 等
             model: '',       // 空 = 用全局设置
             maxTokens: 0,    // 0 = 用角色默认
             participantIds,
@@ -227,6 +228,8 @@ export function useGroupChat(appState) {
             groupAbortController.value = null;
             // 一轮结束后检查是否需要自动总结
             checkGroupSummary();
+            // 检查是否所有角色都 PASS 了（剧情卡壳，触发影子导演）
+            checkAutoDirector();
         }
     }
 
@@ -420,6 +423,139 @@ export function useGroupChat(appState) {
         saveGroups();
     }
 
+    // ============== AI 影子导演 (Shadow Director) ==============
+
+    /**
+     * 检查最近一轮是否所有角色都 PASS 了（剧情卡壳）
+     * 如果是，自动触发影子导演生成情境事件
+     */
+    function checkAutoDirector() {
+        const group = currentGroup.value;
+        if (!group || group.chatHistory.length < 2) return;
+
+        const participantCount = group.participantIds.length;
+        if (participantCount === 0) return;
+
+        // 取最后 N 条（N = 参与者数量），检查是否全是 pass
+        const tail = group.chatHistory.slice(-participantCount);
+        const allPass = tail.length === participantCount &&
+            tail.every(m => m.role === 'pass');
+
+        if (allPass) {
+            generateDirectorEvent();
+        }
+    }
+
+    /**
+     * AI 影子导演：读取近期对话 + genre，生成一个符合剧情的情境事件
+     * 返回后自动注入为 world-event
+     */
+    async function generateDirectorEvent() {
+        const group = currentGroup.value;
+        if (!group || isGroupStreaming.value) return;
+        if (!globalSettings.apiKey) {
+            showToast('请先配置 API Key', 'error');
+            return;
+        }
+
+        const allParticipants = participants.value;
+        const participantNames = allParticipants.map(r => r.name).join('\u3001');
+        const genreText = group.genre || '自由发挥';
+        const descText = group.description || '无特定主题';
+
+        // 取最近的对话历史用于上下文
+        const recentChat = group.chatHistory
+            .filter(m => ['director', 'assistant', 'world-event', 'pass'].includes(m.role))
+            .slice(-15)
+            .map(m => {
+                if (m.role === 'director') return `[\u5bfc\u6f14]: ${m.content}`;
+                if (m.role === 'assistant') return `[${m.roleName}]: ${m.content}`;
+                if (m.role === 'world-event') return `[\u4e16\u754c\u4e8b\u4ef6]: ${m.content}`;
+                if (m.role === 'pass') return `[${m.roleName} \u9009\u62e9\u4e86\u8df3\u8fc7]`;
+                return '';
+            })
+            .filter(Boolean)
+            .join('\n');
+
+        const directorSystemPrompt = `\u4f60\u73b0\u5728\u662f\u8fd9\u4e2a\u7fa4\u804a\u7684\u201c\u5f71\u5b50\u5bfc\u6f14\u201d\uff08DM/\u4e3b\u6301\u4eba\uff09\u3002
+\u4f60\u7684\u804c\u8d23\u662f\u6839\u636e\u5f53\u524d\u5bf9\u8bdd\u4e0a\u4e0b\u6587\uff0c\u751f\u6210\u4e00\u4e2a\u5fae\u5c0f\u4f46\u80fd\u63a8\u52a8\u5267\u60c5\u3001\u5236\u9020\u8bdd\u9898\u6216\u6539\u53d8\u6c1b\u56f4\u7684\u7a81\u53d1\u4e8b\u4ef6\u3002
+
+\u5f53\u524d\u7fa4\u804a\u4fe1\u606f\uff1a
+- \u7fa4\u804a\u540d\u79f0\uff1a${group.name}
+- \u5267\u672c\u57fa\u8c03\uff1a${genreText}
+- \u7fa4\u804a\u4e3b\u9898\uff1a${descText}
+- \u53c2\u4e0e\u89d2\u8272\uff1a${participantNames}
+
+\u4e25\u683c\u89c4\u5219\uff1a
+1. \u7edd\u5bf9\u4e0d\u80fd\u7834\u574f\u5f53\u524d\u7684\u5267\u672c\u57fa\u8c03\uff08\u5982\u679c\u5728\u8c08\u604b\u7231\uff0c\u4e0d\u8981\u51fa\u73b0\u79d1\u5e7b\u6216\u6050\u6016\u5143\u7d20\uff09
+2. \u4e8b\u4ef6\u5fc5\u987b\u4e0e\u521a\u521a\u8ba8\u8bba\u7684\u8bdd\u9898\u3001\u6216\u67d0\u4e2a\u89d2\u8272\u7684\u53d1\u8a00\u6709\u5f31\u5173\u8054
+3. \u4e0d\u8981\u592a\u5938\u5f20\uff0c\u53ef\u4ee5\u662f\uff1a\u4e00\u4e2a\u52a8\u4f5c\u3001\u4e00\u4e2a\u73af\u5883\u53d8\u5316\u3001\u4e00\u4e2a\u8def\u4eba\u7684\u51fa\u73b0\u3001\u4e00\u4e2a\u5de7\u5408\u3001\u4e00\u4e2a\u610f\u5916\u7684\u58f0\u97f3
+4. \u4ee5\u7b2c\u4e09\u4eba\u79f0\u65c1\u767d\u7684\u5f62\u5f0f\u8f93\u51fa\uff0c\u8bed\u8a00\u751f\u52a8\u3001\u7b80\u6d01\uff08\u4e0d\u8d85\u8fc780\u5b57\uff09
+5. \u4e0d\u8981\u7528\u5f15\u53f7\u5305\u88f9\u6574\u4e2a\u8f93\u51fa
+6. \u5982\u679c\u4f60\u89c9\u5f97\u5f53\u524d\u5bf9\u8bdd\u6b63\u5904\u4e8e\u9ad8\u6f6e\u6216\u4e0d\u9700\u8981\u5e72\u9884\uff0c\u8bf7\u53ea\u56de\u590d NULL`;
+
+        const userPrompt = `\u6700\u8fd1\u7684\u5bf9\u8bdd\u8bb0\u5f55\uff1a
+${recentChat || '\uff08\u6682\u65e0\u5bf9\u8bdd\u8bb0\u5f55\uff09'}
+
+\u8bf7\u6839\u636e\u4ee5\u4e0a\u5bf9\u8bdd\u548c\u5267\u672c\u57fa\u8c03\u201c${genreText}\u201d\uff0c\u751f\u6210\u4e00\u4e2a\u6070\u5230\u597d\u5904\u7684\u7a81\u53d1\u4e8b\u4ef6\u3002`;
+
+        try {
+            isGroupStreaming.value = true;
+            currentSpeakingRole.value = '\ud83c\udfac \u5f71\u5b50\u5bfc\u6f14';
+
+            const model = group.model || globalSettings.model || 'deepseek-chat';
+            const baseUrl = globalSettings.baseUrl || 'https://api.deepseek.com';
+
+            const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model,
+                    messages: [
+                        { role: 'system', content: directorSystemPrompt },
+                        { role: 'user', content: userPrompt },
+                    ],
+                    max_tokens: 200,
+                    temperature: 0.9,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`API \u9519\u8bef: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const eventText = data.choices?.[0]?.message?.content?.trim();
+
+            if (!eventText || eventText === 'NULL' || eventText.toUpperCase() === 'NULL') {
+                showToast('\ud83c\udfac \u5f71\u5b50\u5bfc\u6f14\u5224\u65ad\uff1a\u5f53\u524d\u5267\u60c5\u53d1\u5c55\u826f\u597d\uff0c\u65e0\u9700\u5e72\u9884', 'info');
+                return;
+            }
+
+            // 注入为世界事件
+            const eventMsg = {
+                role: 'world-event',
+                content: eventText,
+                timestamp: Date.now(),
+                source: 'ai-director',
+            };
+
+            group.chatHistory.push(eventMsg);
+            saveGroups();
+            showToast('\ud83c\udfac \u5f71\u5b50\u5bfc\u6f14\u6ce8\u5165\u4e86\u4e00\u4e2a\u60c5\u5883\u4e8b\u4ef6\uff01');
+
+        } catch (error) {
+            showToast(`\u5f71\u5b50\u5bfc\u6f14\u51fa\u9519: ${error.message}`, 'error');
+        } finally {
+            isGroupStreaming.value = false;
+            currentSpeakingRole.value = null;
+        }
+    }
+
+
     // ============== 群聊自动摘要 ==============
 
     /**
@@ -553,8 +689,11 @@ ${dialogueText}
         const topicLine = group.description
             ? `\n群聊主题/背景：${group.description}`
             : '';
+        const genreLine = group.genre
+            ? `\n剧本基调：${group.genre}`
+            : '';
 
-        const groupContext = `[群聊模式] 你现在在群聊"${group.name}"中。${topicLine}
+        const groupContext = `[群聊模式] 你现在在群聊"${group.name}"中。${topicLine}${genreLine}
 群聊成员：${allParticipants.map(r => r.name).join('、')}。
 你是「${targetRole.name}」。其他角色：${otherNames}。
 用户是导演/主持人，负责引导话题。
@@ -679,7 +818,7 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
     }
 
     // 编辑群聊（改名 + 增减成员）
-    function updateGroupChat(groupId, newName, newParticipantIds, newDescription, newModel, newMaxTokens) {
+    function updateGroupChat(groupId, newName, newParticipantIds, newDescription, newModel, newMaxTokens, newGenre) {
         const group = groupChats.value.find(g => g.id === groupId);
         if (!group) return;
 
@@ -693,6 +832,7 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         if (newDescription !== undefined) group.description = newDescription;
         if (newModel !== undefined) group.model = newModel;
         if (newMaxTokens !== undefined) group.maxTokens = newMaxTokens;
+        if (newGenre !== undefined) group.genre = newGenre;
         saveGroups();
         showToast('群聊已更新');
     }
@@ -783,5 +923,6 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         editGroupMessage,
         injectWorldEvent,
         sendWhisper,
+        generateDirectorEvent,
     };
 }

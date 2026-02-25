@@ -10,9 +10,21 @@ const emit = defineEmits(['save', 'close']);
 
 const groupName = ref('');
 const groupDescription = ref('');
+const groupGenre = ref('');
 const groupModel = ref('');
 const groupMaxTokens = ref(0);
 const selectedIds = ref([]);
+
+const GENRE_OPTIONS = [
+    { value: '', label: '未设置（自由发挥）' },
+    { value: '搞笑日常', label: '🤣 搞笑日常' },
+    { value: '校园恋爱', label: '💕 校园恋爱' },
+    { value: '职场故事', label: '💼 职场故事' },
+    { value: '悬疑推理', label: '🔍 悬疑推理' },
+    { value: '废土生存', label: '☢️ 废土生存' },
+    { value: '奇幻冒险', label: '⚔️ 奇幻冒险' },
+    { value: '科幻太空', label: '🚀 科幻太空' },
+];
 
 const MODEL_OPTIONS = [
     { value: '', label: '跟随全局设置' },
@@ -31,6 +43,7 @@ const TOKEN_PRESETS = [
 onMounted(() => {
     groupName.value = props.group?.name || '';
     groupDescription.value = props.group?.description || '';
+    groupGenre.value = props.group?.genre || '';
     groupModel.value = props.group?.model || '';
     groupMaxTokens.value = props.group?.maxTokens || 0;
     selectedIds.value = [...(props.group?.participantIds || [])];
@@ -48,7 +61,7 @@ function toggleRole(roleId) {
 
 function handleSave() {
     if (!canSave.value) return;
-    emit('save', props.group.id, groupName.value.trim(), [...selectedIds.value], groupDescription.value.trim(), groupModel.value, groupMaxTokens.value);
+    emit('save', props.group.id, groupName.value.trim(), [...selectedIds.value], groupDescription.value.trim(), groupModel.value, groupMaxTokens.value, groupGenre.value);
 }
 </script>
 
@@ -70,6 +83,15 @@ function handleSave() {
                               placeholder="例如：几个朋友在咖啡厅聊天，主题是最近看过的电影"
                               rows="2"
                               class="w-full glass-light bg-glass-light rounded-xl px-4 py-2.5 text-gray-100 outline-none border border-white/10 focus:border-primary transition resize-none"></textarea>
+                </div>
+
+                <!-- 剧本基调 -->
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">🎬 剧本基调 <span class="text-gray-600">（约束影子导演生成的事件风格）</span></label>
+                    <select v-model="groupGenre"
+                            class="w-full glass-light bg-glass-light rounded-xl px-3 py-2.5 text-gray-100 text-sm outline-none border border-white/10 focus:border-primary transition appearance-none cursor-pointer">
+                        <option v-for="opt in GENRE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                    </select>
                 </div>
 
                 <div>

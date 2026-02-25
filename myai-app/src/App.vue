@@ -467,6 +467,7 @@ function handleAvatarError(type, roleId) {
         @edit-message="groupChat.editGroupMessage"
         @inject-world-event="groupChat.injectWorldEvent"
         @send-whisper="groupChat.sendWhisper"
+        @generate-director-event="groupChat.generateDirectorEvent"
       />
     </template>
 
@@ -483,7 +484,7 @@ function handleAvatarError(type, roleId) {
       v-if="showEditGroupModal && groupChat.currentGroup.value"
       :group="groupChat.currentGroup.value"
       :roleList="roleList"
-      @save="(id, name, ids, desc, model, maxTokens) => { groupChat.updateGroupChat(id, name, ids, desc, model, maxTokens); showEditGroupModal = false; }"
+      @save="(id, name, ids, desc, model, maxTokens, genre) => { groupChat.updateGroupChat(id, name, ids, desc, model, maxTokens, genre); showEditGroupModal = false; }"
       @close="showEditGroupModal = false"
     />
 
