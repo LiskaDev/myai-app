@@ -14,6 +14,7 @@ export function useGroupChat(appState) {
         roleList,
         showToast,
         showSidebar,
+        showConfirmModal,
     } = appState;
 
     // ============== 群聊状态 ==============
@@ -92,16 +93,26 @@ export function useGroupChat(appState) {
     }
 
     function deleteGroupChat(groupId) {
-        const index = groupChats.value.findIndex(g => g.id === groupId);
-        if (index !== -1) {
-            groupChats.value.splice(index, 1);
-            if (currentGroupId.value === groupId) {
-                isGroupMode.value = false;
-                currentGroupId.value = null;
-            }
-            saveGroups();
-            showToast('群聊已删除');
-        }
+        const group = groupChats.value.find(g => g.id === groupId);
+        if (!group) return;
+
+        showConfirmModal({
+            title: '删除群聊',
+            message: `确定要删除群聊 "${group.name}" 吗？\n所有聊天记录将被清除。`,
+            isDangerous: true,
+            onConfirm: () => {
+                const index = groupChats.value.findIndex(g => g.id === groupId);
+                if (index !== -1) {
+                    groupChats.value.splice(index, 1);
+                    if (currentGroupId.value === groupId) {
+                        isGroupMode.value = false;
+                        currentGroupId.value = null;
+                    }
+                    saveGroups();
+                    showToast('群聊已删除');
+                }
+            },
+        });
     }
 
     function switchToGroup(groupId) {
@@ -466,11 +477,34 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
 
     // 清空群聊记录
     function clearGroupChat() {
-        if (currentGroup.value) {
-            currentGroup.value.chatHistory = [];
-            saveGroups();
-            showToast('群聊记录已清空');
+        if (!currentGroup.value) return;
+
+        showConfirmModal({
+            title: '清空群聊',
+            message: `确定要清空 "${currentGroup.value.name}" 的所有聊天记录吗？\n此操作无法撤销。`,
+            isDangerous: true,
+            onConfirm: () => {
+                currentGroup.value.chatHistory = [];
+                saveGroups();
+                showToast('群聊记录已清空');
+            },
+        });
+    }
+
+    // 编辑群聊（改名 + 增减成员）
+    function updateGroupChat(groupId, newName, newParticipantIds) {
+        const group = groupChats.value.find(g => g.id === groupId);
+        if (!group) return;
+
+        if (newParticipantIds.length < 2) {
+            showToast('至少需要 2 个角色', 'error');
+            return;
         }
+
+        group.name = newName || group.name;
+        group.participantIds = newParticipantIds;
+        saveGroups();
+        showToast('群聊已更新');
     }
 
     return {
@@ -496,5 +530,6 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         speakAsRole,
         stopGroupGeneration,
         clearGroupChat,
+        updateGroupChat,
     };
 }

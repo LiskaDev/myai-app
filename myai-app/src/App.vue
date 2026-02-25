@@ -15,6 +15,7 @@ import EditMessageModal from './components/EditMessageModal.vue';
 import ImportDataModal from './components/ImportDataModal.vue';
 import GroupChatWindow from './components/GroupChatWindow.vue';
 import CreateGroupModal from './components/CreateGroupModal.vue';
+import EditGroupModal from './components/EditGroupModal.vue';
 
 // Initialize State
 const appState = useAppState();
@@ -24,6 +25,7 @@ const ttsFunctions = useTTS(appState);
 const groupChat = useGroupChat(appState);
 
 const showCreateGroupModal = ref(false);
+const showEditGroupModal = ref(false);
 
 // Mobile Gestures
 useGestures({
@@ -348,9 +350,15 @@ function handleAvatarError(type, roleId) {
           </svg>
         </button>
         <!-- 清空聊天按钮 -->
-        <button @click="clearChat" class="p-2 rounded-full hover:bg-white/10 transition" title="清空聊天">
+        <button @click="groupChat.isGroupMode.value ? groupChat.clearGroupChat() : clearChat()" class="p-2 rounded-full hover:bg-white/10 transition" title="清空聊天">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+        </button>
+        <!-- 编辑群聊按钮（仅群聊模式） -->
+        <button v-if="groupChat.isGroupMode.value" @click="showEditGroupModal = true" class="p-2 rounded-full hover:bg-white/10 transition" title="编辑群聊">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
           </svg>
         </button>
         <!-- 设置按钮 -->
@@ -464,6 +472,15 @@ function handleAvatarError(type, roleId) {
       :roleList="roleList"
       @create="(name, ids) => { groupChat.createGroupChat(name, ids); showCreateGroupModal = false; groupChat.switchToGroup(groupChat.groupChats.value[groupChat.groupChats.value.length - 1].id); }"
       @close="showCreateGroupModal = false"
+    />
+
+    <!-- 编辑群聊弹窗 -->
+    <EditGroupModal
+      v-if="showEditGroupModal && groupChat.currentGroup.value"
+      :group="groupChat.currentGroup.value"
+      :roleList="roleList"
+      @save="(id, name, ids) => { groupChat.updateGroupChat(id, name, ids); showEditGroupModal = false; }"
+      @close="showEditGroupModal = false"
     />
 
     <!-- 设置面板 -->
