@@ -24,6 +24,7 @@ export function useGroupChat(appState) {
     const isGroupStreaming = ref(false);
     const currentSpeakingRole = ref(null); // 当前正在说话的角色名
     const groupAbortController = ref(null);
+    let isGroupSummarizing = false; // 防止重复触发群聊摘要
 
     // 当前群聊
     const currentGroup = computed(() => {
@@ -222,6 +223,8 @@ export function useGroupChat(appState) {
             isGroupStreaming.value = false;
             currentSpeakingRole.value = null;
             groupAbortController.value = null;
+            // 一轮结束后检查是否需要自动总结
+            checkGroupSummary();
         }
     }
 
@@ -254,6 +257,7 @@ export function useGroupChat(appState) {
             isGroupStreaming.value = false;
             currentSpeakingRole.value = null;
             groupAbortController.value = null;
+            checkGroupSummary();
         }
     }
 
@@ -401,6 +405,119 @@ export function useGroupChat(appState) {
         saveGroups();
     }
 
+    // ============== 群聊自动摘要 ==============
+
+    /**
+     * 检查是否需要触发群聊自动摘要
+     * 当 chatHistory 长度超过 memoryWindow * 2 时触发
+     */
+    function checkGroupSummary() {
+        const group = currentGroup.value;
+        if (!group || isGroupSummarizing) return;
+
+        // 取第一个参与角色的 memoryWindow 作为基准
+        const firstRole = participants.value[0];
+        const windowSize = firstRole?.memoryWindow || 15;
+        const threshold = windowSize * 2;
+
+        if (group.chatHistory.length >= threshold) {
+            generateGroupSummary().catch(err => {
+                console.warn('[GroupSummary] 自动摘要失败:', err.message);
+            });
+        }
+    }
+
+    /**
+     * 生成群聊自动摘要
+     * 将超出窗口的消息压缩成摘要，只保留最近 N 条
+     */
+    async function generateGroupSummary() {
+        if (isGroupSummarizing) return;
+        isGroupSummarizing = true;
+
+        try {
+            const group = currentGroup.value;
+            if (!group) return;
+
+            const firstRole = participants.value[0];
+            const windowSize = firstRole?.memoryWindow || 15;
+
+            if (group.chatHistory.length <= windowSize) return;
+
+            // 分割：需要压缩的 vs 保留的
+            const splitIndex = group.chatHistory.length - windowSize;
+            const toSummarize = group.chatHistory.slice(0, splitIndex);
+            const toKeep = group.chatHistory.slice(splitIndex);
+
+            if (toSummarize.length === 0) return;
+
+            console.log(`[GroupSummary] 正在压缩 ${toSummarize.length} 条群聊消息...`);
+
+            // 构建摘要 prompt
+            const dialogueText = toSummarize.map(msg => {
+                const speaker = msg.role === 'director' ? '导演'
+                    : (msg.roleName || '未知');
+                const content = (msg.rawContent || msg.content || '').slice(0, 300);
+                return `${speaker}: ${content}`;
+            }).join('\n');
+
+            const existingSummary = group.autoSummary || '';
+            const participantNames = participants.value.map(r => r.name).join('、');
+
+            const summaryPrompt = `你是一个群聊记录摘要助手。请将以下群聊对话压缩成简洁的叙事摘要。
+
+${existingSummary ? `【已有历史摘要】\n${existingSummary}\n\n` : ''}【群聊名称】${group.name}
+【参与角色】${participantNames}
+【需要压缩的新对话】
+${dialogueText}
+
+【摘要要求】
+1. 第三人称叙述，概括群聊中发生的关键事件
+2. 保留重要的互动和关系变化
+3. 记录讨论的关键话题和结论
+4. 控制在 200 字以内
+5. 如果有已有摘要，将新内容整合进去，保持连贯
+
+请直接输出摘要，不要加任何前缀或解释：`;
+
+            // 使用便宜的模型做摘要
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const response = await fetch(`${baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: [{ role: 'user', content: summaryPrompt }],
+                    max_tokens: 500,
+                    temperature: 0.3,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`摘要请求失败: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const newSummary = data.choices?.[0]?.message?.content?.trim();
+
+            if (newSummary) {
+                group.autoSummary = newSummary;
+                group.chatHistory = toKeep;
+                saveGroups();
+
+                console.log(`[GroupSummary] 摘要完成，保留 ${toKeep.length} 条消息`);
+                showToast('💾 群聊记忆已自动压缩', 'info');
+            }
+        } catch (error) {
+            console.warn('[GroupSummary] 摘要失败:', error.message);
+        } finally {
+            isGroupSummarizing = false;
+        }
+    }
+
     /**
      * 构建群聊 Prompt
      * 关键：将 director → user, 其他 AI → user（带名字前缀）
@@ -466,6 +583,14 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         }
         if (targetRole.speakingStyle) {
             apiMessages.push({ role: 'system', content: `[Style] ${targetRole.speakingStyle}` });
+        }
+
+        // 注入群聊摘要（如果有）
+        if (group.autoSummary) {
+            apiMessages.push({
+                role: 'system',
+                content: `[群聊历史摘要]\n${group.autoSummary}\n[/群聊历史摘要]`,
+            });
         }
 
         // 上下文窗口：只取最近 N 条消息
