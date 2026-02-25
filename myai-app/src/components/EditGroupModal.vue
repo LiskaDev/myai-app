@@ -9,10 +9,12 @@ const props = defineProps({
 const emit = defineEmits(['save', 'close']);
 
 const groupName = ref('');
+const groupDescription = ref('');
 const selectedIds = ref([]);
 
 onMounted(() => {
     groupName.value = props.group?.name || '';
+    groupDescription.value = props.group?.description || '';
     selectedIds.value = [...(props.group?.participantIds || [])];
 });
 
@@ -28,7 +30,7 @@ function toggleRole(roleId) {
 
 function handleSave() {
     if (!canSave.value) return;
-    emit('save', props.group.id, groupName.value.trim(), [...selectedIds.value]);
+    emit('save', props.group.id, groupName.value.trim(), [...selectedIds.value], groupDescription.value.trim());
 }
 </script>
 
@@ -42,6 +44,14 @@ function handleSave() {
                     <label class="block text-sm text-gray-400 mb-1">群聊名称</label>
                     <input v-model="groupName" type="text"
                            class="w-full glass-light bg-glass-light rounded-xl px-4 py-2.5 text-gray-100 outline-none border border-white/10 focus:border-primary transition" />
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">群聊描述 <span class="text-gray-600">（可选）</span></label>
+                    <textarea v-model="groupDescription"
+                              placeholder="例如：几个朋友在咖啡厅聊天，主题是最近看过的电影"
+                              rows="2"
+                              class="w-full glass-light bg-glass-light rounded-xl px-4 py-2.5 text-gray-100 outline-none border border-white/10 focus:border-primary transition resize-none"></textarea>
                 </div>
 
                 <div>

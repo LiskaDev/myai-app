@@ -8,6 +8,7 @@ const props = defineProps({
 const emit = defineEmits(['create', 'close']);
 
 const groupName = ref('');
+const groupDescription = ref('');
 const selectedIds = ref([]);
 
 const canCreate = computed(() => {
@@ -27,7 +28,7 @@ function toggleRole(roleId) {
 
 function handleCreate() {
     if (!canCreate.value) return;
-    emit('create', groupName.value.trim(), [...selectedIds.value]);
+    emit('create', groupName.value.trim(), [...selectedIds.value], groupDescription.value.trim());
 }
 </script>
 
@@ -44,6 +45,15 @@ function handleCreate() {
                        type="text"
                        placeholder="例如：笑话大赛"
                        class="w-full glass-light bg-glass-light text-gray-100 rounded-xl px-4 py-2.5 border border-white/10 focus:border-primary outline-none transition" />
+            </div>
+
+            <!-- 群聊描述 -->
+            <div class="mb-4">
+                <label class="text-sm text-gray-400 mb-1 block">群聊描述 <span class="text-gray-600">（可选，帮助 AI 理解讨论方向）</span></label>
+                <textarea v-model="groupDescription"
+                       placeholder="例如：几个朋友在咖啡厅闲聊，主题是最近看过的电影"
+                       rows="2"
+                       class="w-full glass-light bg-glass-light text-gray-100 rounded-xl px-4 py-2.5 border border-white/10 focus:border-primary outline-none transition resize-none"></textarea>
             </div>
 
             <!-- 角色选择 -->

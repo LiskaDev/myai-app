@@ -472,7 +472,7 @@ function handleAvatarError(type, roleId) {
     <CreateGroupModal
       v-if="showCreateGroupModal"
       :roleList="roleList"
-      @create="(name, ids) => { groupChat.createGroupChat(name, ids); showCreateGroupModal = false; groupChat.switchToGroup(groupChat.groupChats.value[groupChat.groupChats.value.length - 1].id); }"
+      @create="(name, ids, desc) => { groupChat.createGroupChat(name, ids, desc); showCreateGroupModal = false; groupChat.switchToGroup(groupChat.groupChats.value[groupChat.groupChats.value.length - 1].id); }"
       @close="showCreateGroupModal = false"
     />
 
@@ -481,7 +481,7 @@ function handleAvatarError(type, roleId) {
       v-if="showEditGroupModal && groupChat.currentGroup.value"
       :group="groupChat.currentGroup.value"
       :roleList="roleList"
-      @save="(id, name, ids) => { groupChat.updateGroupChat(id, name, ids); showEditGroupModal = false; }"
+      @save="(id, name, ids, desc) => { groupChat.updateGroupChat(id, name, ids, desc); showEditGroupModal = false; }"
       @close="showEditGroupModal = false"
     />
 

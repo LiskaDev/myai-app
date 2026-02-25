@@ -81,7 +81,7 @@ export function useGroupChat(appState) {
     }
 
     // ============== 群聊管理 ==============
-    function createGroupChat(name, participantIds) {
+    function createGroupChat(name, participantIds, description = '') {
         if (participantIds.length < 2) {
             showToast('至少需要选择 2 个角色', 'error');
             return null;
@@ -90,6 +90,7 @@ export function useGroupChat(appState) {
         const group = {
             id: generateUUID(),
             name: name || '群聊',
+            description: description || '',
             participantIds,
             chatHistory: [],
             createdAt: new Date().toISOString(),
@@ -417,7 +418,11 @@ export function useGroupChat(appState) {
             .join('、');
 
         // System Prompt: 角色设定 + 群聊环境
-        const groupContext = `[群聊模式] 你现在在群聊"${group.name}"中。
+        const topicLine = group.description
+            ? `\n群聊主题/背景：${group.description}`
+            : '';
+
+        const groupContext = `[群聊模式] 你现在在群聊"${group.name}"中。${topicLine}
 群聊成员：${allParticipants.map(r => r.name).join('、')}。
 你是「${targetRole.name}」。其他角色：${otherNames}。
 用户是导演/主持人，负责引导话题。
@@ -519,7 +524,7 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
     }
 
     // 编辑群聊（改名 + 增减成员）
-    function updateGroupChat(groupId, newName, newParticipantIds) {
+    function updateGroupChat(groupId, newName, newParticipantIds, newDescription) {
         const group = groupChats.value.find(g => g.id === groupId);
         if (!group) return;
 
@@ -530,6 +535,7 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
 
         group.name = newName || group.name;
         group.participantIds = newParticipantIds;
+        if (newDescription !== undefined) group.description = newDescription;
         saveGroups();
         showToast('群聊已更新');
     }

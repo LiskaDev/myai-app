@@ -65,6 +65,10 @@ defineEmits([
                 <label class="block text-sm text-gray-400 mb-1">群聊名称</label>
                 <div class="text-gray-100 text-base font-medium">{{ currentGroup.name }}</div>
               </div>
+              <div v-if="currentGroup.description">
+                <label class="block text-sm text-gray-400 mb-1">群聊描述</label>
+                <div class="text-gray-300 text-sm leading-relaxed">{{ currentGroup.description }}</div>
+              </div>
               <div>
                 <label class="block text-sm text-gray-400 mb-2">参与角色（{{ participants?.length || 0 }} 人）</label>
                 <div class="flex flex-wrap gap-2">
