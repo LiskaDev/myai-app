@@ -383,9 +383,16 @@ export function useGroupChat(appState) {
             .replace(/<inner>[\s\S]*?<\/inner>/g, '')
             .trim();
         if (cleanContent === '[PASS]' || cleanContent === 'PASS') {
-            groupMessages.value.splice(msgIndex, 1);
+            // 转为 pass 类型消息（UI 会折叠显示）
+            groupMessages.value[msgIndex] = {
+                role: 'pass',
+                roleId: role.id,
+                roleName: role.name,
+                avatar: role.avatar || '',
+                timestamp: Date.now(),
+            };
             saveGroups();
-            return; // 静默跳过
+            return;
         }
 
         // Fallback

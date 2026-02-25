@@ -27,6 +27,40 @@ const showMentionList = ref(false);
 const mentionFilter = ref('');
 const inputRef = ref(null);
 const activeMessageIndex = ref(-1);
+const expandedPassGroups = ref(new Set());
+
+// 将消息分组：连续的 pass 消息合并为一个 pass-group
+const displayItems = computed(() => {
+    const items = [];
+    let i = 0;
+    const msgs = props.messages;
+    while (i < msgs.length) {
+        if (msgs[i].role === 'pass') {
+            // 收集连续的 pass
+            const passGroup = [];
+            const startIndex = i;
+            while (i < msgs.length && msgs[i].role === 'pass') {
+                passGroup.push(msgs[i]);
+                i++;
+            }
+            items.push({ type: 'pass-group', passes: passGroup, startIndex });
+        } else {
+            items.push({ type: 'message', msg: msgs[i], index: i });
+            i++;
+        }
+    }
+    return items;
+});
+
+function togglePassGroup(startIndex) {
+    if (expandedPassGroups.value.has(startIndex)) {
+        expandedPassGroups.value.delete(startIndex);
+    } else {
+        expandedPassGroups.value.add(startIndex);
+    }
+    // 强制响应式更新
+    expandedPassGroups.value = new Set(expandedPassGroups.value);
+}
 
 // 编辑状态
 const editingIndex = ref(-1);
@@ -194,12 +228,37 @@ function handleSend() {
         </div>
 
         <!-- 消息列表 -->
-        <template v-for="(msg, index) in messages" :key="index">
+        <template v-for="(item, idx) in displayItems" :key="idx">
+
+            <!-- PASS 折叠组（Discord 风格） -->
+            <div v-if="item.type === 'pass-group'" class="flex justify-center">
+                <div class="pass-group-bar" @click="togglePassGroup(item.startIndex)">
+                    <span class="pass-group-icon">🤫</span>
+                    <span>{{ item.passes.length }} 个角色选择了跳过</span>
+                    <svg class="w-3.5 h-3.5 transition-transform" :class="{ 'rotate-180': expandedPassGroups.has(item.startIndex) }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+            </div>
+            <!-- PASS 展开详情 -->
+            <div v-if="item.type === 'pass-group' && expandedPassGroups.has(item.startIndex)"
+                 class="pass-group-detail">
+                <div v-for="p in item.passes" :key="p.roleId + p.timestamp" class="pass-detail-item">
+                    <div v-if="p.avatar" class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"
+                         :style="{ border: `1.5px solid ${getRoleColor(p.roleId)}` }">
+                        <img :src="p.avatar" class="w-full h-full object-cover" />
+                    </div>
+                    <div v-else class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0"
+                         :style="{ background: getRoleColor(p.roleId) }">🎭</div>
+                    <span class="text-xs" :style="{ color: getRoleColor(p.roleId) }">{{ p.roleName }}</span>
+                    <span class="text-xs text-gray-500">选择了跳过</span>
+                </div>
+            </div>
 
             <!-- 编辑模式 -->
-            <div v-if="editingIndex === index" class="edit-message-container">
+            <div v-if="item.type === 'message' && editingIndex === item.index" class="edit-message-container">
                 <div class="text-xs text-gray-400 mb-1">
-                    ✏️ 编辑{{ msg.role === 'director' ? '导演' : msg.roleName }}的消息
+                    ✏️ 编辑{{ item.msg.role === 'director' ? '导演' : item.msg.roleName }}的消息
                 </div>
                 <textarea v-model="editContent"
                     rows="3"
@@ -220,24 +279,24 @@ function handleSend() {
             </div>
 
             <!-- 导演消息（非编辑） -->
-            <div v-else-if="msg.role === 'director'" class="flex justify-center">
+            <div v-else-if="item.type === 'message' && item.msg.role === 'director'" class="flex justify-center">
                 <div class="message-wrapper">
                     <div class="director-message cursor-pointer"
-                         :class="{ 'ring-2 ring-amber-400/50': activeMessageIndex === index }"
-                         @click.stop="toggleSelect(index)">
+                         :class="{ 'ring-2 ring-amber-400/50': activeMessageIndex === item.index }"
+                         @click.stop="toggleSelect(item.index)">
                         <span class="director-label">🎬 导演</span>
-                        <span>{{ msg.content }}</span>
+                        <span>{{ item.msg.content }}</span>
                     </div>
                     <!-- 操作按钮 -->
-                    <div class="message-toolbar" :class="{ 'active': activeMessageIndex === index }">
+                    <div class="message-toolbar" :class="{ 'active': activeMessageIndex === item.index }">
                         <div class="toolbar-inner">
-                            <button class="toolbar-btn" @click.stop="startEdit(index)">
+                            <button class="toolbar-btn" @click.stop="startEdit(item.index)">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                 </svg>
                                 编辑
                             </button>
-                            <button class="toolbar-btn delete" @click.stop="$emit('delete-message', index)">
+                            <button class="toolbar-btn delete" @click.stop="$emit('delete-message', item.index)">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                 </svg>
@@ -249,16 +308,16 @@ function handleSend() {
             </div>
 
             <!-- AI 角色消息（非编辑） -->
-            <div v-else-if="msg.role === 'assistant'" class="flex items-start space-x-3">
+            <div v-else-if="item.type === 'message' && item.msg.role === 'assistant'" class="flex items-start space-x-3">
                 <!-- 角色头像（可点击让该角色继续说） -->
-                <div class="flex-shrink-0 cursor-pointer group" @click="$emit('speak-as-role', msg.roleId)"
-                     :title="`让${msg.roleName}继续说`">
-                    <div v-if="msg.avatar" class="w-10 h-10 rounded-full overflow-hidden transition group-hover:ring-2 group-hover:ring-white/30"
-                         :style="{ border: `2px solid ${getRoleColor(msg.roleId)}` }">
-                        <img :src="msg.avatar" class="w-full h-full object-cover" />
+                <div class="flex-shrink-0 cursor-pointer group" @click="$emit('speak-as-role', item.msg.roleId)"
+                     :title="`让${item.msg.roleName}继续说`">
+                    <div v-if="item.msg.avatar" class="w-10 h-10 rounded-full overflow-hidden transition group-hover:ring-2 group-hover:ring-white/30"
+                         :style="{ border: `2px solid ${getRoleColor(item.msg.roleId)}` }">
+                        <img :src="item.msg.avatar" class="w-full h-full object-cover" />
                     </div>
                     <div v-else class="w-10 h-10 rounded-full flex items-center justify-center text-sm transition group-hover:ring-2 group-hover:ring-white/30"
-                         :style="{ background: getRoleColor(msg.roleId), border: `2px solid ${getRoleColor(msg.roleId)}` }">
+                         :style="{ background: getRoleColor(item.msg.roleId), border: `2px solid ${getRoleColor(item.msg.roleId)}` }">
                         🎭
                     </div>
                     <div class="text-center mt-0.5 opacity-0 group-hover:opacity-100 transition text-[10px] text-gray-400">💬</div>
@@ -267,16 +326,16 @@ function handleSend() {
                 <div class="max-w-[80%] min-w-0 message-wrapper">
                     <!-- 角色名 -->
                     <div class="text-xs mb-1 font-medium"
-                         :style="{ color: getRoleColor(msg.roleId) }">
-                        {{ msg.roleName || '角色' }}
+                         :style="{ color: getRoleColor(item.msg.roleId) }">
+                        {{ item.msg.roleName || '角色' }}
                     </div>
                     <!-- 消息内容 -->
                     <div class="group-speech-bubble cursor-pointer"
-                         :class="{ 'selected': activeMessageIndex === index }"
-                         :style="{ borderLeftColor: getRoleColor(msg.roleId) }"
-                         @click.stop="toggleSelect(index)">
-                        <div v-if="msg.content" class="vn-body markdown-body"
-                             v-html="safeRender(msg.rawContent || msg.content)">
+                         :class="{ 'selected': activeMessageIndex === item.index }"
+                         :style="{ borderLeftColor: getRoleColor(item.msg.roleId) }"
+                         @click.stop="toggleSelect(item.index)">
+                        <div v-if="item.msg.content" class="vn-body markdown-body"
+                             v-html="safeRender(item.msg.rawContent || item.msg.content)">
                         </div>
                         <div v-else class="typing-indicator">
                             <div class="dot"></div>
@@ -285,15 +344,15 @@ function handleSend() {
                         </div>
                     </div>
                     <!-- 操作按钮 -->
-                    <div class="message-toolbar" :class="{ 'active': activeMessageIndex === index }">
+                    <div class="message-toolbar" :class="{ 'active': activeMessageIndex === item.index }">
                         <div class="toolbar-inner">
-                            <button class="toolbar-btn" @click.stop="startEdit(index)">
+                            <button class="toolbar-btn" @click.stop="startEdit(item.index)">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                 </svg>
                                 编辑
                             </button>
-                            <button class="toolbar-btn delete" @click.stop="$emit('delete-message', index)">
+                            <button class="toolbar-btn delete" @click.stop="$emit('delete-message', item.index)">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                 </svg>
@@ -483,6 +542,57 @@ function handleSend() {
     background: rgba(239, 68, 68, 0.2);
     border-color: rgba(239, 68, 68, 0.4);
     color: #fca5a5;
+}
+
+
+/* PASS 折叠组 */
+.pass-group-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.pass-group-bar:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.55);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+.pass-group-icon {
+    font-size: 0.85rem;
+}
+
+.pass-group-detail {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 16px;
+    animation: passDetailFadeIn 0.2s ease;
+}
+
+@keyframes passDetailFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.pass-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* 编辑消息容器 */
