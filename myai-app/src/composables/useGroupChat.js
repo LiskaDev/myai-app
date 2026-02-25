@@ -450,7 +450,7 @@ export function useGroupChat(appState) {
      * AI 影子导演：读取近期对话 + genre，生成一个符合剧情的情境事件
      * 返回后自动注入为 world-event
      */
-    async function generateDirectorEvent() {
+    async function generateDirectorEvent(forceGenerate = false) {
         const group = currentGroup.value;
         if (!group || isGroupStreaming.value) return;
         if (!globalSettings.apiKey) {
@@ -477,22 +477,27 @@ export function useGroupChat(appState) {
             .filter(Boolean)
             .join('\n');
 
-        const directorSystemPrompt = `\u4f60\u73b0\u5728\u662f\u8fd9\u4e2a\u7fa4\u804a\u7684\u201c\u5f71\u5b50\u5bfc\u6f14\u201d\uff08DM/\u4e3b\u6301\u4eba\uff09\u3002
-\u4f60\u7684\u804c\u8d23\u662f\u6839\u636e\u5f53\u524d\u5bf9\u8bdd\u4e0a\u4e0b\u6587\uff0c\u751f\u6210\u4e00\u4e2a\u5fae\u5c0f\u4f46\u80fd\u63a8\u52a8\u5267\u60c5\u3001\u5236\u9020\u8bdd\u9898\u6216\u6539\u53d8\u6c1b\u56f4\u7684\u7a81\u53d1\u4e8b\u4ef6\u3002
+        const baseRules = `严格规则：
+1. 绝对不能破坏当前的剧本基调（如果在谈恋爱，不要出现科幻或恐怖元素）
+2. 事件必须与刚刚讨论的话题、或某个角色的发言有弱关联
+3. 不要太夸张，可以是：一个动作、一个环境变化、一个路人的出现、一个巧合、一个意外的声音
+4. 以第三人称旁白的形式输出，语言生动、简洁（不超过80字）
+5. 不要用引号包裹整个输出`;
 
-\u5f53\u524d\u7fa4\u804a\u4fe1\u606f\uff1a
-- \u7fa4\u804a\u540d\u79f0\uff1a${group.name}
-- \u5267\u672c\u57fa\u8c03\uff1a${genreText}
-- \u7fa4\u804a\u4e3b\u9898\uff1a${descText}
-- \u53c2\u4e0e\u89d2\u8272\uff1a${participantNames}
+        const nullRule = forceGenerate
+            ? `\n6. 你必须生成一个事件，不允许回复NULL。导演主动请求了事件，请务必创造一个有趣的突发状况！`
+            : `\n6. 如果你觉得当前对话正处于高潮或不需要干预，请只回复 NULL`;
 
-\u4e25\u683c\u89c4\u5219\uff1a
-1. \u7edd\u5bf9\u4e0d\u80fd\u7834\u574f\u5f53\u524d\u7684\u5267\u672c\u57fa\u8c03\uff08\u5982\u679c\u5728\u8c08\u604b\u7231\uff0c\u4e0d\u8981\u51fa\u73b0\u79d1\u5e7b\u6216\u6050\u6016\u5143\u7d20\uff09
-2. \u4e8b\u4ef6\u5fc5\u987b\u4e0e\u521a\u521a\u8ba8\u8bba\u7684\u8bdd\u9898\u3001\u6216\u67d0\u4e2a\u89d2\u8272\u7684\u53d1\u8a00\u6709\u5f31\u5173\u8054
-3. \u4e0d\u8981\u592a\u5938\u5f20\uff0c\u53ef\u4ee5\u662f\uff1a\u4e00\u4e2a\u52a8\u4f5c\u3001\u4e00\u4e2a\u73af\u5883\u53d8\u5316\u3001\u4e00\u4e2a\u8def\u4eba\u7684\u51fa\u73b0\u3001\u4e00\u4e2a\u5de7\u5408\u3001\u4e00\u4e2a\u610f\u5916\u7684\u58f0\u97f3
-4. \u4ee5\u7b2c\u4e09\u4eba\u79f0\u65c1\u767d\u7684\u5f62\u5f0f\u8f93\u51fa\uff0c\u8bed\u8a00\u751f\u52a8\u3001\u7b80\u6d01\uff08\u4e0d\u8d85\u8fc780\u5b57\uff09
-5. \u4e0d\u8981\u7528\u5f15\u53f7\u5305\u88f9\u6574\u4e2a\u8f93\u51fa
-6. \u5982\u679c\u4f60\u89c9\u5f97\u5f53\u524d\u5bf9\u8bdd\u6b63\u5904\u4e8e\u9ad8\u6f6e\u6216\u4e0d\u9700\u8981\u5e72\u9884\uff0c\u8bf7\u53ea\u56de\u590d NULL`;
+        const directorSystemPrompt = `你现在是这个群聊的"影子导演"（DM/主持人）。
+你的职责是根据当前对话上下文，生成一个微小但能推动剧情、制造话题或改变氛围的突发事件。
+
+当前群聊信息：
+- 群聊名称：${group.name}
+- 剧本基调：${genreText}
+- 群聊主题：${descText}
+- 参与角色：${participantNames}
+
+${baseRules}${nullRule}`;
 
         const userPrompt = `\u6700\u8fd1\u7684\u5bf9\u8bdd\u8bb0\u5f55\uff1a
 ${recentChat || '\uff08\u6682\u65e0\u5bf9\u8bdd\u8bb0\u5f55\uff09'}
