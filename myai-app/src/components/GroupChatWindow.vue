@@ -17,6 +17,8 @@ const emit = defineEmits([
     'continue-round',
     'stop-generation',
     'speak-as-role',
+    'delete-message',
+    'edit-message',
 ]);
 
 const containerRef = ref(null);
@@ -24,6 +26,11 @@ const directorInput = ref('');
 const showMentionList = ref(false);
 const mentionFilter = ref('');
 const inputRef = ref(null);
+const activeMessageIndex = ref(-1);
+
+// 编辑状态
+const editingIndex = ref(-1);
+const editContent = ref('');
 
 // 角色颜色映射（最多 8 种颜色，循环使用）
 const ROLE_COLORS = [
@@ -60,6 +67,34 @@ function safeRender(content) {
     }
 }
 
+// 点击消息切换选中状态
+function toggleSelect(index) {
+    activeMessageIndex.value = activeMessageIndex.value === index ? -1 : index;
+}
+
+// 开始编辑消息
+function startEdit(index) {
+    const msg = props.messages[index];
+    if (!msg) return;
+    editingIndex.value = index;
+    editContent.value = msg.rawContent || msg.content || '';
+    activeMessageIndex.value = -1;
+}
+
+// 保存编辑
+function saveEdit() {
+    if (editingIndex.value >= 0 && editContent.value.trim()) {
+        emit('edit-message', editingIndex.value, editContent.value.trim());
+    }
+    cancelEdit();
+}
+
+// 取消编辑
+function cancelEdit() {
+    editingIndex.value = -1;
+    editContent.value = '';
+}
+
 // 监听输入框内容变化，检测 @
 function onInputChange() {
     const value = directorInput.value;
@@ -70,7 +105,6 @@ function onInputChange() {
     const lastAtIndex = textBeforeCursor.lastIndexOf('@');
     if (lastAtIndex >= 0) {
         const afterAt = textBeforeCursor.substring(lastAtIndex + 1);
-        // 如果 @ 后没有空格，说明正在输入名字
         if (!afterAt.includes(' ')) {
             mentionFilter.value = afterAt;
             showMentionList.value = true;
@@ -161,15 +195,60 @@ function handleSend() {
 
         <!-- 消息列表 -->
         <template v-for="(msg, index) in messages" :key="index">
-            <!-- 导演消息 -->
-            <div v-if="msg.role === 'director'" class="flex justify-center">
-                <div class="director-message">
-                    <span class="director-label">🎬 导演</span>
-                    <span>{{ msg.content }}</span>
+
+            <!-- 编辑模式 -->
+            <div v-if="editingIndex === index" class="edit-message-container">
+                <div class="text-xs text-gray-400 mb-1">
+                    ✏️ 编辑{{ msg.role === 'director' ? '导演' : msg.roleName }}的消息
+                </div>
+                <textarea v-model="editContent"
+                    rows="3"
+                    class="w-full glass-light bg-glass-light text-gray-100 rounded-xl px-4 py-3 resize-none outline-none border border-primary/50 focus:border-primary transition"
+                    @keydown.enter.ctrl.prevent="saveEdit"
+                ></textarea>
+                <div class="flex justify-end space-x-2 mt-2">
+                    <button @click="cancelEdit"
+                            class="px-3 py-1.5 rounded-lg glass hover:bg-white/10 transition text-xs">
+                        取消
+                    </button>
+                    <button @click="saveEdit"
+                            :disabled="!editContent.trim()"
+                            class="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/80 transition text-xs text-white disabled:opacity-40">
+                        保存 (Ctrl+Enter)
+                    </button>
                 </div>
             </div>
 
-            <!-- AI 角色消息 -->
+            <!-- 导演消息（非编辑） -->
+            <div v-else-if="msg.role === 'director'" class="flex justify-center">
+                <div class="message-wrapper">
+                    <div class="director-message cursor-pointer"
+                         :class="{ 'ring-2 ring-amber-400/50': activeMessageIndex === index }"
+                         @click.stop="toggleSelect(index)">
+                        <span class="director-label">🎬 导演</span>
+                        <span>{{ msg.content }}</span>
+                    </div>
+                    <!-- 操作按钮 -->
+                    <div class="message-toolbar" :class="{ 'active': activeMessageIndex === index }">
+                        <div class="toolbar-inner">
+                            <button class="toolbar-btn" @click.stop="startEdit(index)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                编辑
+                            </button>
+                            <button class="toolbar-btn delete" @click.stop="$emit('delete-message', index)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI 角色消息（非编辑） -->
             <div v-else-if="msg.role === 'assistant'" class="flex items-start space-x-3">
                 <!-- 角色头像（可点击让该角色继续说） -->
                 <div class="flex-shrink-0 cursor-pointer group" @click="$emit('speak-as-role', msg.roleId)"
@@ -185,15 +264,17 @@ function handleSend() {
                     <div class="text-center mt-0.5 opacity-0 group-hover:opacity-100 transition text-[10px] text-gray-400">💬</div>
                 </div>
 
-                <div class="max-w-[80%] min-w-0">
+                <div class="max-w-[80%] min-w-0 message-wrapper">
                     <!-- 角色名 -->
                     <div class="text-xs mb-1 font-medium"
                          :style="{ color: getRoleColor(msg.roleId) }">
                         {{ msg.roleName || '角色' }}
                     </div>
                     <!-- 消息内容 -->
-                    <div class="group-speech-bubble"
-                         :style="{ borderLeftColor: getRoleColor(msg.roleId) }">
+                    <div class="group-speech-bubble cursor-pointer"
+                         :class="{ 'selected': activeMessageIndex === index }"
+                         :style="{ borderLeftColor: getRoleColor(msg.roleId) }"
+                         @click.stop="toggleSelect(index)">
                         <div v-if="msg.content" class="vn-body markdown-body"
                              v-html="safeRender(msg.rawContent || msg.content)">
                         </div>
@@ -201,6 +282,23 @@ function handleSend() {
                             <div class="dot"></div>
                             <div class="dot"></div>
                             <div class="dot"></div>
+                        </div>
+                    </div>
+                    <!-- 操作按钮 -->
+                    <div class="message-toolbar" :class="{ 'active': activeMessageIndex === index }">
+                        <div class="toolbar-inner">
+                            <button class="toolbar-btn" @click.stop="startEdit(index)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                编辑
+                            </button>
+                            <button class="toolbar-btn delete" @click.stop="$emit('delete-message', index)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                删除
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -304,6 +402,7 @@ function handleSend() {
     color: #fcd34d;
     font-size: 0.9rem;
     max-width: 85%;
+    transition: all 0.2s ease;
 }
 
 .director-label {
@@ -329,5 +428,68 @@ function handleSend() {
 .group-speech-bubble:hover {
     border-color: rgba(255, 255, 255, 0.18);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+
+.group-speech-bubble.selected {
+    border-color: rgba(129, 140, 248, 0.4);
+    box-shadow: 0 0 16px rgba(129, 140, 248, 0.15);
+}
+
+/* 消息操作工具栏 */
+.message-wrapper {
+    position: relative;
+}
+
+.message-toolbar {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.25s ease;
+    margin-top: 0;
+}
+
+.message-toolbar.active {
+    max-height: 50px;
+    opacity: 1;
+    margin-top: 6px;
+}
+
+.toolbar-inner {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.toolbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.toolbar-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+}
+
+.toolbar-btn.delete:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+}
+
+/* 编辑消息容器 */
+.edit-message-container {
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 16px;
+    padding: 12px 16px;
 }
 </style>

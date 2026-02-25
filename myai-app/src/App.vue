@@ -463,6 +463,8 @@ function handleAvatarError(type, roleId) {
         @continue-round="groupChat.continueOneRound"
         @stop-generation="groupChat.stopGroupGeneration"
         @speak-as-role="groupChat.speakAsRole"
+        @delete-message="groupChat.deleteGroupMessage"
+        @edit-message="groupChat.editGroupMessage"
       />
     </template>
 

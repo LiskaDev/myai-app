@@ -507,6 +507,28 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         showToast('群聊已更新');
     }
 
+    // 删除群聊消息
+    function deleteGroupMessage(index) {
+        if (!currentGroup.value) return;
+        if (index >= 0 && index < groupMessages.value.length) {
+            groupMessages.value.splice(index, 1);
+            saveGroups();
+            showToast('消息已删除');
+        }
+    }
+
+    // 编辑群聊消息
+    function editGroupMessage(index, newContent) {
+        if (!currentGroup.value) return;
+        if (index >= 0 && index < groupMessages.value.length) {
+            const msg = groupMessages.value[index];
+            msg.content = newContent;
+            msg.rawContent = newContent;
+            saveGroups();
+            showToast('消息已更新');
+        }
+    }
+
     return {
         // 状态
         groupChats,
@@ -531,5 +553,7 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         stopGroupGeneration,
         clearGroupChat,
         updateGroupChat,
+        deleteGroupMessage,
+        editGroupMessage,
     };
 }
