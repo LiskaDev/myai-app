@@ -4,6 +4,7 @@ import { useAppState } from './composables/useAppState';
 import { useChat } from './composables/useChat';
 import { useMemory } from './composables/useMemory';
 import { useTTS } from './composables/useTTS';
+import { useGestures } from './composables/useGestures';
 
 // Import Components
 import ChatWindow from './components/ChatWindow.vue';
@@ -17,6 +18,12 @@ const appState = useAppState();
 const chatFunctions = useChat(appState);
 const memoryFunctions = useMemory(appState);
 const ttsFunctions = useTTS(appState);
+
+// Mobile Gestures
+useGestures({
+  onSwipeRight: () => { showSidebar.value = true; },
+  onSwipeLeft: () => { showSidebar.value = false; },
+});
 
 // DOM Refs
 const chatContainer = ref(null);

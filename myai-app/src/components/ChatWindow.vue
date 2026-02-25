@@ -2,6 +2,7 @@
 import { computed, ref, watch, nextTick } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
 import { parseDualLayerResponse, getCustomStyleVars } from '../utils/textParser';
+import { useLongPress } from '../composables/useGestures';
 
 const props = defineProps({
   messages: {
@@ -62,6 +63,11 @@ const memoryHelpers = computed(() => {
     isMessagePinned: () => false,
     toggleMessagePin: () => {}
   };
+});
+
+// 长按手势：在移动端长按消息弹出操作菜单
+const longPress = useLongPress((e, messageIndex) => {
+  emit('toggle-select', messageIndex);
 });
 
 // 🛡️ 智能消息折叠：当消息超过阈值时折叠旧消息
@@ -312,7 +318,10 @@ function isCurrentMatch(originalIndex) {
         <template v-if="msg.role === 'user'">
           <div class="message-bubble flex flex-col items-end"
                :data-msg-index="getOriginalIndex(visibleIndex)"
-               :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }">
+               :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }"
+               @touchstart="(e) => longPress.onTouchStart(e, getOriginalIndex(visibleIndex))"
+               @touchend="longPress.onTouchEnd"
+               @touchmove="longPress.onTouchMove">
             <div class="flex items-start justify-end space-x-3 space-x-reverse w-full">
               <div class="max-w-[80%] message-wrapper">
                 <div @click.stop="$emit('toggle-select', getOriginalIndex(visibleIndex))"
@@ -354,7 +363,10 @@ function isCurrentMatch(originalIndex) {
         <template v-else-if="msg.role === 'assistant'">
           <div class="message-bubble flex flex-col items-start"
                :data-msg-index="getOriginalIndex(visibleIndex)"
-               :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }">
+               :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }"
+               @touchstart="(e) => longPress.onTouchStart(e, getOriginalIndex(visibleIndex))"
+               @touchend="longPress.onTouchEnd"
+               @touchmove="longPress.onTouchMove">
             <div class="flex items-start space-x-3 w-full">
               <div v-if="currentRole.avatar" class="avatar flex-shrink-0">
                 <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover">
