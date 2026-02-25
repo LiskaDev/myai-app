@@ -42,8 +42,7 @@ Thumbs.db
 # Git
 .git/
 
-# Submodules
-myai-app/
+
 
 # Logs
 logs
