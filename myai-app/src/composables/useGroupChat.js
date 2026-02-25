@@ -620,6 +620,12 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
                     role: 'user',
                     content: `[导演]: ${msg.content}`,
                 });
+            } else if (msg.role === 'world-event') {
+                // 世界事件 → system（所有角色都能感知）
+                apiMessages.push({
+                    role: 'system',
+                    content: `[World Event] ${msg.content}`,
+                });
             } else if (msg.role === 'assistant') {
                 if (msg.roleId === targetRole.id) {
                     // 自己说的 → assistant（让 AI 知道这是自己之前说的）
@@ -704,6 +710,22 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         }
     }
 
+    // 注入世界事件
+    function injectWorldEvent(eventText) {
+        if (!currentGroup.value || !eventText?.trim()) return;
+
+        const group = currentGroup.value;
+        const eventMsg = {
+            role: 'world-event',
+            content: eventText.trim(),
+            timestamp: Date.now(),
+        };
+
+        group.chatHistory.push(eventMsg);
+        saveGroups();
+        showToast(`🌍 世界事件已注入`, 'info');
+    }
+
     return {
         // 状态
         groupChats,
@@ -730,5 +752,6 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         updateGroupChat,
         deleteGroupMessage,
         editGroupMessage,
+        injectWorldEvent,
     };
 }

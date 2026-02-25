@@ -465,6 +465,7 @@ function handleAvatarError(type, roleId) {
         @speak-as-role="groupChat.speakAsRole"
         @delete-message="groupChat.deleteGroupMessage"
         @edit-message="groupChat.editGroupMessage"
+        @inject-world-event="groupChat.injectWorldEvent"
       />
     </template>
 

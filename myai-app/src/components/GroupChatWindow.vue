@@ -19,6 +19,7 @@ const emit = defineEmits([
     'speak-as-role',
     'delete-message',
     'edit-message',
+    'inject-world-event',
 ]);
 
 const containerRef = ref(null);
@@ -28,6 +29,41 @@ const mentionFilter = ref('');
 const inputRef = ref(null);
 const activeMessageIndex = ref(-1);
 const expandedPassGroups = ref(new Set());
+
+// 世界事件面板
+const showEventPanel = ref(false);
+const customEventText = ref('');
+
+const WORLD_EVENTS = [
+    { category: '☁️ 天气', items: [
+        { emoji: '⛈️', label: '雷暴', text: '突然窗外闪过一道剧烈的闪电，伴随着震耳欲聋的雷声，暴雨倾盆而下。' },
+        { emoji: '❄️', label: '暴风雪', text: '窗外突然开始下起了暴风雪，能见度几乎为零，气温骤降。' },
+        { emoji: '🌅', label: '夕阳', text: '窗外夏阳渐渐西沉，温暖的橙红色光芒洒进房间。' },
+    ]},
+    { category: '🕐 时间', items: [
+        { emoji: '🌙', label: '入夜', text: '不知不觉天色已晚，窗外一片漆黑，只有远处的路灯微微闪烁。' },
+        { emoji: '🌄', label: '破晓', text: '第一缕晨光透过窗帘的缝隙洒入房间，鸟儿开始在窗外鸣叫。' },
+    ]},
+    { category: '💥 突发', items: [
+        { emoji: '💡', label: '停电', text: '突然“喀嗒”一声，所有的灯同时熄灭，房间陷入了完全的黑暗。' },
+        { emoji: '🚨', label: '警报', text: '手机突然同时响起了刺耳的紧急警报声，屏幕上显示着一条紧急通知。' },
+        { emoji: '🪨', label: '地震', text: '脚下的地面突然剧烈晃动起来，桂子上的东西纷纷掉落，空气中弥漫着火药的味道。' },
+        { emoji: '🚪', label: '神秘来客', text: '门外突然响起了急促的敲门声，一下、两下、三下……然后是长久的沉默。' },
+        { emoji: '🧟', label: '丧尸', text: '窗外传来杂乱的尖叫声和不明物体撞击大门的声音，透过窗户可以看到街上的人在拼命奔跑。' },
+    ]},
+];
+
+function triggerEvent(eventText) {
+    emit('inject-world-event', eventText);
+    showEventPanel.value = false;
+}
+
+function triggerCustomEvent() {
+    if (!customEventText.value.trim()) return;
+    emit('inject-world-event', customEventText.value.trim());
+    customEventText.value = '';
+    showEventPanel.value = false;
+}
 
 // 将消息分组：连续的 pass 消息合并为一个 pass-group
 const displayItems = computed(() => {
@@ -255,8 +291,16 @@ function handleSend() {
                 </div>
             </div>
 
+            <!-- 世界事件消息 -->
+            <div v-if="item.type === 'message' && item.msg.role === 'world-event'" class="flex justify-center">
+                <div class="world-event-message">
+                    <span class="world-event-icon">🌍</span>
+                    <span>{{ item.msg.content }}</span>
+                </div>
+            </div>
+
             <!-- 编辑模式 -->
-            <div v-if="item.type === 'message' && editingIndex === item.index" class="edit-message-container">
+            <div v-else-if="item.type === 'message' && editingIndex === item.index" class="edit-message-container">
                 <div class="text-xs text-gray-400 mb-1">
                     ✏️ 编辑{{ item.msg.role === 'director' ? '导演' : item.msg.roleName }}的消息
                 </div>
@@ -406,6 +450,41 @@ function handleSend() {
                 </div>
             </div>
 
+            <!-- 🌍 世界事件面板 -->
+            <div v-if="showEventPanel"
+                 class="absolute bottom-full left-0 right-0 mb-2 glass bg-glass-dark rounded-xl border border-white/15 shadow-2xl overflow-hidden z-10 max-h-80 overflow-y-auto">
+                <div class="p-3 border-b border-white/10 flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-200">🌍 注入世界事件</span>
+                    <button @click="showEventPanel = false" class="text-gray-400 hover:text-white transition text-xs">✖</button>
+                </div>
+                <div v-for="cat in WORLD_EVENTS" :key="cat.category" class="border-b border-white/5 last:border-0">
+                    <div class="text-xs text-gray-500 px-3 pt-2 pb-1">{{ cat.category }}</div>
+                    <div class="flex flex-wrap gap-1.5 px-3 pb-2">
+                        <button v-for="ev in cat.items" :key="ev.label"
+                                @click="triggerEvent(ev.text)"
+                                class="event-preset-btn">
+                            <span>{{ ev.emoji }}</span>
+                            <span>{{ ev.label }}</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- 自定义事件 -->
+                <div class="p-3 border-t border-white/10">
+                    <div class="text-xs text-gray-500 mb-1.5">✨ 自定义事件</div>
+                    <div class="flex space-x-2">
+                        <input v-model="customEventText"
+                               @keydown.enter.prevent="triggerCustomEvent"
+                               placeholder="例如：突然一只猫跳上了桌子..."
+                               class="flex-1 glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 text-sm outline-none border border-white/10 focus:border-primary transition" />
+                        <button @click="triggerCustomEvent"
+                                :disabled="!customEventText.trim()"
+                                class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 transition text-sm text-white disabled:opacity-40">
+                            注入
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <form @submit.prevent="handleSend" class="flex items-end space-x-2">
                 <div class="flex-1 relative">
                     <textarea ref="inputRef" v-model="directorInput"
@@ -417,6 +496,15 @@ function handleSend() {
                         class="w-full glass-light bg-glass-light text-gray-100 rounded-2xl px-4 py-3 resize-none input-focus outline-none border border-white/10 focus:border-primary transition max-h-32 overflow-y-auto text-shadow-light"
                         style="min-height: 48px;"></textarea>
                 </div>
+                <!-- 🌍 世界事件按钮 -->
+                <button type="button"
+                        @click="showEventPanel = !showEventPanel"
+                        :disabled="isStreaming"
+                        class="send-btn w-12 h-12 rounded-full flex items-center justify-center transition disabled:opacity-40"
+                        :class="showEventPanel ? 'bg-emerald-600 ring-2 ring-emerald-400/50' : 'bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600'"
+                        title="注入世界事件">
+                    <span class="text-lg">🌍</span>
+                </button>
                 <!-- 发送按钮 -->
                 <button type="submit" :disabled="!directorInput.trim() || isStreaming"
                         class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed"
@@ -449,6 +537,53 @@ function handleSend() {
 </template>
 
 <style scoped>
+/* 世界事件消息 */
+.world-event-message {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.08));
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 20px;
+    padding: 8px 18px;
+    color: #6ee7b7;
+    font-size: 0.85rem;
+    max-width: 90%;
+    font-style: italic;
+    animation: worldEventFadeIn 0.4s ease;
+}
+
+.world-event-icon {
+    font-size: 1rem;
+    font-style: normal;
+}
+
+@keyframes worldEventFadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* 事件预设按钮 */
+.event-preset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.event-preset-btn:hover {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #6ee7b7;
+}
+
 /* 导演消息 */
 .director-message {
     display: inline-flex;
