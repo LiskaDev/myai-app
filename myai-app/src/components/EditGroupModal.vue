@@ -19,11 +19,10 @@ onMounted(() => {
 const canSave = computed(() => groupName.value.trim() && selectedIds.value.length >= 2);
 
 function toggleRole(roleId) {
-    const index = selectedIds.value.indexOf(roleId);
-    if (index >= 0) {
-        selectedIds.value.splice(index, 1);
+    if (selectedIds.value.includes(roleId)) {
+        selectedIds.value = selectedIds.value.filter(id => id !== roleId);
     } else if (selectedIds.value.length < 8) {
-        selectedIds.value.push(roleId);
+        selectedIds.value = [...selectedIds.value, roleId];
     }
 }
 
