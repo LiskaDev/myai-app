@@ -66,6 +66,15 @@ export function useGroupChat(appState) {
             if (saved) {
                 groupChats.value = JSON.parse(saved);
             }
+            // 恢复群聊会话状态
+            const session = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || '{}');
+            if (session.isGroupMode && session.currentGroupId) {
+                const groupExists = groupChats.value.find(g => g.id === session.currentGroupId);
+                if (groupExists) {
+                    currentGroupId.value = session.currentGroupId;
+                    isGroupMode.value = true;
+                }
+            }
         } catch (e) {
             showToast('加载群聊数据失败', 'error');
         }
@@ -119,11 +128,25 @@ export function useGroupChat(appState) {
         currentGroupId.value = groupId;
         isGroupMode.value = true;
         showSidebar.value = false;
+        // 保存群聊会话状态
+        try {
+            const session = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || '{}');
+            session.isGroupMode = true;
+            session.currentGroupId = groupId;
+            localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+        } catch { /* ignore */ }
     }
 
     function exitGroupMode() {
         isGroupMode.value = false;
         currentGroupId.value = null;
+        // 清除群聊会话状态
+        try {
+            const session = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || '{}');
+            session.isGroupMode = false;
+            session.currentGroupId = null;
+            localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+        } catch { /* ignore */ }
     }
 
     // ============== 发送消息 ==============

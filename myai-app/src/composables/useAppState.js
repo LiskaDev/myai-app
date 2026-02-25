@@ -153,7 +153,14 @@ export function useAppState() {
 
         if (savedRoles && savedRoles.length > 0) {
             roleList.value = savedRoles;
-            currentRoleId.value = savedRoles[0].id;
+            // 恢复上次活跃的角色
+            const session = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || '{}');
+            const lastRoleId = session.currentRoleId;
+            if (lastRoleId && savedRoles.find(r => r.id === lastRoleId)) {
+                currentRoleId.value = lastRoleId;
+            } else {
+                currentRoleId.value = savedRoles[0].id;
+            }
         } else {
             roleList.value = [...PRESET_ROLES];
             currentRoleId.value = roleList.value[0].id;
@@ -165,6 +172,14 @@ export function useAppState() {
         currentRoleId.value = roleId;
         showSidebar.value = false;
         activeMessageIndex.value = null;
+        // 保存当前会话状态
+        try {
+            const session = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || '{}');
+            session.currentRoleId = roleId;
+            session.isGroupMode = false;
+            session.currentGroupId = null;
+            localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+        } catch { /* ignore */ }
     }
 
     function createNewRole() {
