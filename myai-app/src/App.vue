@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useAppState } from './composables/useAppState';
 import { useChat } from './composables/useChat';
 import { useMemory } from './composables/useMemory';
@@ -86,6 +86,49 @@ const {
   playTTS,
   stopTTS,
 } = ttsFunctions;
+
+// --- Search Logic ---
+const showSearch = ref(false);
+const searchQuery = ref('');
+const currentMatchIndex = ref(0);
+
+const searchResults = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return [];
+  const results = [];
+  messages.value.forEach((msg, index) => {
+    const content = (msg.rawContent || msg.content || '').toLowerCase();
+    if (content.includes(query)) {
+      results.push(index);
+    }
+  });
+  return results;
+});
+
+function toggleSearch() {
+  showSearch.value = !showSearch.value;
+  if (!showSearch.value) {
+    searchQuery.value = '';
+    currentMatchIndex.value = 0;
+  }
+}
+
+function goToMatch(direction) {
+  if (searchResults.value.length === 0) return;
+  if (direction === 'next') {
+    currentMatchIndex.value = (currentMatchIndex.value + 1) % searchResults.value.length;
+  } else {
+    currentMatchIndex.value = (currentMatchIndex.value - 1 + searchResults.value.length) % searchResults.value.length;
+  }
+}
+
+// Ctrl+F 快捷键
+function handleGlobalKeydown(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    e.preventDefault();
+    showSearch.value = true;
+  }
+}
 
 // --- Scroll Logic ---
 const SCROLL_THRESHOLD = 150; // 距离底部多少像素内视为 "在底部"
@@ -191,6 +234,11 @@ onMounted(() => {
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }
   scrollToBottom();
+  window.addEventListener('keydown', handleGlobalKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown);
 });
 
 // 导入数据
@@ -266,6 +314,12 @@ function handleAvatarError(type, roleId) {
         </div>
       </div>
       <div class="flex items-center space-x-2">
+        <!-- 搜索按钮 -->
+        <button @click="toggleSearch" class="p-2 rounded-full hover:bg-white/10 transition" :class="{ 'bg-white/15': showSearch }" title="搜索消息 (Ctrl+F)">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </button>
         <!-- 清空聊天按钮 -->
         <button @click="clearChat" class="p-2 rounded-full hover:bg-white/10 transition" title="清空聊天">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -305,6 +359,10 @@ function handleAvatarError(type, roleId) {
       :active-message-index="activeMessageIndex"
       :tts-state="ttsState"
       :memory-functions="{ isMessagePinned, toggleMessagePin }"
+      :show-search="showSearch"
+      :search-query="searchQuery"
+      :search-results="searchResults"
+      :current-match-index="currentMatchIndex"
       :class="{ 'blur-background': showSettings }"
       @toggle-select="handleToggleSelect"
       @toggle-thinking="handleToggleThinking"
@@ -312,6 +370,10 @@ function handleAvatarError(type, roleId) {
       @delete-message="deleteMessage"
       @regenerate="regenerateMessage"
       @play-tts="playTTS"
+      @update:search-query="searchQuery = $event"
+      @search-next="goToMatch('next')"
+      @search-prev="goToMatch('prev')"
+      @close-search="toggleSearch"
     />
 
     <!-- 底部输入区域 -->

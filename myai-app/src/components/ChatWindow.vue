@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
 import { parseDualLayerResponse, getCustomStyleVars } from '../utils/textParser';
 
@@ -20,7 +20,11 @@ const props = defineProps({
   isThinking: Boolean,
   activeMessageIndex: Number,
   ttsState: Object,
-  memoryFunctions: Object
+  memoryFunctions: Object,
+  showSearch: Boolean,
+  searchQuery: { type: String, default: '' },
+  searchResults: { type: Array, default: () => [] },
+  currentMatchIndex: { type: Number, default: 0 }
 });
 
 const emit = defineEmits([
@@ -29,10 +33,15 @@ const emit = defineEmits([
   'start-edit',
   'delete-message',
   'regenerate',
-  'play-tts'
+  'play-tts',
+  'update:search-query',
+  'search-next',
+  'search-prev',
+  'close-search'
 ]);
 
 const containerRef = ref(null);
+const searchInputRef = ref(null);
 
 defineExpose({
   get scrollTop() {
@@ -188,11 +197,90 @@ function handleChatAreaClick(event) {
     emit('toggle-select', null);
   }
 }
+
+// 搜索框自动聚焦
+watch(() => props.showSearch, (val) => {
+  if (val) {
+    nextTick(() => searchInputRef.value?.focus());
+  }
+});
+
+// 搜索结果变化时滚动到当前匹配项
+watch([() => props.currentMatchIndex, () => props.searchResults], () => {
+  if (props.searchResults.length === 0) return;
+  const targetMsgIndex = props.searchResults[props.currentMatchIndex];
+  if (targetMsgIndex == null) return;
+  nextTick(() => {
+    const el = containerRef.value?.querySelector(`[data-msg-index="${targetMsgIndex}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+});
+
+function handleSearchKeydown(e) {
+  if (e.key === 'Escape') {
+    emit('close-search');
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (e.shiftKey) {
+      emit('search-prev');
+    } else {
+      emit('search-next');
+    }
+  }
+}
+
+function isSearchMatch(originalIndex) {
+  return props.searchResults.includes(originalIndex);
+}
+
+function isCurrentMatch(originalIndex) {
+  return props.searchResults[props.currentMatchIndex] === originalIndex;
+}
 </script>
 
 <template>
   <main ref="containerRef" class="flex-1 overflow-y-auto p-4 space-y-4" @click="handleChatAreaClick"
         :class="{ 'mode-immersive': globalSettings.immersiveMode }">
+
+    <!-- 搜索工具栏 -->
+    <Transition name="search-bar">
+      <div v-if="showSearch" class="search-bar">
+        <div class="search-bar-inner">
+          <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          <input ref="searchInputRef"
+                 :value="searchQuery"
+                 @input="$emit('update:search-query', $event.target.value)"
+                 @keydown="handleSearchKeydown"
+                 type="text"
+                 placeholder="搜索消息..."
+                 class="search-input" />
+          <span v-if="searchQuery" class="search-count">
+            {{ searchResults.length > 0 ? `${currentMatchIndex + 1}/${searchResults.length}` : '无结果' }}
+          </span>
+          <div class="search-nav" v-if="searchResults.length > 0">
+            <button @click="$emit('search-prev')" class="search-nav-btn" title="上一个 (Shift+Enter)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+              </svg>
+            </button>
+            <button @click="$emit('search-next')" class="search-nav-btn" title="下一个 (Enter)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+          </div>
+          <button @click="$emit('close-search')" class="search-nav-btn" title="关闭 (Esc)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </Transition>
 
     <!-- 欢迎消息 / 开场白 -->
     <div v-if="messages.length === 0 && currentRole.firstMessage" class="message-bubble flex items-start space-x-3">
@@ -222,7 +310,9 @@ function handleChatAreaClick(event) {
     <TransitionGroup name="message" tag="div">
       <template v-for="(msg, visibleIndex) in visibleMessages" :key="getOriginalIndex(visibleIndex)">
         <template v-if="msg.role === 'user'">
-          <div class="message-bubble flex flex-col items-end">
+          <div class="message-bubble flex flex-col items-end"
+               :data-msg-index="getOriginalIndex(visibleIndex)"
+               :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }">
             <div class="flex items-start justify-end space-x-3 space-x-reverse w-full">
               <div class="max-w-[80%] message-wrapper">
                 <div @click.stop="$emit('toggle-select', getOriginalIndex(visibleIndex))"
@@ -262,7 +352,9 @@ function handleChatAreaClick(event) {
         </template>
 
         <template v-else-if="msg.role === 'assistant'">
-          <div class="message-bubble flex flex-col items-start">
+          <div class="message-bubble flex flex-col items-start"
+               :data-msg-index="getOriginalIndex(visibleIndex)"
+               :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }">
             <div class="flex items-start space-x-3 w-full">
               <div v-if="currentRole.avatar" class="avatar flex-shrink-0">
                 <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover">
@@ -405,5 +497,98 @@ function handleChatAreaClick(event) {
   50% {
     transform: scaleY(1);
   }
+}
+
+/* 搜索工具栏 */
+.search-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 8px 12px;
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.search-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 6px 12px;
+}
+
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e5e7eb;
+  font-size: 14px;
+  min-width: 0;
+}
+
+.search-input::placeholder {
+  color: #6b7280;
+}
+
+.search-count {
+  font-size: 12px;
+  color: #9ca3af;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+.search-nav {
+  display: flex;
+  gap: 2px;
+}
+
+.search-nav-btn {
+  padding: 4px;
+  border-radius: 6px;
+  color: #9ca3af;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+}
+
+/* 搜索匹配高亮 */
+.search-match {
+  position: relative;
+}
+
+.search-match::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 16px;
+  border: 2px solid rgba(234, 179, 8, 0.3);
+  pointer-events: none;
+}
+
+.search-current::before {
+  border-color: rgba(234, 179, 8, 0.8);
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.25);
+}
+
+/* 搜索栏动画 */
+.search-bar-enter-active,
+.search-bar-leave-active {
+  transition: all 0.2s ease;
+}
+
+.search-bar-enter-from,
+.search-bar-leave-to {
+  opacity: 0;
+  transform: translateY(-100%);
 }
 </style>
