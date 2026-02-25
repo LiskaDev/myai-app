@@ -12,7 +12,10 @@ defineProps({
   availableVoices: Array,
   roleList: Array,
   importJson: String,
-  memoryEditState: Object
+  memoryEditState: Object,
+  isGroupMode: Boolean,
+  currentGroup: Object,
+  participants: Array,
 });
 
 defineEmits([
@@ -51,30 +54,82 @@ defineEmits([
         <!-- 全局设置 -->
         <GlobalSettings :globalSettings="globalSettings" />
 
-        <!-- 基础设置 -->
-        <RoleBasicSettings :currentRole="currentRole" />
+        <!-- ========== 群聊模式：群聊信息 ========== -->
+        <template v-if="isGroupMode && currentGroup">
+          <section class="space-y-4">
+            <h3 class="font-semibold text-gray-300 flex items-center text-shadow px-1">
+              <span class="mr-2">👥</span> 群聊信息
+            </h3>
+            <div class="glass bg-glass-message rounded-2xl p-4 space-y-3">
+              <div>
+                <label class="block text-sm text-gray-400 mb-1">群聊名称</label>
+                <div class="text-gray-100 text-base font-medium">{{ currentGroup.name }}</div>
+              </div>
+              <div>
+                <label class="block text-sm text-gray-400 mb-2">参与角色（{{ participants?.length || 0 }} 人）</label>
+                <div class="flex flex-wrap gap-2">
+                  <div v-for="p in participants" :key="p.id"
+                       class="flex items-center space-x-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/5">
+                    <div v-if="p.avatar" class="w-6 h-6 rounded-full overflow-hidden">
+                      <img :src="p.avatar" class="w-full h-full object-cover" />
+                    </div>
+                    <div v-else class="w-6 h-6 rounded-full bg-primary/30 flex items-center justify-center text-xs">🎭</div>
+                    <span class="text-sm text-gray-200">{{ p.name }}</span>
+                  </div>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 mt-2">💡 点击右上角 ✏️ 编辑按钮可修改群名和成员</p>
+            </div>
+          </section>
 
-        <!-- 高级设置 -->
-        <RoleAdvancedSettings :currentRole="currentRole" :availableVoices="availableVoices" />
+          <!-- 群聊中每个角色的人设预览 -->
+          <section class="space-y-3">
+            <h3 class="font-semibold text-gray-300 flex items-center text-shadow px-1">
+              <span class="mr-2">🎭</span> 角色人设预览
+            </h3>
+            <div v-for="p in participants" :key="p.id"
+                 class="glass bg-glass-message rounded-2xl p-4 space-y-2">
+              <div class="flex items-center space-x-2">
+                <div v-if="p.avatar" class="w-8 h-8 rounded-full overflow-hidden">
+                  <img :src="p.avatar" class="w-full h-full object-cover" />
+                </div>
+                <div v-else class="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center text-sm">🎭</div>
+                <span class="font-medium text-gray-100">{{ p.name }}</span>
+              </div>
+              <div class="text-sm text-gray-400 whitespace-pre-wrap line-clamp-4 leading-relaxed">
+                {{ p.personality || '（暂无人设描述）' }}
+              </div>
+            </div>
+          </section>
+        </template>
 
-        <!-- 角色深度设置 -->
-        <CharacterDepthSettings :currentRole="currentRole" />
+        <!-- ========== 单聊模式：角色设置 ========== -->
+        <template v-else>
+          <!-- 基础设置 -->
+          <RoleBasicSettings :currentRole="currentRole" />
 
-        <!-- 参数调整 -->
-        <ParameterSettings :currentRole="currentRole" />
+          <!-- 高级设置 -->
+          <RoleAdvancedSettings :currentRole="currentRole" :availableVoices="availableVoices" />
 
-        <!-- 记忆管理 -->
-        <MemoryManager
-          :currentRole="currentRole"
-          :memoryEditState="memoryEditState"
-          @add-manual-memory="$emit('add-manual-memory')"
-          @remove-manual-memory="$emit('remove-manual-memory', $event)"
-          @start-edit-memory="$emit('start-edit-memory', $event)"
-          @save-edit-memory="$emit('save-edit-memory', $event)"
-          @cancel-edit-memory="$emit('cancel-edit-memory')"
-          @toggle-memory-expand="$emit('toggle-memory-expand', $event)"
-          @refine-memory="$emit('refine-memory', $event)"
-        />
+          <!-- 角色深度设置 -->
+          <CharacterDepthSettings :currentRole="currentRole" />
+
+          <!-- 参数调整 -->
+          <ParameterSettings :currentRole="currentRole" />
+
+          <!-- 记忆管理 -->
+          <MemoryManager
+            :currentRole="currentRole"
+            :memoryEditState="memoryEditState"
+            @add-manual-memory="$emit('add-manual-memory')"
+            @remove-manual-memory="$emit('remove-manual-memory', $event)"
+            @start-edit-memory="$emit('start-edit-memory', $event)"
+            @save-edit-memory="$emit('save-edit-memory', $event)"
+            @cancel-edit-memory="$emit('cancel-edit-memory')"
+            @toggle-memory-expand="$emit('toggle-memory-expand', $event)"
+            @refine-memory="$emit('refine-memory', $event)"
+          />
+        </template>
 
         <!-- 数据管理 -->
         <section class="space-y-3">
