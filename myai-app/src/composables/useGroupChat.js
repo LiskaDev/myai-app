@@ -642,6 +642,15 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
                 }
             }
         }
+        // 注入仅该角色可见的悄悄话
+        for (const msg of recentMessages) {
+            if (msg.role === 'whisper' && msg.targetRoleId === targetRole.id) {
+                apiMessages.push({
+                    role: 'system',
+                    content: `[Secret Whisper from Director - Only you can see this] ${msg.content}`,
+                });
+            }
+        }
 
         return apiMessages;
     }
@@ -726,6 +735,26 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         showToast(`🌍 世界事件已注入`, 'info');
     }
 
+    // 发送悄悄话（仅目标角色可见）
+    function sendWhisper(targetRoleId, content) {
+        if (!currentGroup.value || !targetRoleId || !content?.trim()) return;
+
+        const group = currentGroup.value;
+        const role = appState.roleList.value.find(r => r.id === targetRoleId);
+
+        const whisperMsg = {
+            role: 'whisper',
+            targetRoleId,
+            targetRoleName: role?.name || '角色',
+            content: content.trim(),
+            timestamp: Date.now(),
+        };
+
+        group.chatHistory.push(whisperMsg);
+        saveGroups();
+        showToast(`🤫 悄悄话已发送给 ${role?.name || '角色'}`);
+    }
+
     return {
         // 状态
         groupChats,
@@ -753,5 +782,6 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         deleteGroupMessage,
         editGroupMessage,
         injectWorldEvent,
+        sendWhisper,
     };
 }

@@ -20,6 +20,7 @@ const emit = defineEmits([
     'delete-message',
     'edit-message',
     'inject-world-event',
+    'send-whisper',
 ]);
 
 const containerRef = ref(null);
@@ -63,6 +64,28 @@ function triggerCustomEvent() {
     emit('inject-world-event', customEventText.value.trim());
     customEventText.value = '';
     showEventPanel.value = false;
+}
+
+// 悄悄话面板
+const showWhisperPanel = ref(false);
+const whisperTargetRoleId = ref('');
+const whisperContent = ref('');
+
+function toggleWhisperPanel() {
+    showWhisperPanel.value = !showWhisperPanel.value;
+    if (showWhisperPanel.value) showEventPanel.value = false;
+}
+
+function toggleEventPanel() {
+    showEventPanel.value = !showEventPanel.value;
+    if (showEventPanel.value) showWhisperPanel.value = false;
+}
+
+function handleSendWhisper() {
+    if (!whisperTargetRoleId.value || !whisperContent.value.trim()) return;
+    emit('send-whisper', whisperTargetRoleId.value, whisperContent.value.trim());
+    whisperContent.value = '';
+    showWhisperPanel.value = false;
 }
 
 // 将消息分组：连续的 pass 消息合并为一个 pass-group
@@ -299,6 +322,14 @@ function handleSend() {
                 </div>
             </div>
 
+            <!-- 悄悄话消息 -->
+            <div v-else-if="item.type === 'message' && item.msg.role === 'whisper'" class="flex justify-center">
+                <div class="whisper-message">
+                    <span class="whisper-icon">🤫</span>
+                    <span>悄悄话发给 <strong>{{ item.msg.targetRoleName }}</strong>：{{ item.msg.content }}</span>
+                </div>
+            </div>
+
             <!-- 编辑模式 -->
             <div v-else-if="item.type === 'message' && editingIndex === item.index" class="edit-message-container">
                 <div class="text-xs text-gray-400 mb-1">
@@ -485,6 +516,47 @@ function handleSend() {
                 </div>
             </div>
 
+            <!-- 🤫 悄悄话面板 -->
+            <div v-if="showWhisperPanel"
+                 class="absolute bottom-full left-0 right-0 mb-2 glass bg-glass-dark rounded-xl border border-purple-500/25 shadow-2xl overflow-hidden z-10">
+                <div class="p-3 border-b border-white/10 flex items-center justify-between">
+                    <span class="text-sm font-medium text-purple-300">🤫 发送悄悄话</span>
+                    <button @click="showWhisperPanel = false" class="text-gray-400 hover:text-white transition text-xs">✖</button>
+                </div>
+                <div class="p-3 space-y-3">
+                    <div>
+                        <div class="text-xs text-gray-500 mb-1.5">选择目标角色</div>
+                        <div class="flex flex-wrap gap-1.5">
+                            <button v-for="p in participants" :key="p.id"
+                                    @click="whisperTargetRoleId = p.id"
+                                    class="whisper-role-btn"
+                                    :class="{ active: whisperTargetRoleId === p.id }">
+                                <div v-if="p.avatar" class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
+                                    <img :src="p.avatar" class="w-full h-full object-cover" />
+                                </div>
+                                <div v-else class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0"
+                                     :style="{ background: getRoleColor(p.id) }">🎭</div>
+                                <span>{{ p.name }}</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500 mb-1.5">私密指令（只有该角色能“听到”）</div>
+                        <div class="flex space-x-2">
+                            <input v-model="whisperContent"
+                                   @keydown.enter.prevent="handleSendWhisper"
+                                   placeholder="例如：一会儿小明说话时，你故意反驳他..."
+                                   class="flex-1 glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 text-sm outline-none border border-purple-500/20 focus:border-purple-500 transition" />
+                            <button @click="handleSendWhisper"
+                                    :disabled="!whisperTargetRoleId || !whisperContent.trim()"
+                                    class="px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 transition text-sm text-white disabled:opacity-40">
+                                发送
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <form @submit.prevent="handleSend" class="flex items-end space-x-2">
                 <div class="flex-1 relative">
                     <textarea ref="inputRef" v-model="directorInput"
@@ -498,12 +570,21 @@ function handleSend() {
                 </div>
                 <!-- 🌍 世界事件按钮 -->
                 <button type="button"
-                        @click="showEventPanel = !showEventPanel"
+                        @click="toggleEventPanel"
                         :disabled="isStreaming"
                         class="send-btn w-12 h-12 rounded-full flex items-center justify-center transition disabled:opacity-40"
                         :class="showEventPanel ? 'bg-emerald-600 ring-2 ring-emerald-400/50' : 'bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600'"
                         title="注入世界事件">
                     <span class="text-lg">🌍</span>
+                </button>
+                <!-- 🤫 悄悄话按钮 -->
+                <button type="button"
+                        @click="toggleWhisperPanel"
+                        :disabled="isStreaming"
+                        class="send-btn w-12 h-12 rounded-full flex items-center justify-center transition disabled:opacity-40"
+                        :class="showWhisperPanel ? 'bg-purple-600 ring-2 ring-purple-400/50' : 'bg-gradient-to-br from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600'"
+                        title="发送悄悄话">
+                    <span class="text-lg">🤫</span>
                 </button>
                 <!-- 发送按钮 -->
                 <button type="submit" :disabled="!directorInput.trim() || isStreaming"
@@ -582,6 +663,56 @@ function handleSend() {
     background: rgba(16, 185, 129, 0.15);
     border-color: rgba(16, 185, 129, 0.35);
     color: #6ee7b7;
+}
+
+/* 悄悄话消息 */
+.whisper-message {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, rgba(147, 51, 234, 0.12), rgba(109, 40, 217, 0.08));
+    border: 1px dashed rgba(147, 51, 234, 0.35);
+    border-radius: 20px;
+    padding: 8px 18px;
+    color: #c4b5fd;
+    font-size: 0.8rem;
+    max-width: 90%;
+    animation: whisperFadeIn 0.3s ease;
+}
+
+.whisper-icon {
+    font-size: 1rem;
+}
+
+@keyframes whisperFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 悄悄话角色选择按钮 */
+.whisper-role-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.whisper-role-btn:hover {
+    background: rgba(147, 51, 234, 0.1);
+    border-color: rgba(147, 51, 234, 0.3);
+}
+
+.whisper-role-btn.active {
+    background: rgba(147, 51, 234, 0.2);
+    border-color: rgba(147, 51, 234, 0.5);
+    color: #c4b5fd;
 }
 
 /* 导演消息 */

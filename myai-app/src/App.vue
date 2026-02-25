@@ -466,6 +466,7 @@ function handleAvatarError(type, roleId) {
         @delete-message="groupChat.deleteGroupMessage"
         @edit-message="groupChat.editGroupMessage"
         @inject-world-event="groupChat.injectWorldEvent"
+        @send-whisper="groupChat.sendWhisper"
       />
     </template>
 
