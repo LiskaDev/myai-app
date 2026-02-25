@@ -2,6 +2,7 @@
 export const STORAGE_KEYS = {
     GLOBAL: 'myai_global_v1',
     ROLES: 'myai_roles_v1',
+    GROUPS: 'myai_groups_v1',
 };
 
 // 默认全局设置

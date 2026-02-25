@@ -5,6 +5,7 @@ import { useChat } from './composables/useChat';
 import { useMemory } from './composables/useMemory';
 import { useTTS } from './composables/useTTS';
 import { useGestures } from './composables/useGestures';
+import { useGroupChat } from './composables/useGroupChat';
 
 // Import Components
 import ChatWindow from './components/ChatWindow.vue';
@@ -12,12 +13,17 @@ import SettingsModal from './components/SettingsModal.vue';
 import RoleSidebar from './components/RoleSidebar.vue';
 import EditMessageModal from './components/EditMessageModal.vue';
 import ImportDataModal from './components/ImportDataModal.vue';
+import GroupChatWindow from './components/GroupChatWindow.vue';
+import CreateGroupModal from './components/CreateGroupModal.vue';
 
 // Initialize State
 const appState = useAppState();
 const chatFunctions = useChat(appState);
 const memoryFunctions = useMemory(appState);
 const ttsFunctions = useTTS(appState);
+const groupChat = useGroupChat(appState);
+
+const showCreateGroupModal = ref(false);
 
 // Mobile Gestures
 useGestures({
@@ -237,6 +243,7 @@ onMounted(() => {
   loadData();
   setupWatchers();
   loadVoices();
+  groupChat.loadGroups();
   if (window.speechSynthesis) {
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }
@@ -311,14 +318,27 @@ function handleAvatarError(type, roleId) {
           </svg>
         </button>
         <!-- AI 头像 -->
-        <div v-if="currentRole.avatar" class="avatar">
-          <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover" @error="handleAvatarError('ai', currentRoleId)">
-        </div>
-        <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
-        <div class="text-shadow">
-          <h1 class="font-bold text-lg">{{ currentRole.name || 'MyAI-RolePlay' }}</h1>
-          <p class="text-xs text-gray-300">{{ isThinking ? '正在输入...' : (isStreaming ? '正在回复...' : '在线') }}</p>
-        </div>
+        <template v-if="!groupChat.isGroupMode.value">
+          <div v-if="currentRole.avatar" class="avatar">
+            <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover" @error="handleAvatarError('ai', currentRoleId)">
+          </div>
+          <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
+          <div class="text-shadow">
+            <h1 class="font-bold text-lg">{{ currentRole.name || 'MyAI-RolePlay' }}</h1>
+            <p class="text-xs text-gray-300">{{ isThinking ? '正在输入...' : (isStreaming ? '正在回复...' : '在线') }}</p>
+          </div>
+        </template>
+        <template v-else>
+          <div class="avatar-placeholder avatar-ai text-white">👥</div>
+          <div class="text-shadow">
+            <h1 class="font-bold text-lg">{{ groupChat.currentGroup.value?.name || '群聊' }}</h1>
+            <p class="text-xs text-gray-300">
+              {{ groupChat.isGroupStreaming.value
+                  ? `${groupChat.currentSpeakingRole.value || '角色'} 正在输入...`
+                  : `${groupChat.participants.value.length} 位参与者` }}
+            </p>
+          </div>
+        </template>
       </div>
       <div class="flex items-center space-x-2">
         <!-- 搜索按钮 -->
@@ -348,72 +368,102 @@ function handleAvatarError(type, roleId) {
       :roleList="roleList"
       :currentRoleId="currentRoleId"
       :showSidebar="showSidebar"
-      @switch-role="switchRole"
+      :groupChats="groupChat.groupChats.value"
+      :currentGroupId="groupChat.currentGroupId.value"
+      :isGroupMode="groupChat.isGroupMode.value"
+      @switch-role="(id) => { groupChat.exitGroupMode(); switchRole(id); }"
       @create-role="createNewRole"
       @delete-role="confirmDeleteRole"
       @close="showSidebar = false"
       @avatar-error="handleAvatarError"
+      @switch-group="groupChat.switchToGroup"
+      @delete-group="groupChat.deleteGroupChat"
+      @create-group="showCreateGroupModal = true"
     />
 
-    <!-- 聊天消息区域 -->
-    <ChatWindow
-      ref="chatContainer"
-      :messages="messages"
-      :current-role="currentRole"
-      :global-settings="globalSettings"
-      :is-streaming="isStreaming"
-      :is-thinking="isThinking"
-      :active-message-index="activeMessageIndex"
-      :tts-state="ttsState"
-      :memory-functions="{ isMessagePinned, toggleMessagePin }"
-      :show-search="showSearch"
-      :search-query="searchQuery"
-      :search-results="searchResults"
-      :current-match-index="currentMatchIndex"
-      :class="{ 'blur-background': showSettings }"
-      @toggle-select="handleToggleSelect"
-      @toggle-thinking="handleToggleThinking"
-      @start-edit="handleStartEdit"
-      @delete-message="deleteMessage"
-      @regenerate="regenerateMessage"
-      @play-tts="playTTS"
-      @update:search-query="searchQuery = $event"
-      @search-next="goToMatch('next')"
-      @search-prev="goToMatch('prev')"
-      @close-search="toggleSearch"
-    />
+    <!-- 聊天区域：单聊 / 群聊 条件渲染 -->
+    <template v-if="!groupChat.isGroupMode.value">
+      <ChatWindow
+        ref="chatContainer"
+        :messages="messages"
+        :current-role="currentRole"
+        :global-settings="globalSettings"
+        :is-streaming="isStreaming"
+        :is-thinking="isThinking"
+        :active-message-index="activeMessageIndex"
+        :tts-state="ttsState"
+        :memory-functions="{ isMessagePinned, toggleMessagePin }"
+        :show-search="showSearch"
+        :search-query="searchQuery"
+        :search-results="searchResults"
+        :current-match-index="currentMatchIndex"
+        :class="{ 'blur-background': showSettings }"
+        @toggle-select="handleToggleSelect"
+        @toggle-thinking="handleToggleThinking"
+        @start-edit="handleStartEdit"
+        @delete-message="deleteMessage"
+        @regenerate="regenerateMessage"
+        @play-tts="playTTS"
+        @update:search-query="searchQuery = $event"
+        @search-next="goToMatch('next')"
+        @search-prev="goToMatch('prev')"
+        @close-search="toggleSearch"
+      />
 
-    <!-- 底部输入区域 -->
-    <footer class="glass-strong bg-glass-dark border-t border-white/10 p-3 flex-shrink-0">
-      <form @submit.prevent="sendMessage" class="flex items-end space-x-2">
-        <div class="flex-1 relative">
-          <textarea ref="inputArea" v-model="userInput"
-                    @keydown.enter.exact.prevent="sendMessage"
-                    @keydown.enter.shift.exact="handleShiftEnter"
-                    :disabled="isStreaming"
-                    :placeholder="`与 ${currentRole.name || 'AI'} 对话...`"
-                    rows="1"
-                    class="w-full glass-light bg-glass-light text-gray-100 rounded-2xl px-4 py-3 resize-none input-focus outline-none border border-white/10 focus:border-primary transition max-h-32 overflow-y-auto text-shadow-light"
-                    style="min-height: 48px;"></textarea>
-        </div>
-        <!-- 发送按钮 -->
-        <button type="submit" :disabled="!userInput.trim() || isStreaming"
-                class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed"
-                v-if="!isStreaming">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-          </svg>
-        </button>
-        <!-- 停止按钮 -->
-        <button type="button" @click="stopGeneration"
-                class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center transition hover:from-red-600 hover:to-red-700"
-                v-else title="停止生成">
-          <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-            <rect x="6" y="6" width="12" height="12" rx="2"></rect>
-          </svg>
-        </button>
-      </form>
-    </footer>
+      <!-- 底部输入区域（单聊） -->
+      <footer class="glass-strong bg-glass-dark border-t border-white/10 p-3 flex-shrink-0">
+        <form @submit.prevent="sendMessage" class="flex items-end space-x-2">
+          <div class="flex-1 relative">
+            <textarea ref="inputArea" v-model="userInput"
+                      @keydown.enter.exact.prevent="sendMessage"
+                      @keydown.enter.shift.exact="handleShiftEnter"
+                      :disabled="isStreaming"
+                      :placeholder="`与 ${currentRole.name || 'AI'} 对话...`"
+                      rows="1"
+                      class="w-full glass-light bg-glass-light text-gray-100 rounded-2xl px-4 py-3 resize-none input-focus outline-none border border-white/10 focus:border-primary transition max-h-32 overflow-y-auto text-shadow-light"
+                      style="min-height: 48px;"></textarea>
+          </div>
+          <button type="submit" :disabled="!userInput.trim() || isStreaming"
+                  class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  v-if="!isStreaming">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+            </svg>
+          </button>
+          <button type="button" @click="stopGeneration"
+                  class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center transition hover:from-red-600 hover:to-red-700"
+                  v-else title="停止生成">
+            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+            </svg>
+          </button>
+        </form>
+      </footer>
+    </template>
+
+    <!-- 群聊模式 -->
+    <template v-else>
+      <GroupChatWindow
+        :messages="groupChat.groupMessages.value"
+        :participants="groupChat.participants.value"
+        :current-group="groupChat.currentGroup.value"
+        :is-streaming="groupChat.isGroupStreaming.value"
+        :current-speaking-role="groupChat.currentSpeakingRole.value"
+        :global-settings="globalSettings"
+        :class="{ 'blur-background': showSettings }"
+        @send-director="groupChat.sendDirectorMessage"
+        @continue-round="groupChat.continueOneRound"
+        @stop-generation="groupChat.stopGroupGeneration"
+      />
+    </template>
+
+    <!-- 创建群聊弹窗 -->
+    <CreateGroupModal
+      v-if="showCreateGroupModal"
+      :roleList="roleList"
+      @create="(name, ids) => { groupChat.createGroupChat(name, ids); showCreateGroupModal = false; groupChat.switchToGroup(groupChat.groupChats.value[groupChat.groupChats.value.length - 1].id); }"
+      @close="showCreateGroupModal = false"
+    />
 
     <!-- 设置面板 -->
     <SettingsModal v-if="showSettings"
