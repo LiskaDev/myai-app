@@ -97,7 +97,7 @@ defineEmits([
                 <span class="font-medium text-gray-100">{{ p.name }}</span>
               </div>
               <div class="text-sm text-gray-400 whitespace-pre-wrap line-clamp-4 leading-relaxed">
-                {{ p.personality || '（暂无人设描述）' }}
+                {{ p.systemPrompt || '（暂无人设描述）' }}
               </div>
             </div>
           </section>
