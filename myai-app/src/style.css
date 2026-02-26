@@ -1830,6 +1830,29 @@ details.reasoning-block[open]>summary {
   }
 }
 
+/* ===== 🌅 天数分隔线 ===== */
+.day-separator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  user-select: none;
+}
+
+.day-separator-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.4) 30%, rgba(251, 191, 36, 0.4) 70%, transparent);
+}
+
+.day-separator-label {
+  font-size: 0.8rem;
+  color: #fbbf24;
+  letter-spacing: 3px;
+  white-space: nowrap;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+}
+
 /* ===== 标题栏头像表情 ===== */
 .header-avatar.expr-avatar {
   transition: filter 0.5s ease, transform 0.3s ease;

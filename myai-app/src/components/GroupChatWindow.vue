@@ -363,6 +363,13 @@ onMounted(() => {
                 </div>
             </div>
 
+            <!-- 🌅 天数分隔线 -->
+            <div v-else-if="item.type === 'message' && item.msg.type === 'day-separator'" class="day-separator">
+                <div class="day-separator-line"></div>
+                <span class="day-separator-label">{{ item.msg.content }}</span>
+                <div class="day-separator-line"></div>
+            </div>
+
             <!-- 悄悄话消息 -->
             <div v-else-if="item.type === 'message' && item.msg.role === 'whisper'" class="flex justify-center">
                 <div class="whisper-message">

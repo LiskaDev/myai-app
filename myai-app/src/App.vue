@@ -37,6 +37,7 @@ const showCreateGroupModal = ref(false);
 const showEditGroupModal = ref(false);
 const showDiaryModal = ref(false);
 const showDiaryRolePicker = ref(false);
+const showMoonMenu = ref(false);
 const diaryDisplayList = ref([]);
 
 // 🌙 结束今天 — 生成日记
@@ -93,6 +94,48 @@ function openDiaryHistory() {
         return;
     }
     showDiaryModal.value = true;
+}
+
+// 🌅 开启新的一天
+function getCurrentDay(msgs) {
+    let day = 1;
+    for (const m of msgs) {
+        if (m.type === 'day-separator') day++;
+    }
+    return day;
+}
+
+function handleStartNewDay() {
+    showMoonMenu.value = false;
+    const isGroup = groupChat.isGroupMode.value;
+    const msgs = isGroup ? groupChat.groupMessages.value : appState.messages.value;
+    const currentDay = getCurrentDay(msgs);
+    const newDay = currentDay + 1;
+
+    // 插入天数分隔线
+    const separator = {
+        role: 'system',
+        type: 'day-separator',
+        content: `─── 第 ${newDay} 天 ───`,
+        day: newDay,
+        timestamp: new Date().toISOString(),
+    };
+
+    // 插入一条系统消息告诉 AI 新的一天开始了
+    const systemHint = {
+        role: 'user',
+        content: `[系统提示：时间已经过去了一晚，现在是新的一天（第${newDay}天）的早晨。请以新的一天的状态开始回应，可以提及昨天发生的事情。]`,
+    };
+
+    msgs.push(separator);
+    msgs.push(systemHint);
+
+    if (isGroup) {
+        groupChat.saveGroups();
+    } else {
+        appState.saveData();
+    }
+    showToast(`☀️ 新的一天开始了！（第 ${newDay} 天）`);
 }
 
 // Token pressure indicator
@@ -521,10 +564,29 @@ function handleAvatarError(type, roleId) {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
           </svg>
         </button>
-        <!-- 🌙 结束今天 / 日记按钮 -->
-        <button @click="handleEndDay" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition relative" title="结束今天 / 生成日记" :disabled="diary.isGenerating.value">
-          <span class="text-base" :class="{ 'animate-pulse': diary.isGenerating.value }">🌙</span>
-        </button>
+        <!-- 🌙 夜晚菜单按钮 -->
+        <div class="relative">
+          <button @click="showMoonMenu = !showMoonMenu" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition relative" title="🌙 夜晚菜单" :disabled="diary.isGenerating.value">
+            <span class="text-base" :class="{ 'animate-pulse': diary.isGenerating.value }">🌙</span>
+          </button>
+          <!-- 下拉菜单 -->
+          <Transition name="dropdown">
+            <div v-if="showMoonMenu" class="absolute right-0 top-full mt-2 w-48 glass bg-glass-dark rounded-xl border border-white/15 shadow-2xl overflow-hidden z-50">
+              <button @click="showMoonMenu = false; handleEndDay()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200">
+                <span>📔</span><span>结束今天（生成日记）</span>
+              </button>
+              <button @click="handleStartNewDay()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200">
+                <span>🌅</span><span>开启新的一天</span>
+              </button>
+              <div class="border-t border-white/10"></div>
+              <button @click="showMoonMenu = false; openDiaryHistory()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200">
+                <span>📖</span><span>查看历史日记</span>
+              </button>
+            </div>
+          </Transition>
+          <!-- 点击外部关闭 -->
+          <div v-if="showMoonMenu" class="fixed inset-0 z-40" @click="showMoonMenu = false"></div>
+        </div>
         <!-- 设置按钮 -->
         <button @click="showSettings = true" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="设置">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -456,6 +456,15 @@ function isCurrentMatch(originalIndex) {
             </div>
           </div>
         </template>
+
+        <!-- 🌅 天数分隔线 -->
+        <template v-else-if="msg.type === 'day-separator'">
+          <div class="day-separator">
+            <div class="day-separator-line"></div>
+            <span class="day-separator-label">{{ msg.content }}</span>
+            <div class="day-separator-line"></div>
+          </div>
+        </template>
       </template>
     </TransitionGroup>
 
