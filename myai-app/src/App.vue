@@ -45,19 +45,25 @@ async function handleEndDay() {
         // 群聊：弹出角色选择
         showDiaryRolePicker.value = true;
     } else {
-        // 单聊：直接生成
+        // 单聊：直接生成，先弹出加载界面
+        diaryDisplayList.value = [];
+        showDiaryModal.value = true;
         const role = appState.currentRole.value;
         const msgs = appState.messages.value;
         const entry = await diary.generateDiary(role, msgs);
         if (entry) {
             diaryDisplayList.value = [entry];
-            showDiaryModal.value = true;
+        } else {
+            showDiaryModal.value = false;
         }
     }
 }
 
 async function handleDiaryRolePick(role) {
     showDiaryRolePicker.value = false;
+    // 先弹出加载界面
+    diaryDisplayList.value = [];
+    showDiaryModal.value = true;
     const msgs = groupChat.groupMessages.value;
     const entry = await diary.generateDiary(role, msgs, {
         isGroup: true,
@@ -66,7 +72,8 @@ async function handleDiaryRolePick(role) {
     });
     if (entry) {
         diaryDisplayList.value = [entry];
-        showDiaryModal.value = true;
+    } else {
+        showDiaryModal.value = false;
     }
 }
 

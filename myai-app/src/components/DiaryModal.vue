@@ -131,16 +131,13 @@ function handleClose() {
     max-width: 480px;
     max-height: 85vh;
     overflow-y: auto;
+    isolation: isolate;
+    color: #3a2a1a;
 }
 
 .diary-paper {
     position: relative;
-    background: linear-gradient(180deg,
-        #fdf6ec 0%,
-        #faf0de 30%,
-        #f7ead2 60%,
-        #f5e4c8 100%
-    );
+    background-color: #faf0de;
     border-radius: 4px;
     padding: 32px 28px 24px;
     box-shadow:
@@ -148,15 +145,16 @@ function handleClose() {
         0 0 0 1px rgba(180, 150, 100, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.5),
         inset 0 -1px 0 rgba(180, 150, 100, 0.2);
-    /* 纸纹效果 */
+    /* 纸纹横线效果 */
     background-image:
+        linear-gradient(180deg, #fdf6ec 0%, #faf0de 30%, #f7ead2 60%, #f5e4c8 100%),
         repeating-linear-gradient(
             transparent,
             transparent 27px,
-            rgba(180, 160, 120, 0.15) 27px,
-            rgba(180, 160, 120, 0.15) 28px
+            rgba(180, 160, 120, 0.18) 27px,
+            rgba(180, 160, 120, 0.18) 28px
         );
-    background-position-y: 80px;
+    background-position-y: 0, 80px;
 }
 
 /* 纸张折痕 */
