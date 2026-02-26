@@ -226,8 +226,15 @@ export function parseDualLayerResponse(rawText) {
 
     // === 通关：剩余的才是正文 ===
     // 正文样式处理：应用完整的 formatRoleplayText
+    // v5.7 FIX: 检测已经被格式化的内容（包含 rp-action/rp-dialogue 等 span），
+    // 跳过二次处理避免 HTML 转义导致标签显示为文字
     if (content) {
-        content = formatRoleplayText(content);
+        if (content.includes('<span class="rp-') || content.includes('<span class=\\"rp-')) {
+            // 已经是格式化后的 HTML，直接使用
+            // 不做任何处理
+        } else {
+            content = formatRoleplayText(content);
+        }
     }
 
     return {

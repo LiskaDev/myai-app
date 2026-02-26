@@ -1857,3 +1857,135 @@ details.reasoning-block[open]>summary {
 .header-avatar.expr-avatar {
   transition: filter 0.5s ease, transform 0.3s ease;
 }
+
+/* ============== 📱 移动端适配 ============== */
+@media (max-width: 640px) {
+
+  /* --- Settings Modal: 可滚动 Tab 栏 --- */
+  .settings-panel nav {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap !important;
+    gap: 2px !important;
+    padding: 8px 8px !important;
+  }
+
+  .settings-panel nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settings-panel nav button {
+    flex: 0 0 auto;
+    min-width: 56px;
+    padding: 6px 8px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .settings-panel nav button .text-lg {
+    font-size: 1rem !important;
+  }
+
+  /* --- Settings Modal: 内容区紧凑间距 --- */
+  .settings-panel>div:last-child {
+    padding: 12px !important;
+  }
+
+  /* --- 已有功能紧凑布局 --- */
+  /* 头像缩小 */
+  .avatar,
+  .avatar-placeholder {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 1rem !important;
+  }
+
+  /* 消息区域减少边距 */
+  main.flex-1 {
+    padding: 8px !important;
+    gap: 8px !important;
+  }
+
+  /* 消息气泡减少内边距 */
+  .speech-bubble {
+    padding: 10px 14px !important;
+    border-radius: 16px !important;
+    border-top-left-radius: 4px !important;
+  }
+
+  .user-speech-bubble {
+    padding: 10px 14px !important;
+    border-radius: 16px !important;
+    border-top-right-radius: 4px !important;
+  }
+
+  /* 消息内容字体适配 */
+  .vn-body {
+    font-size: 0.9rem !important;
+    line-height: 1.7 !important;
+  }
+
+  /* 工具栏紧凑 */
+  .toolbar-inner {
+    padding: 6px 8px !important;
+    gap: 4px !important;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-btn {
+    padding: 5px 8px !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* 更多菜单位置自适应 */
+  .more-menu {
+    right: -8px;
+    min-width: 120px;
+  }
+
+  .more-menu-item {
+    padding: 8px 10px !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* 思维云调整 */
+  .thought-cloud {
+    padding: 8px 12px 8px 28px !important;
+    font-size: 0.82rem !important;
+    border-radius: 14px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* 推理面板 */
+  .reasoning-block {
+    margin-bottom: 8px;
+  }
+
+  /* 消息宽度 */
+  .message-bubble .max-w-\[80\%\] {
+    max-width: 88% !important;
+  }
+
+  /* Story Export Modal 适配 */
+  .story-export-modal .preview-body {
+    padding: 16px !important;
+    font-size: 0.88rem !important;
+  }
+
+  /* 侧边栏紧凑 */
+  .sidebar-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* 输入框区域 */
+  footer .glass {
+    margin: 4px 8px !important;
+    border-radius: 20px !important;
+  }
+
+  footer textarea {
+    font-size: 0.9rem !important;
+  }
+}
