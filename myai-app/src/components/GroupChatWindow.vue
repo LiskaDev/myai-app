@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick, computed, onMounted } from 'vue';
+import { ref, watch, nextTick, computed, onMounted, onBeforeUnmount } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
 import { parseDualLayerResponse, extractExpression } from '../utils/textParser';
 import RelationshipRadar from './RelationshipRadar.vue';
@@ -282,14 +282,6 @@ watch(() => props.currentGroup?.id, () => {
     }, 50));
 });
 
-onMounted(() => {
-    setTimeout(() => {
-        if (containerRef.value) {
-            containerRef.value.scrollTop = containerRef.value.scrollHeight;
-        }
-    }, 100);
-});
-
 function handleSend() {
     if (!directorInput.value.trim()) return;
     showMentionList.value = false;
@@ -346,6 +338,25 @@ function toggleThoughtTooltip(e, roleId) {
     e.stopPropagation();
     activeThoughtRoleId.value = activeThoughtRoleId.value === roleId ? null : roleId;
 }
+
+// 点击其他地方关闭 Tooltip
+function closeThoughtTooltip(e) {
+    if (activeThoughtRoleId.value && !e.target.closest('.thought-indicator') && !e.target.closest('.thought-tooltip')) {
+        activeThoughtRoleId.value = null;
+    }
+}
+onMounted(() => {
+    document.addEventListener('click', closeThoughtTooltip);
+    setTimeout(() => {
+        if (containerRef.value) {
+            containerRef.value.scrollTop = containerRef.value.scrollHeight;
+        }
+    }, 100);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener('click', closeThoughtTooltip);
+});
 </script>
 
 <template>
@@ -1187,10 +1198,10 @@ function toggleThoughtTooltip(e, roleId) {
 
 .thought-tooltip {
     position: absolute;
-    left: 50px;
-    top: 0;
+    left: -10px;
+    top: 52px;
     min-width: 160px;
-    max-width: 240px;
+    max-width: 220px;
     padding: 8px 12px;
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.95));
     backdrop-filter: blur(20px);
@@ -1200,7 +1211,7 @@ function toggleThoughtTooltip(e, roleId) {
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(147, 130, 220, 0.08);
     z-index: 6;
     opacity: 0;
-    transform: translateX(-8px) scale(0.95);
+    transform: translateY(-4px) scale(0.95);
     pointer-events: none;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     white-space: normal;
@@ -1210,20 +1221,20 @@ function toggleThoughtTooltip(e, roleId) {
 /* 点击切换显示（全平台统一） */
 .thought-tooltip-visible {
     opacity: 1 !important;
-    transform: translateX(0) scale(1) !important;
+    transform: translateY(0) scale(1) !important;
     pointer-events: auto !important;
 }
 
 .thought-tooltip::before {
     content: '';
     position: absolute;
-    left: -6px;
-    top: 12px;
+    top: -6px;
+    left: 16px;
     width: 8px;
     height: 8px;
     background: rgba(15, 23, 42, 0.92);
+    border-top: 1px solid rgba(147, 130, 220, 0.25);
     border-left: 1px solid rgba(147, 130, 220, 0.25);
-    border-bottom: 1px solid rgba(147, 130, 220, 0.25);
     transform: rotate(45deg);
 }
 
