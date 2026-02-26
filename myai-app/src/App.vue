@@ -177,16 +177,16 @@ function handleGlobalKeydown(e) {
 watch(isStreaming, (now, prev) => {
   if (prev && !now) sfx.play('notify');
 });
-// Group chat: distinguish director events from normal AI replies
+// Group chat: play 'notify' after EACH role completes (not just whole round)
+groupChat.setOnRoleComplete(() => {
+  sfx.play('notify');
+});
+// Director events: play 'event' when AI director finishes
 const pendingDirectorEvent = ref(false);
 watch(() => groupChat.isGroupStreaming.value, (now, prev) => {
-  if (prev && !now) {
-    if (pendingDirectorEvent.value) {
-      sfx.play('event');
-      pendingDirectorEvent.value = false;
-    } else {
-      sfx.play('notify');
-    }
+  if (prev && !now && pendingDirectorEvent.value) {
+    sfx.play('event');
+    pendingDirectorEvent.value = false;
   }
 });
 

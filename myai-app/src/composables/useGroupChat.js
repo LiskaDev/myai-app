@@ -5,6 +5,9 @@ import { parseDualLayerResponse, formatRoleplayText } from '../utils/textParser'
 
 const FETCH_TIMEOUT_MS = 60000; // 群聊超时 60s（多角色需要更长时间）
 
+// Callback for per-role completion (e.g. sound effects)
+let onRoleComplete = null;
+
 /**
  * 群聊核心组合式函数
  */
@@ -212,6 +215,9 @@ export function useGroupChat(appState) {
                 currentSpeakingRole.value = role.name;
 
                 await generateRoleResponse(role);
+
+                // Notify per-role completion (for sound effects, etc.)
+                if (onRoleComplete) onRoleComplete(role);
 
                 // 检查是否被中止
                 if (!isGroupStreaming.value) break;
@@ -967,5 +973,6 @@ Your personality and speaking style MUST be consistent with your character setti
         injectWorldEvent,
         sendWhisper,
         generateDirectorEvent,
+        setOnRoleComplete: (fn) => { onRoleComplete = fn; },
     };
 }
