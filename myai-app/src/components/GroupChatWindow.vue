@@ -1172,7 +1172,7 @@ function toggleThoughtTooltip(e, roleId) {
     justify-content: center;
     font-size: 0.5rem;
     cursor: pointer;
-    z-index: 31;
+    z-index: 5;
     border: 1.5px solid rgba(15, 23, 42, 0.9);
     animation: indicatorPulse 2s ease-in-out infinite;
     transition: transform 0.2s ease;
@@ -1198,7 +1198,7 @@ function toggleThoughtTooltip(e, roleId) {
     border: 1px solid rgba(147, 130, 220, 0.25);
     border-radius: 12px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(147, 130, 220, 0.08);
-    z-index: 30;
+    z-index: 6;
     opacity: 0;
     transform: translateX(-8px) scale(0.95);
     pointer-events: none;
@@ -1248,12 +1248,12 @@ function toggleThoughtTooltip(e, roleId) {
 
 /* === v5.3: 漂浮思想气泡 === */
 .floating-thoughts-container {
-    position: fixed;
-    top: 60px;
+    position: absolute;
+    top: 8px;
     right: 0;
     width: 320px;
-    max-height: calc(100vh - 120px);
-    z-index: 25;
+    max-height: calc(100vh - 200px);
+    z-index: 5;
     pointer-events: none;
     display: flex;
     flex-direction: column;

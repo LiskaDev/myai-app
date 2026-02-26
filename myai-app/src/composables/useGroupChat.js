@@ -846,6 +846,15 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
                     role: 'system',
                     content: `[World Event] ${msg.content}`,
                 });
+            } else if (msg.role === 'whisper') {
+                // 悄悄话：仅目标角色可见，内联在对话流中
+                if (msg.targetRoleId === targetRole.id) {
+                    apiMessages.push({
+                        role: 'user',
+                        content: `[🤫 导演悄悄话 - 只有你能看到] ${msg.content}（请在下次回复中回应这条悄悄话的内容）`,
+                    });
+                }
+                // 其他角色看不到悄悄话，跳过
             } else if (msg.role === 'assistant') {
                 if (msg.roleId === targetRole.id) {
                     // 自己说的 → assistant（让 AI 知道这是自己之前说的）
@@ -860,15 +869,6 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
                         content: `[${msg.roleName || '角色'}]: ${msg.rawContent || msg.content}`,
                     });
                 }
-            }
-        }
-        // 注入仅该角色可见的悄悄话
-        for (const msg of recentMessages) {
-            if (msg.role === 'whisper' && msg.targetRoleId === targetRole.id) {
-                apiMessages.push({
-                    role: 'system',
-                    content: `[Secret Whisper from Director - Only you can see this] ${msg.content}`,
-                });
             }
         }
 
