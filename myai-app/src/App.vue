@@ -112,6 +112,17 @@ function handleStartNewDay() {
     const currentDay = getCurrentDay(msgs);
     const newDay = currentDay + 1;
 
+    // 查找最近一篇日记内容
+    const allDiaries = diary.diaries.value;
+    let lastDiary = null;
+    if (isGroup) {
+        const gid = groupChat.currentGroupId.value;
+        lastDiary = allDiaries.filter(d => d.groupId === gid).sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+    } else {
+        const rid = appState.currentRoleId.value;
+        lastDiary = allDiaries.filter(d => d.roleId === rid && !d.groupId).sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+    }
+
     // 插入天数分隔线
     const separator = {
         role: 'system',
@@ -121,10 +132,15 @@ function handleStartNewDay() {
         timestamp: new Date().toISOString(),
     };
 
-    // 插入一条系统消息告诉 AI 新的一天开始了
+    // 构建系统提示（包含日记回忆）
+    let hintContent = `[系统提示：时间已经过去了一晚，现在是新的一天（第${newDay}天）的早晨。请以新的一天的状态开始回应，可以提及昨天发生的事情。]`;
+    if (lastDiary) {
+        hintContent += `\n[昨晚${lastDiary.roleName}在日记中写道：「${lastDiary.content}」——请自然地延续日记中的情绪和想法，但不要直接提及"日记"这个词。]`;
+    }
+
     const systemHint = {
         role: 'user',
-        content: `[系统提示：时间已经过去了一晚，现在是新的一天（第${newDay}天）的早晨。请以新的一天的状态开始回应，可以提及昨天发生的事情。]`,
+        content: hintContent,
     };
 
     msgs.push(separator);
