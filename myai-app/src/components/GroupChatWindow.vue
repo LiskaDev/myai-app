@@ -34,6 +34,7 @@ const expandedPassGroups = ref(new Set());
 
 // 世界事件面板
 const showEventPanel = ref(false);
+const showCommandMenu = ref(false);
 const customEventText = ref('');
 
 const WORLD_EVENTS = [
@@ -446,23 +447,14 @@ function handleSend() {
         </div>
     </div>
 
-    <!-- 角色快捷栏 -->
-    <div v-if="messages.length > 0" class="flex items-center px-4 py-2 space-x-2 border-t border-white/5 overflow-x-auto flex-shrink-0">
-        <span class="text-xs text-gray-500 whitespace-nowrap">让谁说：</span>
-        <button v-for="p in participants" :key="p.id"
-                @click="$emit('speak-as-role', p.id)"
-                :disabled="isStreaming"
-                class="flex items-center space-x-1 px-2.5 py-1 rounded-full border border-white/10 hover:bg-white/10 transition text-xs whitespace-nowrap disabled:opacity-40 flex-shrink-0"
-                :style="{ borderColor: getRoleColor(p.id) + '40' }">
-            <div v-if="p.avatar" class="w-5 h-5 rounded-full overflow-hidden"
-                 :style="{ border: `1.5px solid ${getRoleColor(p.id)}` }">
-                <img :src="p.avatar" class="w-full h-full object-cover" />
-            </div>
-            <div v-else class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
-                 :style="{ background: getRoleColor(p.id) }">🎭</div>
-            <span :style="{ color: getRoleColor(p.id) }">{{ p.name }}</span>
+    <!-- ▁▁ 悟空按钮：▆️ 继续一轮 (FAB) -->
+    <Transition name="fab">
+        <button v-if="messages.length > 0 && !isStreaming"
+                @click="$emit('continue-round')"
+                class="group-fab">
+            ▶️ 继续
         </button>
-    </div>
+    </Transition>
 
     <!-- 底部输入区 -->
     <footer class="glass-strong bg-glass-dark border-t border-white/10 p-3 flex-shrink-0">
@@ -568,8 +560,14 @@ function handleSend() {
                 </div>
             </div>
 
-            <!-- 主输入行：textarea + 发送/停止 -->
+            <!-- 主输入行：⚡ + textarea + 发送/停止 -->
             <form @submit.prevent="handleSend" class="flex items-end space-x-2">
+                <!-- ⚡ 命令菜单按钮 -->
+                <button type="button" @click="showCommandMenu = !showCommandMenu"
+                        class="cmd-menu-trigger flex-shrink-0"
+                        :class="{ active: showCommandMenu || showEventPanel || showWhisperPanel }">
+                    ⚡
+                </button>
                 <div class="flex-1 relative">
                     <textarea ref="inputRef" v-model="directorInput"
                         @keydown.enter.exact.prevent="handleSend"
@@ -580,16 +578,13 @@ function handleSend() {
                         class="w-full glass-light bg-glass-light text-gray-100 rounded-2xl px-4 py-3 resize-none input-focus outline-none border border-white/10 focus:border-primary transition max-h-32 overflow-y-auto text-shadow-light group-chat-input"
                         style="min-height: 48px;"></textarea>
                 </div>
-                <!-- 发送按钮 -->
                 <button type="submit" :disabled="!directorInput.trim() || isStreaming"
                         class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                        v-if="!isStreaming"
-                        title="发送导演消息">
+                        v-if="!isStreaming" title="发送导演消息">
                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                     </svg>
                 </button>
-                <!-- 停止按钮 -->
                 <button type="button" @click="$emit('stop-generation')"
                         class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center transition flex-shrink-0"
                         v-if="isStreaming" title="停止生成">
@@ -598,34 +593,24 @@ function handleSend() {
                     </svg>
                 </button>
             </form>
-            <!-- 功能按钮行 -->
-            <div class="group-footer-actions">
-                <!-- 🌍 世界事件 -->
-                <button type="button"
-                        @click="toggleEventPanel"
-                        :disabled="isStreaming"
-                        class="group-action-btn disabled:opacity-40"
-                        :class="showEventPanel ? 'active-event' : ''">
-                    <span>🌍</span>
-                    <span class="group-action-label">事件</span>
-                </button>
-                <!-- 🤫 悄悄话 -->
-                <button type="button"
-                        @click="toggleWhisperPanel"
-                        :disabled="isStreaming"
-                        class="group-action-btn disabled:opacity-40"
-                        :class="showWhisperPanel ? 'active-whisper' : ''">
-                    <span>🤫</span>
-                    <span class="group-action-label">悄悄话</span>
-                </button>
-                <!-- ▶️ 继续一轮 -->
-                <button type="button" @click="$emit('continue-round')"
-                        :disabled="isStreaming"
-                        class="group-action-btn disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span>▶️</span>
-                    <span class="group-action-label">继续一轮</span>
-                </button>
-            </div>
+
+            <!-- ⚡ 命令菜单弹出 -->
+            <Transition name="dropdown">
+                <div v-if="showCommandMenu" class="cmd-menu">
+                    <button class="cmd-menu-item" @click="toggleEventPanel(); showCommandMenu = false;">
+                        <span>🌍</span><span>世界事件</span>
+                    </button>
+                    <button class="cmd-menu-item" @click="toggleWhisperPanel(); showCommandMenu = false;">
+                        <span>🤫</span><span>悄悄话</span>
+                    </button>
+                    <div class="cmd-menu-divider"></div>
+                    <button v-for="p in participants" :key="p.id"
+                            class="cmd-menu-item" @click="$emit('speak-as-role', p.id); showCommandMenu = false;">
+                        <span class="cmd-role-dot" :style="{ background: getRoleColor(p.id) }"></span>
+                        <span>让 {{ p.name }} 说</span>
+                    </button>
+                </div>
+            </Transition>
         </div>
     </footer>
 </template>
@@ -882,52 +867,85 @@ function handleSend() {
     padding: 12px 16px;
 }
 
-/* ============== 群聊底部功能按钮行 ============== */
-.group-footer-actions {
+/* ============== Command Menu & FAB ============== */
+.cmd-menu-trigger {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 1.2rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
-
-.group-action-btn {
-    display: inline-flex;
+.cmd-menu-trigger:hover, .cmd-menu-trigger.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.4);
+}
+.cmd-menu {
+    margin-top: 8px;
+    background: rgba(20, 20, 35, 0.95);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 4px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+.cmd-menu-item {
+    display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: none;
+    background: none;
+    color: rgba(220, 220, 240, 0.85);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.cmd-menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+.cmd-menu-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 4px 10px;
+}
+.cmd-role-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.group-fab {
+    position: absolute;
+    right: 16px;
+    bottom: 80px;
     padding: 8px 16px;
     border-radius: 20px;
+    background: rgba(99, 102, 241, 0.25);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    color: rgba(220, 220, 240, 0.9);
     font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.7);
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.2s ease;
     cursor: pointer;
-    white-space: nowrap;
+    transition: all 0.2s ease;
+    z-index: 10;
 }
-
-.group-action-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    color: white;
-    border-color: rgba(255, 255, 255, 0.2);
+.group-fab:hover {
+    background: rgba(99, 102, 241, 0.4);
 }
-
-.group-action-btn:active {
-    transform: scale(0.95);
+.fab-enter-active, .fab-leave-active {
+    transition: all 0.25s ease;
 }
-
-.group-action-btn.active-event {
-    background: rgba(16, 185, 129, 0.2);
-    border-color: rgba(16, 185, 129, 0.4);
-    color: #6ee7b7;
-}
-
-.group-action-btn.active-whisper {
-    background: rgba(147, 51, 234, 0.2);
-    border-color: rgba(147, 51, 234, 0.4);
-    color: #c4b5fd;
+.fab-enter-from, .fab-leave-to {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
 }
 
 .group-action-label {

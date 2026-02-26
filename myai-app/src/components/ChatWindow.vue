@@ -50,6 +50,7 @@ const emit = defineEmits([
 
 const containerRef = ref(null);
 const searchInputRef = ref(null);
+const moreMenuIndex = ref(null);
 
 defineExpose({
   get scrollTop() {
@@ -416,44 +417,33 @@ function isCurrentMatch(originalIndex) {
 
                 <div class="message-toolbar" :class="{ 'active': activeMessageIndex === getOriginalIndex(visibleIndex) }">
                   <div class="toolbar-inner">
-                    <button class="toolbar-btn tts"
-                            :class="{ 'playing': ttsState?.playingIndex === getOriginalIndex(visibleIndex) }"
-                            @click.stop="$emit('play-tts', getOriginalIndex(visibleIndex), msg.rawContent || msg.content)">
-                      <template v-if="ttsState?.playingIndex === getOriginalIndex(visibleIndex)">
-                        <div class="tts-wave">
-                          <span></span><span></span><span></span><span></span>
-                        </div>
-                        停止
-                      </template>
-                      <template v-else>🔊 朗读</template>
-                    </button>
-                    <button class="toolbar-btn pin"
-                            :class="{ 'pinned': memoryHelpers.isMessagePinned(getOriginalIndex(visibleIndex)) }"
-                            @click.stop="memoryHelpers.toggleMessagePin(getOriginalIndex(visibleIndex))">
-                      📌 {{ memoryHelpers.isMessagePinned(getOriginalIndex(visibleIndex)) ? '已记忆' : '记忆' }}
-                    </button>
                     <button class="toolbar-btn" @click.stop="$emit('start-edit', getOriginalIndex(visibleIndex))">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                      </svg>
-                      编辑
+                      ✏️ 编辑
                     </button>
                     <button class="toolbar-btn regenerate" @click.stop="$emit('regenerate', getOriginalIndex(visibleIndex))">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                      </svg>
-                      重写
+                      🔄 重写
                     </button>
-                    <button class="toolbar-btn fork" @click.stop="$emit('fork-at', getOriginalIndex(visibleIndex))">
-                      🔀 分叉
-                    </button>
-                    <button class="toolbar-btn delete" @click.stop="$emit('delete-message', getOriginalIndex(visibleIndex))">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                      </svg>
-                      删除
+                    <button class="toolbar-btn more-btn" @click.stop="moreMenuIndex = moreMenuIndex === getOriginalIndex(visibleIndex) ? null : getOriginalIndex(visibleIndex)">
+                      ···
                     </button>
                   </div>
+                  <Transition name="dropdown">
+                    <div v-if="moreMenuIndex === getOriginalIndex(visibleIndex)" class="more-menu" @click.stop>
+                      <button class="more-menu-item" @click.stop="$emit('play-tts', getOriginalIndex(visibleIndex), msg.rawContent || msg.content); moreMenuIndex = null">
+                        <span>🔊</span><span>朗读</span>
+                      </button>
+                      <button class="more-menu-item" :class="{ pinned: memoryHelpers.isMessagePinned(getOriginalIndex(visibleIndex)) }" @click.stop="memoryHelpers.toggleMessagePin(getOriginalIndex(visibleIndex)); moreMenuIndex = null">
+                        <span>📌</span><span>{{ memoryHelpers.isMessagePinned(getOriginalIndex(visibleIndex)) ? '已记忆' : '记忆' }}</span>
+                      </button>
+                      <button class="more-menu-item" @click.stop="$emit('fork-at', getOriginalIndex(visibleIndex)); moreMenuIndex = null">
+                        <span>🔀</span><span>分叉</span>
+                      </button>
+                      <div class="more-menu-divider"></div>
+                      <button class="more-menu-item delete" @click.stop="$emit('delete-message', getOriginalIndex(visibleIndex)); moreMenuIndex = null">
+                        <span>🗑️</span><span>删除</span>
+                      </button>
+                    </div>
+                  </Transition>
                 </div>
               </div>
             </div>

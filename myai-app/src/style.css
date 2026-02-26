@@ -72,11 +72,11 @@ body {
 }
 
 .bg-glass-message {
-  background: rgba(30, 30, 46, 0.85);
+  background: rgba(30, 30, 46, 0.6);
 }
 
 .bg-glass-user {
-  background: rgba(99, 102, 241, 0.85);
+  background: rgba(99, 102, 241, 0.7);
 }
 
 /* ============== 文字阴影 ============== */
@@ -309,6 +309,7 @@ body {
 
 /* ============== Message Toolbar ============== */
 .message-toolbar {
+  position: relative;
   max-height: 0;
   overflow: hidden;
   opacity: 0;
@@ -317,7 +318,8 @@ body {
 }
 
 .message-toolbar.active {
-  max-height: 60px;
+  max-height: 200px;
+  overflow: visible;
   opacity: 1;
   margin-top: 8px;
 }
@@ -382,6 +384,77 @@ body {
 .toolbar-btn.tts.playing {
   background: rgba(16, 185, 129, 0.4);
   color: white;
+}
+
+/* More menu (overflow actions) */
+.toolbar-btn.more-btn {
+  font-weight: bold;
+  letter-spacing: 2px;
+  font-size: 1rem;
+  min-width: 36px;
+}
+
+.more-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 140px;
+  background: rgba(20, 20, 35, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 4px;
+  z-index: 50;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.more-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: rgba(220, 220, 240, 0.85);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.more-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.more-menu-item.delete {
+  color: rgba(239, 68, 68, 0.85);
+}
+
+.more-menu-item.delete:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.more-menu-item.pinned {
+  color: rgba(99, 102, 241, 0.9);
+}
+
+.more-menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 8px;
+}
+
+/* Dropdown transition */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 /* ============== Visual Novel Styles ============== */
@@ -1461,7 +1534,8 @@ details.reasoning-block[open]>summary {
 
   /* === Input area === */
   textarea {
-    font-size: 16px !important; /* prevent iOS auto-zoom */
+    font-size: 16px !important;
+    /* prevent iOS auto-zoom */
   }
 
   /* Single chat footer */
