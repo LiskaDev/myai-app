@@ -83,11 +83,15 @@ function handleMarkDiaryRead(diaryId) {
 }
 
 function openDiaryHistory() {
-    const roleId = groupChat.isGroupMode.value ? null : appState.currentRoleId.value;
-    if (roleId) {
-        diaryDisplayList.value = diary.getDiariesForRole(roleId);
+    if (groupChat.isGroupMode.value) {
+        // 群聊：只显示当前群的日记
+        const gid = groupChat.currentGroupId.value;
+        diaryDisplayList.value = diary.diaries.value
+            .filter(d => d.groupId === gid)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
     } else {
-        diaryDisplayList.value = diary.diaries.value.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+        // 单聊：只显示当前角色的日记
+        diaryDisplayList.value = diary.getDiariesForRole(appState.currentRoleId.value);
     }
     if (diaryDisplayList.value.length === 0) {
         appState.showToast?.('还没有日记哦');
