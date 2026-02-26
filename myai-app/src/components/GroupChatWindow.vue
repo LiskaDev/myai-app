@@ -936,20 +936,26 @@ function handleSend() {
 .group-fab {
     position: absolute;
     right: 16px;
-    bottom: 80px;
-    padding: 8px 16px;
-    border-radius: 20px;
-    background: rgba(99, 102, 241, 0.25);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(99, 102, 241, 0.35);
-    color: rgba(220, 220, 240, 0.9);
-    font-size: 0.8rem;
+    bottom: 76px;
+    padding: 10px 20px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
     z-index: 10;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.45), 0 0 40px rgba(139, 92, 246, 0.15);
+    letter-spacing: 0.5px;
 }
 .group-fab:hover {
-    background: rgba(99, 102, 241, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(99, 102, 241, 0.6), 0 0 50px rgba(139, 92, 246, 0.25);
+}
+.group-fab:active {
+    transform: scale(0.95);
 }
 /* Upward pop animation */
 .cmd-pop-enter-active, .cmd-pop-leave-active {
