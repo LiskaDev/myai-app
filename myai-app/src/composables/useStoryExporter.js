@@ -69,7 +69,7 @@ export function formatStorySegment(text, roleName, roleColor) {
 
     // 格式化 *动作* → 斜体灰紫色
     html = html.replace(/\*([^*]+)\*/g,
-        '<em style="color:#c4a882;font-style:italic;">$1</em>');
+        '<em style="color:#94a3b8;font-style:italic;">$1</em>');
 
     // 格式化 "对话" → 正常白色
     html = html.replace(/"([^"]+)"/g, '"$1"');
@@ -258,7 +258,7 @@ body {
     color:#ddd8cc;
 }
 .msg-content em {
-    color:#c4a882;
+    color:#94a3b8;
     font-style:italic;
 }
 /* Day separator */
@@ -287,8 +287,8 @@ body {
 .inner-thought {
     margin:10px 0;
     padding:10px 16px;
-    border-left:2px solid rgba(196,168,130,0.2);
-    color:rgba(196,168,130,0.7);
+    border-left:2px solid rgba(148,163,184,0.2);
+    color:rgba(148,163,184,0.65);
     font-style:italic;
     font-size:0.92em;
     line-height:1.7;
