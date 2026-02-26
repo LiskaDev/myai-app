@@ -248,6 +248,90 @@ ${rawContent}`;
         }
     }
 
+    // 🗜️ 智能压缩：当记忆超过 20 条时，将最早的 10 条压缩为一条摘要
+    const COMPRESS_THRESHOLD = 20;
+    const COMPRESS_BATCH = 10;
+    let isCompressing = false;
+
+    async function compressOldMemories(roleId) {
+        if (isCompressing) return;
+
+        const roleIndex = roleList.value.findIndex(r => r.id === (roleId || currentRoleId.value));
+        if (roleIndex === -1) return;
+
+        const role = roleList.value[roleIndex];
+        const memories = role.manualMemories || [];
+        if (memories.length <= COMPRESS_THRESHOLD) return;
+
+        if (!globalSettings.apiKey) return;
+
+        isCompressing = true;
+
+        try {
+            // 取最早的 COMPRESS_BATCH 条
+            const oldMemories = memories.slice(0, COMPRESS_BATCH);
+            const memoryText = oldMemories
+                .map((m, i) => `${i + 1}. ${m.content}`)
+                .join('\n');
+
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const model = globalSettings.model?.includes('reasoner')
+                ? 'deepseek-chat' : (globalSettings.model || 'deepseek-chat');
+
+            const response = await fetch(`${baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model,
+                    max_tokens: 200,
+                    temperature: 0.3,
+                    messages: [{
+                        role: 'user',
+                        content: `请将以下${COMPRESS_BATCH}条角色记忆压缩成1-2条精炼的事实陈述，保留最重要的信息（关键事件、关系变化、承诺），丢弃琐碎细节。总共不超过80字。直接输出压缩后的内容，每条一行，不要编号。\n\n${memoryText}`,
+                    }],
+                }),
+                signal: AbortSignal.timeout(20000),
+            });
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+            const compressed = data.choices?.[0]?.message?.content?.trim();
+            if (!compressed) return;
+
+            // 用压缩摘要替换最早的 COMPRESS_BATCH 条
+            const compressedEntries = compressed.split('\n').filter(l => l.trim()).map(line => ({
+                content: `[历史摘要] ${line.trim()}`,
+                role: 'system',
+                timestamp: Date.now(),
+                source: 'compressed',
+                isCustom: true,
+            }));
+
+            // 移除旧的，插入压缩摘要到开头
+            role.manualMemories = [...compressedEntries, ...memories.slice(COMPRESS_BATCH)];
+            saveData();
+
+            console.log(`[MemoryCompress] ✅ 压缩了 ${COMPRESS_BATCH} 条旧记忆 → ${compressedEntries.length} 条摘要`);
+            showToast?.(`🗜️ 已自动压缩 ${COMPRESS_BATCH} 条旧记忆`);
+        } catch {
+            // 静默失败
+        } finally {
+            isCompressing = false;
+        }
+    }
+
+    // 检查并触发压缩（供外部调用）
+    function checkAndCompressMemories(roleId) {
+        const role = roleList.value.find(r => r.id === (roleId || currentRoleId.value));
+        if (role && (role.manualMemories || []).length > COMPRESS_THRESHOLD) {
+            compressOldMemories(roleId).catch(() => { });
+        }
+    }
+
     return {
         isMessagePinned,
         toggleMessagePin,
@@ -258,5 +342,6 @@ ${rawContent}`;
         cancelEditMemory,
         toggleMemoryExpand,
         refineMemoryWithAI,
+        checkAndCompressMemories,
     };
 }

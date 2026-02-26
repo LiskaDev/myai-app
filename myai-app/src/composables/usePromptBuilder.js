@@ -105,21 +105,28 @@ Remember: You are an actor playing a role. The USER is the co-author, not someon
             });
         }
 
-        // Step 4: Inject Manual Memories
-        const manualMemories = role.manualMemories || [];
+        // Step 4: Inject Manual Memories (capped at 20 to prevent token explosion)
+        const allMemories = role.manualMemories || [];
+        const MAX_MEMORIES = 20;
+        const manualMemories = allMemories.length > MAX_MEMORIES
+            ? allMemories.slice(-MAX_MEMORIES)
+            : allMemories;
         if (manualMemories.length > 0) {
             const memoryText = manualMemories
                 .map((m, i) => {
-                    const roleLabel = m.role === 'user' ? '用户' : '角色';
+                    const roleLabel = m.source === 'group' ? '群聊' : (m.role === 'user' ? '用户' : '角色');
                     const contentPreview = m.content.length > 300
                         ? m.content.substring(0, 300) + '...'
                         : m.content;
                     return `${i + 1}. [${roleLabel}] ${contentPreview}`;
                 })
                 .join('\n');
+            const omittedNote = allMemories.length > MAX_MEMORIES
+                ? `\n（还有 ${allMemories.length - MAX_MEMORIES} 条更早的记忆已被压缩省略）`
+                : '';
             apiMessages.push({
                 role: 'system',
-                content: `[重要记忆 - 请始终记住以下内容]\n${memoryText}`,
+                content: `[重要记忆 - 请始终记住以下内容]\n${memoryText}${omittedNote}`,
             });
         }
 

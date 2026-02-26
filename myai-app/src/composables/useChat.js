@@ -2,6 +2,7 @@ import { parseDualLayerResponse, formatRoleplayText } from '../utils/textParser'
 import { usePromptBuilder } from './usePromptBuilder';
 import { useAutoSummary } from './useAutoSummary';
 import { useUserPersona } from './useUserPersona';
+import { useMemory } from './useMemory';
 
 // 🛡️ 超时配置
 const FETCH_TIMEOUT_MS = 30000; // 30秒超时
@@ -26,6 +27,7 @@ export function useChat(appState) {
     // 导入拆分后的子模块
     const { constructPrompt } = usePromptBuilder(appState);
     const { checkAndTriggerSummary } = useAutoSummary(appState);
+    const { checkAndCompressMemories } = useMemory(appState);
 
     // 发送消息
     async function sendMessage() {
@@ -64,6 +66,8 @@ export function useChat(appState) {
             await chat(input);
             // 🧠 对话完成后检查是否需要自动摘要
             checkAndTriggerSummary();
+            // 🗄️ 检查是否需要压缩旧记忆
+            checkAndCompressMemories();
         } catch (error) {
             if (error.name !== 'AbortError') {
                 // 🛡️ 友好的错误提示
