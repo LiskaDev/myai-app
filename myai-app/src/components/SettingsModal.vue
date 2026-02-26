@@ -20,7 +20,7 @@ const props = defineProps({
   participants: Array,
 });
 
-defineEmits([
+const emit = defineEmits([
   'close',
   'save-data',
   'load-data',
@@ -34,7 +34,8 @@ defineEmits([
   'save-edit-memory',
   'cancel-edit-memory',
   'toggle-memory-expand',
-  'refine-memory'
+  'refine-memory',
+  'show-toast'
 ]);
 
 // Tab 系统
@@ -83,7 +84,7 @@ const activeTab = ref(props.isGroupMode ? 'general' : 'role');
 
       <!-- ========== 角色 Tab ========== -->
       <template v-if="activeTab === 'role' && !isGroupMode">
-        <RoleBasicSettings :currentRole="currentRole" />
+        <RoleBasicSettings :currentRole="currentRole" :globalSettings="globalSettings" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
         <RoleAdvancedSettings :currentRole="currentRole" :availableVoices="availableVoices" />
         <CharacterDepthSettings :currentRole="currentRole" />
         <ParameterSettings :currentRole="currentRole" />

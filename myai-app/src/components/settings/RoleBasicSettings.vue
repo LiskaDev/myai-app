@@ -1,7 +1,47 @@
 <script setup>
-defineProps({
-  currentRole: Object
+import { ref } from 'vue';
+import { generateRoleFromDescription } from '../../composables/useRoleGenerator';
+
+const props = defineProps({
+  currentRole: Object,
+  globalSettings: Object
 });
+
+const emit = defineEmits(['show-toast']);
+
+// AI 生成状态
+const aiDescription = ref('');
+const isGenerating = ref(false);
+
+async function handleGenerate() {
+  if (!aiDescription.value.trim() || isGenerating.value) return;
+
+  isGenerating.value = true;
+
+  const result = await generateRoleFromDescription(aiDescription.value, {
+    baseUrl: props.globalSettings?.baseUrl,
+    apiKey: props.globalSettings?.apiKey,
+  });
+
+  isGenerating.value = false;
+
+  if (result.success) {
+    // 填充所有字段到当前角色
+    const fields = [
+      'name', 'systemPrompt', 'speakingStyle', 'appearance',
+      'secret', 'worldLogic', 'relationship', 'firstMessage', 'styleGuide'
+    ];
+    for (const field of fields) {
+      if (result.data[field]) {
+        props.currentRole[field] = result.data[field];
+      }
+    }
+    aiDescription.value = '';
+    emit('show-toast', '✨ 角色生成成功！可自由修改各字段', 'info');
+  } else {
+    emit('show-toast', result.error || '生成失败，请重试', 'error');
+  }
+}
 </script>
 
 <template>
@@ -12,6 +52,33 @@ defineProps({
     </h3>
 
     <div class="space-y-4">
+      <!-- ✨ AI 一句话生成角色 -->
+      <div class="ai-gen-card">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-base">✨</span>
+          <label class="text-sm font-medium ai-gen-label">AI 一键生成</label>
+          <span class="ml-auto text-xs text-gray-500">描述你想要的角色，AI 帮你填好一切</span>
+        </div>
+        <div class="flex gap-2">
+          <input 
+            v-model="aiDescription"
+            type="text"
+            :disabled="isGenerating"
+            placeholder="例如：一个傲娇的赛博朋克黑客少女"
+            class="flex-1 glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-amber-500/50 transition text-shadow-light disabled:opacity-50"
+            @keydown.enter.prevent="handleGenerate"
+          >
+          <button
+            @click="handleGenerate"
+            :disabled="isGenerating || !aiDescription.trim()"
+            class="ai-gen-btn"
+          >
+            <span v-if="isGenerating" class="ai-gen-spinner"></span>
+            <span v-else>✨ 生成</span>
+          </button>
+        </div>
+      </div>
+
       <!-- 角色名称 -->
       <div class="basic-field">
         <div class="flex items-center gap-2 mb-1">
@@ -112,5 +179,93 @@ defineProps({
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+}
+
+/* ✨ AI Generation Card */
+.ai-gen-card {
+  padding: 14px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(168, 85, 247, 0.06));
+  border-radius: 14px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-gen-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.04), transparent);
+  animation: ai-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes ai-shimmer {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(50%); }
+}
+
+.ai-gen-card:hover {
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.08);
+}
+
+.ai-gen-card:focus-within {
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.ai-gen-label {
+  background: linear-gradient(135deg, #f59e0b, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.ai-gen-btn {
+  padding: 8px 18px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.8), rgba(168, 85, 247, 0.8));
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  min-width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-gen-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+}
+
+.ai-gen-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.ai-gen-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-gen-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: ai-spin 0.7s linear infinite;
+}
+
+@keyframes ai-spin {
+  to { transform: rotate(360deg); }
 }
 </style>

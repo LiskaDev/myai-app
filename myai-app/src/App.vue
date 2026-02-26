@@ -774,6 +774,7 @@ function handleAvatarError(type, roleId) {
       @cancel-edit-memory="cancelEditMemory"
       @toggle-memory-expand="toggleMemoryExpand"
       @refine-memory="refineMemoryWithAI"
+      @show-toast="showToast"
     />
 
     <!-- 导入数据模态框 -->
