@@ -485,7 +485,7 @@ export function useGroupChat(appState) {
 5. 不要用引号包裹整个输出`;
 
         const nullRule = forceGenerate
-            ? `\n6. 你必须生成一个事件，不允许回复NULL。导演主动请求了事件，请务必创造一个有趣的突发状况！`
+            ? `\n6. 【重要】导演已手动请求生成事件！你 **绝对不允许** 回复 NULL！无论如何都必须生成一个有趣的突发事件！这是强制命令！`
             : `\n6. 如果你觉得当前对话正处于高潮或不需要干预，请只回复 NULL`;
 
         const directorSystemPrompt = `你现在是这个群聊的"影子导演"（DM/主持人）。
@@ -533,11 +533,17 @@ ${recentChat || '\uff08\u6682\u65e0\u5bf9\u8bdd\u8bb0\u5f55\uff09'}
             }
 
             const data = await response.json();
-            const eventText = data.choices?.[0]?.message?.content?.trim();
+            let eventText = data.choices?.[0]?.message?.content?.trim();
 
-            if (!eventText || eventText === 'NULL' || eventText.toUpperCase() === 'NULL') {
+            // When forceGenerate, skip NULL check — user explicitly wants an event
+            if (!forceGenerate && (!eventText || eventText === 'NULL' || eventText.toUpperCase() === 'NULL')) {
                 showToast('\ud83c\udfac \u5f71\u5b50\u5bfc\u6f14\u5224\u65ad\uff1a\u5f53\u524d\u5267\u60c5\u53d1\u5c55\u826f\u597d\uff0c\u65e0\u9700\u5e72\u9884', 'info');
                 return;
+            }
+
+            // If forceGenerate but AI still returned NULL/empty, generate a fallback
+            if (!eventText || eventText.toUpperCase() === 'NULL') {
+                eventText = '\u4e0d\u77e5\u4ece\u54ea\u91cc\u4f20\u6765\u4e00\u58f0\u6e05\u810e\u7684\u58f0\u54cd\uff0c\u6240\u6709\u4eba\u90fd\u4e0d\u7ea6\u800c\u540c\u5730\u505c\u4e0b\u4e86\u52a8\u4f5c\uff0c\u9762\u9762\u76f8\u89d1\u3002';
             }
 
             // 注入为世界事件
