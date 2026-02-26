@@ -572,8 +572,12 @@ function handleSend() {
                     <!-- 向上弹出的悬浮菜单 -->
                     <Transition name="cmd-pop">
                         <div v-if="showCommandMenu" class="cmd-menu" @click.stop>
+                            <button class="cmd-menu-item cmd-ai-event" :disabled="isStreaming" @click="emit('generate-director-event'); showCommandMenu = false;">
+                                <span>🎬</span><span>AI 盲盒事件</span>
+                            </button>
+                            <div class="cmd-menu-divider"></div>
                             <button class="cmd-menu-item" @click="toggleEventPanel(); showCommandMenu = false;">
-                                <span>🌍</span><span>世界事件</span>
+                                <span>🌍</span><span>手动事件</span>
                             </button>
                             <button class="cmd-menu-item" @click="toggleWhisperPanel(); showCommandMenu = false;">
                                 <span>🤫</span><span>悄悄话</span>
@@ -781,6 +785,18 @@ function handleSend() {
 /* 消息操作工具栏 */
 .message-wrapper {
     position: relative;
+    animation: msg-slide-in 0.3s ease;
+}
+
+@keyframes msg-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .message-toolbar {
@@ -939,6 +955,18 @@ function handleSend() {
 }
 .cmd-menu-item:hover {
     background: rgba(255, 255, 255, 0.08);
+}
+.cmd-menu-item.cmd-ai-event {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.1));
+    color: #fbbf24;
+    font-weight: 600;
+}
+.cmd-menu-item.cmd-ai-event:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(234, 88, 12, 0.18));
+}
+.cmd-menu-item.cmd-ai-event:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 .cmd-menu-divider {
     height: 1px;
