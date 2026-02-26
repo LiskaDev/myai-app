@@ -3,6 +3,7 @@ import { computed, ref, watch, nextTick } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
 import { parseDualLayerResponse, getCustomStyleVars } from '../utils/textParser';
 import { useLongPress } from '../composables/useGestures';
+import BranchSwitcher from './BranchSwitcher.vue';
 
 const props = defineProps({
   messages: {
@@ -25,7 +26,9 @@ const props = defineProps({
   showSearch: Boolean,
   searchQuery: { type: String, default: '' },
   searchResults: { type: Array, default: () => [] },
-  currentMatchIndex: { type: Number, default: 0 }
+  currentMatchIndex: { type: Number, default: 0 },
+  branches: { type: Array, default: () => [] },
+  currentBranchId: { type: String, default: 'branch-main' }
 });
 
 const emit = defineEmits([
@@ -38,7 +41,11 @@ const emit = defineEmits([
   'update:search-query',
   'search-next',
   'search-prev',
-  'close-search'
+  'close-search',
+  'fork-at',
+  'switch-branch',
+  'rename-branch',
+  'delete-branch'
 ]);
 
 const containerRef = ref(null);
@@ -288,6 +295,15 @@ function isCurrentMatch(originalIndex) {
       </div>
     </Transition>
 
+    <!-- 分支切换器 -->
+    <BranchSwitcher
+        :branches="branches"
+        :current-branch-id="currentBranchId"
+        @switch="$emit('switch-branch', $event)"
+        @rename="(id, name) => $emit('rename-branch', id, name)"
+        @delete="$emit('delete-branch', $event)"
+    />
+
     <!-- 欢迎消息 / 开场白 -->
     <div v-if="messages.length === 0 && currentRole.firstMessage" class="message-bubble flex items-start space-x-3">
       <div v-if="currentRole.avatar" class="avatar">
@@ -427,6 +443,9 @@ function isCurrentMatch(originalIndex) {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                       </svg>
                       重写
+                    </button>
+                    <button class="toolbar-btn fork" @click.stop="$emit('fork-at', getOriginalIndex(visibleIndex))">
+                      🔀 分叉
                     </button>
                     <button class="toolbar-btn delete" @click.stop="$emit('delete-message', getOriginalIndex(visibleIndex))">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

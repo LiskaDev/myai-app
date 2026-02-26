@@ -17,6 +17,8 @@ export const PRESET_ROLES = [
         ttsVoice: '',
         chatHistory: [],
         manualMemories: [],
+        branches: [{ id: 'branch-main', name: '主线', parentBranchId: null, forkIndex: null, chatHistory: [], createdAt: Date.now() }],
+        activeBranchId: 'branch-main',
     },
     {
         id: generateUUID(),
@@ -33,6 +35,8 @@ export const PRESET_ROLES = [
         ttsVoice: '',
         chatHistory: [],
         manualMemories: [],
+        branches: [{ id: 'branch-main', name: '主线', parentBranchId: null, forkIndex: null, chatHistory: [], createdAt: Date.now() }],
+        activeBranchId: 'branch-main',
     },
 ];
 
@@ -53,6 +57,8 @@ export function createNewRoleData() {
         ttsVoice: '',
         chatHistory: [],
         manualMemories: [],
+        branches: [{ id: 'branch-main', name: '主线', parentBranchId: null, forkIndex: null, chatHistory: [], createdAt: Date.now() }],
+        activeBranchId: 'branch-main',
         // v5.5: Character Depth Fields (3D角色增强)
         speakingStyle: '',   // 说话风格
         secret: '',          // 内心秘密

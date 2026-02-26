@@ -6,6 +6,7 @@ import { useMemory } from './composables/useMemory';
 import { useTTS } from './composables/useTTS';
 import { useGestures } from './composables/useGestures';
 import { useGroupChat } from './composables/useGroupChat';
+import { useBranch } from './composables/useBranch';
 
 // Import Components
 import ChatWindow from './components/ChatWindow.vue';
@@ -23,6 +24,7 @@ const chatFunctions = useChat(appState);
 const memoryFunctions = useMemory(appState);
 const ttsFunctions = useTTS(appState);
 const groupChat = useGroupChat(appState);
+const branchFunctions = useBranch(appState);
 
 const showCreateGroupModal = ref(false);
 const showEditGroupModal = ref(false);
@@ -405,6 +407,8 @@ function handleAvatarError(type, roleId) {
         :search-query="searchQuery"
         :search-results="searchResults"
         :current-match-index="currentMatchIndex"
+        :branches="branchFunctions.branchList.value"
+        :current-branch-id="currentRole.activeBranchId || 'branch-main'"
         :class="{ 'blur-background': showSettings }"
         @toggle-select="handleToggleSelect"
         @toggle-thinking="handleToggleThinking"
@@ -416,6 +420,10 @@ function handleAvatarError(type, roleId) {
         @search-next="goToMatch('next')"
         @search-prev="goToMatch('prev')"
         @close-search="toggleSearch"
+        @fork-at="branchFunctions.forkAtMessage"
+        @switch-branch="branchFunctions.switchBranch"
+        @rename-branch="branchFunctions.renameBranch"
+        @delete-branch="branchFunctions.deleteBranch"
       />
 
       <!-- 底部输入区域（单聊） -->

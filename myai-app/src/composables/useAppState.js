@@ -75,12 +75,27 @@ export function useAppState() {
         return role || createNewRoleData();
     });
 
+    // 获取当前角色的活跃分支
+    function getActiveBranch(role) {
+        if (!role || !role.branches || role.branches.length === 0) return null;
+        return role.branches.find(b => b.id === role.activeBranchId) || role.branches[0];
+    }
+
     const messages = computed({
-        get: () => currentRole.value.chatHistory || [],
+        get: () => {
+            const branch = getActiveBranch(currentRole.value);
+            return branch ? branch.chatHistory : (currentRole.value.chatHistory || []);
+        },
         set: (value) => {
             const roleIndex = roleList.value.findIndex(r => r.id === currentRoleId.value);
             if (roleIndex !== -1) {
-                roleList.value[roleIndex].chatHistory = value;
+                const role = roleList.value[roleIndex];
+                const branch = getActiveBranch(role);
+                if (branch) {
+                    branch.chatHistory = value;
+                } else {
+                    role.chatHistory = value;
+                }
             }
         }
     });
@@ -154,6 +169,22 @@ export function useAppState() {
 
         if (savedRoles && savedRoles.length > 0) {
             roleList.value = savedRoles;
+
+            // v4.5.2: 自动迁移旧数据 — 没有 branches 的角色自动创建主线分支
+            for (const role of roleList.value) {
+                if (!role.branches || role.branches.length === 0) {
+                    role.branches = [{
+                        id: 'branch-main',
+                        name: '主线',
+                        parentBranchId: null,
+                        forkIndex: null,
+                        chatHistory: role.chatHistory || [],
+                        createdAt: Date.now(),
+                    }];
+                    role.activeBranchId = 'branch-main';
+                }
+            }
+
             // 恢复上次活跃的角色
             const session = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || '{}');
             const lastRoleId = session.currentRoleId;
