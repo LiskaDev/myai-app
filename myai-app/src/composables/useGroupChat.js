@@ -27,6 +27,7 @@ export function useGroupChat(appState) {
         showToast,
         showSidebar,
         showConfirmModal,
+        saveData,
     } = appState;
 
     // ============== 群聊状态 ==============
@@ -37,6 +38,7 @@ export function useGroupChat(appState) {
     const currentSpeakingRole = ref(null); // 当前正在说话的角色名
     const groupAbortController = ref(null);
     let isGroupSummarizing = false; // 防止重复触发群聊摘要
+    let directorMsgCount = 0; // 用于跟踪记忆同步触发频率
 
     // 当前群聊
     const currentGroup = computed(() => {
@@ -256,6 +258,8 @@ export function useGroupChat(appState) {
             checkAutoDirector();
             // v5.2: 一轮结束后分析对话更新关系矩阵
             analyzeRelationships();
+            // 🔗 跨场景记忆同步：将重要事件写入角色永久记忆
+            syncGroupEventsToMemory();
         }
     }
 
@@ -1020,6 +1024,121 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
             }
         } catch (error) {
             console.warn('[Relationship] 更新失败:', error.message);
+        }
+    }
+
+    // 🔗 跨场景记忆同步：将群聊重要事件写入角色永久记忆
+    async function syncGroupEventsToMemory() {
+        directorMsgCount++;
+        if (directorMsgCount % 6 !== 0) return; // 每 6 轮触发一次
+
+        const group = currentGroup.value;
+        if (!group || !globalSettings.apiKey) return;
+
+        const recentMsgs = group.chatHistory.slice(-10);
+        if (recentMsgs.filter(m => m.role === 'director' || m.role === 'assistant').length < 3) return;
+
+        const roleNames = participants.value.map(r => r.name).join('、');
+        const chatText = recentMsgs
+            .map(m => {
+                const speaker = m.role === 'director' ? '用户' : (m.roleName || '角色');
+                return `${speaker}：${(m.rawContent || m.content || '').substring(0, 200)}`;
+            })
+            .join('\n');
+
+        const prompt = `你是一个事件提取器，服务于 AI 角色扮演平台。
+
+群聊成员：用户、${roleNames}
+
+【待分析的对话片段】
+${chatText}
+
+【任务】
+判断这段对话中是否发生了对某个角色而言具有长期记忆价值的重要事件。
+重要事件的标准（满足其一即可）：
+- 用户对某角色表达了明确的情感（表白、道歉、承诺、争吵）
+- 某角色得知了关于用户的重要信息（秘密、身份、重大决定）
+- 群聊中发生了不可逆的剧情转折
+
+如果没有重要事件，返回：{"events": []}
+如果有，严格按以下 JSON 格式返回，不含其他内容：
+{
+  "events": [
+    {
+      "roleNames": ["小明"],
+      "memory": "[群聊记忆] 用户在群聊中向我表白，当时心跳加速。"
+    }
+  ]
+}
+
+注意：
+- roleNames 只填写该事件直接相关的角色名
+- memory 用角色第一人称书写，15-40字
+- 最多提取 3 个事件`;
+
+        try {
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const model = globalSettings.model?.includes('reasoner')
+                ? 'deepseek-chat' : (globalSettings.model || 'deepseek-chat');
+
+            const response = await fetch(`${baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model,
+                    max_tokens: 300,
+                    temperature: 0.2,
+                    messages: [{ role: 'user', content: prompt }],
+                }),
+                signal: AbortSignal.timeout(20000),
+            });
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+            const raw = data.choices?.[0]?.message?.content || '';
+            const cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+            const parsed = JSON.parse(cleaned);
+
+            if (!Array.isArray(parsed.events) || parsed.events.length === 0) return;
+
+            let syncCount = 0;
+            for (const event of parsed.events) {
+                if (!Array.isArray(event.roleNames) || !event.memory) continue;
+
+                for (const roleName of event.roleNames) {
+                    const role = participants.value.find(r => r.name === roleName);
+                    if (!role) continue;
+
+                    // 初始化 manualMemories
+                    if (!role.manualMemories) role.manualMemories = [];
+
+                    // 去重：检查是否已有语义相似的记忆
+                    const isDuplicate = role.manualMemories.some(
+                        m => m.content && m.content.includes(event.memory.replace('[群聊记忆] ', '').substring(0, 10))
+                    );
+                    if (isDuplicate) continue;
+
+                    role.manualMemories.push({
+                        content: event.memory,
+                        role: 'system',
+                        timestamp: Date.now(),
+                        source: 'group',
+                        groupName: group.name || '群聊',
+                    });
+                    syncCount++;
+                }
+            }
+
+            if (syncCount > 0) {
+                saveData(); // 显式保存角色数据
+                console.log(`[MemorySync] ✅ 已同步 ${syncCount} 条群聊记忆到角色数据`);
+            }
+        } catch {
+            // 静默失败
         }
     }
 

@@ -61,7 +61,7 @@ defineEmits([
               <div class="flex items-start gap-2">
                 <!-- Role Icon -->
                 <span class="flex-shrink-0 text-base mt-0.5">
-                  {{ memory.role === 'user' ? '👤' : (memory.isCustom ? '📝' : '🎭') }}
+                  {{ memory.source === 'group' ? '🔗' : (memory.role === 'user' ? '👤' : (memory.isCustom ? '📝' : '🎭')) }}
                 </span>
 
                 <!-- Content -->
@@ -73,6 +73,9 @@ defineEmits([
                      }">
                     {{ memory.content || '(空记忆)' }}
                   </p>
+                  <span v-if="memory.source === 'group'" class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-500/20">
+                    来自群聊{{ memory.groupName ? '：' + memory.groupName : '' }}
+                  </span>
                 </div>
               </div>
 
