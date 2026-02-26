@@ -29,6 +29,28 @@ const branchFunctions = useBranch(appState);
 const showCreateGroupModal = ref(false);
 const showEditGroupModal = ref(false);
 
+// Token pressure indicator
+const contextPressure = computed(() => {
+  if (groupChat.isGroupMode.value) {
+    const group = groupChat.currentGroup.value;
+    if (!group) return 0;
+    const firstRole = groupChat.participants.value[0];
+    const window = firstRole?.memoryWindow || 15;
+    const count = group.chatHistory?.length || 0;
+    return Math.min(1, count / (window * 2));
+  } else {
+    const window = currentRole.value?.memoryWindow || 15;
+    const count = messages.value?.length || 0;
+    return Math.min(1, count / (window * 2));
+  }
+});
+const pressureColor = computed(() => {
+  const p = contextPressure.value;
+  if (p < 0.5) return `hsl(${120 - p * 120}, 70%, 50%)`;
+  if (p < 0.8) return `hsl(${120 - p * 120}, 80%, 50%)`;
+  return `hsl(0, 80%, 55%)`;
+});
+
 // Mobile Gestures
 useGestures({
   onSwipeRight: () => { showSidebar.value = true; },
@@ -372,6 +394,11 @@ function handleAvatarError(type, roleId) {
         </button>
       </div>
     </header>
+
+    <!-- Token 压力条 -->
+    <div class="token-pressure-bar">
+      <div class="token-pressure-fill" :style="{ width: (contextPressure * 100) + '%', background: pressureColor }" :title="`${Math.round(contextPressure * 100)}% 记忆口用量`"></div>
+    </div>
 
     <!-- 侧边栏（角色列表） -->
     <RoleSidebar
