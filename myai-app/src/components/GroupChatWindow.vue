@@ -562,12 +562,31 @@ function handleSend() {
 
             <!-- 主输入行：⚡ + textarea + 发送/停止 -->
             <form @submit.prevent="handleSend" class="flex items-end space-x-2">
-                <!-- ⚡ 命令菜单按钮 -->
-                <button type="button" @click="showCommandMenu = !showCommandMenu"
-                        class="cmd-menu-trigger flex-shrink-0"
-                        :class="{ active: showCommandMenu || showEventPanel || showWhisperPanel }">
-                    ⚡
-                </button>
+                <!-- ⚡ 命令菜单包裹器 -->
+                <div class="cmd-menu-wrapper flex-shrink-0">
+                    <button type="button" @click="showCommandMenu = !showCommandMenu"
+                            class="cmd-menu-trigger"
+                            :class="{ active: showCommandMenu || showEventPanel || showWhisperPanel }">
+                        ⚡
+                    </button>
+                    <!-- 向上弹出的悬浮菜单 -->
+                    <Transition name="cmd-pop">
+                        <div v-if="showCommandMenu" class="cmd-menu" @click.stop>
+                            <button class="cmd-menu-item" @click="toggleEventPanel(); showCommandMenu = false;">
+                                <span>🌍</span><span>世界事件</span>
+                            </button>
+                            <button class="cmd-menu-item" @click="toggleWhisperPanel(); showCommandMenu = false;">
+                                <span>🤫</span><span>悄悄话</span>
+                            </button>
+                            <div class="cmd-menu-divider"></div>
+                            <button v-for="p in participants" :key="p.id"
+                                    class="cmd-menu-item" @click="$emit('speak-as-role', p.id); showCommandMenu = false;">
+                                <span class="cmd-role-dot" :style="{ background: getRoleColor(p.id) }"></span>
+                                <span>让 {{ p.name }} 说</span>
+                            </button>
+                        </div>
+                    </Transition>
+                </div>
                 <div class="flex-1 relative">
                     <textarea ref="inputRef" v-model="directorInput"
                         @keydown.enter.exact.prevent="handleSend"
@@ -594,23 +613,6 @@ function handleSend() {
                 </button>
             </form>
 
-            <!-- ⚡ 命令菜单弹出 -->
-            <Transition name="dropdown">
-                <div v-if="showCommandMenu" class="cmd-menu">
-                    <button class="cmd-menu-item" @click="toggleEventPanel(); showCommandMenu = false;">
-                        <span>🌍</span><span>世界事件</span>
-                    </button>
-                    <button class="cmd-menu-item" @click="toggleWhisperPanel(); showCommandMenu = false;">
-                        <span>🤫</span><span>悄悄话</span>
-                    </button>
-                    <div class="cmd-menu-divider"></div>
-                    <button v-for="p in participants" :key="p.id"
-                            class="cmd-menu-item" @click="$emit('speak-as-role', p.id); showCommandMenu = false;">
-                        <span class="cmd-role-dot" :style="{ background: getRoleColor(p.id) }"></span>
-                        <span>让 {{ p.name }} 说</span>
-                    </button>
-                </div>
-            </Transition>
         </div>
     </footer>
 </template>
@@ -868,6 +870,9 @@ function handleSend() {
 }
 
 /* ============== Command Menu & FAB ============== */
+.cmd-menu-wrapper {
+    position: relative;
+}
 .cmd-menu-trigger {
     width: 44px;
     height: 44px;
@@ -886,13 +891,19 @@ function handleSend() {
     border-color: rgba(99, 102, 241, 0.4);
 }
 .cmd-menu {
-    margin-top: 8px;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    min-width: 160px;
+    max-height: 280px;
+    overflow-y: auto;
     background: rgba(20, 20, 35, 0.95);
     backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 12px;
     padding: 4px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
+    z-index: 60;
 }
 .cmd-menu-item {
     display: flex;
@@ -939,6 +950,14 @@ function handleSend() {
 }
 .group-fab:hover {
     background: rgba(99, 102, 241, 0.4);
+}
+/* Upward pop animation */
+.cmd-pop-enter-active, .cmd-pop-leave-active {
+    transition: all 0.2s ease;
+}
+.cmd-pop-enter-from, .cmd-pop-leave-to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
 }
 .fab-enter-active, .fab-leave-active {
     transition: all 0.25s ease;
