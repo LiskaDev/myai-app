@@ -531,6 +531,7 @@ function handleAvatarError(type, roleId) {
         @inject-world-event="groupChat.injectWorldEvent"
         @send-whisper="groupChat.sendWhisper"
         @generate-director-event="() => { pendingDirectorEvent = true; groupChat.generateDirectorEvent(true); }"
+        @update-affinity="groupChat.updateAffinity"
       />
     </template>
 

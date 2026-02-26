@@ -2,6 +2,7 @@
 import { ref, watch, nextTick, computed } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
 import { parseDualLayerResponse } from '../utils/textParser';
+import RelationshipRadar from './RelationshipRadar.vue';
 
 const props = defineProps({
     messages: { type: Array, default: () => [] },
@@ -22,6 +23,7 @@ const emit = defineEmits([
     'inject-world-event',
     'send-whisper',
     'generate-director-event',
+    'update-affinity',
 ]);
 
 const containerRef = ref(null);
@@ -36,6 +38,7 @@ const expandedPassGroups = ref(new Set());
 const showEventPanel = ref(false);
 const showCommandMenu = ref(false);
 const customEventText = ref('');
+const showRelationshipPanel = ref(false);
 
 const WORLD_EVENTS = [
     { category: '☁️ 天气', items: [
@@ -80,7 +83,18 @@ function toggleWhisperPanel() {
 
 function toggleEventPanel() {
     showEventPanel.value = !showEventPanel.value;
-    if (showEventPanel.value) showWhisperPanel.value = false;
+    if (showEventPanel.value) {
+        showWhisperPanel.value = false;
+        showRelationshipPanel.value = false;
+    }
+}
+
+function toggleRelationshipPanel() {
+    showRelationshipPanel.value = !showRelationshipPanel.value;
+    if (showRelationshipPanel.value) {
+        showEventPanel.value = false;
+        showWhisperPanel.value = false;
+    }
 }
 
 function handleSendWhisper() {
@@ -550,6 +564,17 @@ function handleSend() {
                 </div>
             </div>
 
+            <!-- 📊 关系雷达图面板 -->
+            <div v-if="showRelationshipPanel"
+                 class="absolute bottom-full left-0 right-0 mb-2 z-10">
+                <RelationshipRadar
+                    :participants="participants"
+                    :relationship-matrix="currentGroup?.relationshipMatrix || {}"
+                    @update-affinity="(from, to, val) => emit('update-affinity', from, to, val)"
+                    @close="showRelationshipPanel = false"
+                />
+            </div>
+
             <!-- 主输入行：⚡ + textarea + 发送/停止 -->
             <form @submit.prevent="handleSend" class="flex items-end space-x-2">
                 <!-- ⚡ 命令菜单包裹器 -->
@@ -571,6 +596,9 @@ function handleSend() {
                             </button>
                             <button class="cmd-menu-item" @click="toggleWhisperPanel(); showCommandMenu = false;">
                                 <span>🤫</span><span>悄悄话</span>
+                            </button>
+                            <button class="cmd-menu-item" @click="toggleRelationshipPanel(); showCommandMenu = false;">
+                                <span>📊</span><span>关系雷达</span>
                             </button>
                             <div class="cmd-menu-divider"></div>
                             <button v-for="p in participants" :key="p.id"

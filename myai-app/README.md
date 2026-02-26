@@ -1,4 +1,4 @@
-# 🎭 MyAI-RolePlay v5.1
+# 🎭 MyAI-RolePlay v5.2
 
 > AI 角色扮演沉浸式体验 — 纯前端 SPA，直连 DeepSeek API
 
@@ -30,9 +30,11 @@
 - **影子导演** — AI 自动检测剧情卡壳并注入情境事件
 - **悄悄话** — 私聊某个角色，目标角色立即回应
 - **PASS 机制** — 无关角色自动跳过，对话更自然
-- **⚡ 命令菜单** — 向上弹出的 Popover，收纳事件/悄悄话/指定角色发言
+- **⚡ 命令菜单** — 向上弹出的 Popover，收纳事件/悄悄话/关系雷达/指定角色发言
 - **▶️ 继续按钮** — 紫色渐变发光 FAB，一键继续一轮
 - **剧本基调** — 搞笑日常 / 校园恋爱 / 悬疑推理等风格约束
+- **📊 关系矩阵** — 角色间好感度(-100~100)，AI 每轮自动分析更新
+- **雷达图可视化** — Chart.js 雷达图 + 视角切换 + 手动 Slider 微调
 - **回复长度控制** — 简短(~250字) / 适中(~500字) / 较长(~1000字) / 长文(~2000字)
 
 ### 🎨 视觉体验
@@ -64,7 +66,8 @@
 - **前端框架：** Vue 3 (Composition API + `<script setup>`)
 - **构建工具：** Vite 7
 - **样式：** 原生 CSS + Glassmorphism
-- **测试：** Vitest + jsdom (88 个测试用例)
+- **图表：** Chart.js + vue-chartjs (关系雷达图)
+- **测试：** Vitest + jsdom (110 个测试用例)
 - **部署：** Vercel
 - **AI 模型：** DeepSeek V3 / R1（兼容 OpenAI 格式 API）
 
@@ -108,6 +111,7 @@ myai-app/
 │   │   ├── useAppState.js         # 应用状态管理
 │   │   ├── useChat.js             # 单聊 API 调用 + 流式响应
 │   │   ├── useGroupChat.js        # 群聊全部逻辑 + 影子导演
+│   │   ├── useRelationship.js     # 关系矩阵 + 好感度系统
 │   │   ├── usePromptBuilder.js    # System Prompt 构建
 │   │   ├── useBranch.js           # 对话分支管理
 │   │   ├── useSoundEffects.js     # 音效预加载 + 播放控制
@@ -116,6 +120,7 @@ myai-app/
 │   ├── components/
 │   │   ├── ChatWindow.vue         # 单聊界面
 │   │   ├── GroupChatWindow.vue    # 群聊界面
+│   │   ├── RelationshipRadar.vue  # 关系雷达图组件
 │   │   ├── BranchSwitcher.vue     # 对话分支选择器
 │   │   ├── EditGroupModal.vue     # 群聊编辑弹窗
 │   │   ├── SettingsModal.vue      # 设置弹窗 (Tab 分页)
@@ -125,10 +130,11 @@ myai-app/
 │       ├── textParser.js          # RP 文本格式化
 │       ├── validation.js          # 输入验证 + 安全
 │       └── summary.js             # 摘要工具函数
-├── tests/                          # 单元测试 (88 cases)
+├── tests/                          # 单元测试 (110 cases)
 │   ├── textParser.test.js
 │   ├── useChat.test.js
 │   ├── useGroupChat.test.js
+│   ├── useRelationship.test.js
 │   ├── useBranch.test.js
 │   ├── usePromptBuilder.test.js
 │   ├── storage.test.js
@@ -137,6 +143,17 @@ myai-app/
 ```
 
 ## 📝 更新日志
+
+### v5.2 (2026-02-26)
+
+#### ✨ 新功能
+- **📊 关系矩阵与好感度系统** — 角色间好感度 (-100~100)，AI 每轮结束后自动分析对话更新
+- **雷达图可视化** — Chart.js 雷达图，支持角色视角切换 + 手动 Slider 微调好感度
+- **Prompt 注入** — 好感度自动转为自然语言注入 System Prompt，影响角色态度和行为
+- **成员同步** — 增减群聊成员时自动同步关系矩阵
+
+#### 🧪 测试
+- **110 个单元测试** — 新增 22 个测试 (useRelationship 19 + useGroupChat 3)
 
 ### v5.1 (2026-02-26)
 

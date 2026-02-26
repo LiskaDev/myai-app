@@ -257,3 +257,60 @@ describe('useGroupChat - 停止生成', () => {
         expect(() => groupChat.stopGroupGeneration()).not.toThrow();
     });
 });
+
+describe('useGroupChat - v5.2 关系矩阵', () => {
+    it('创建群聊时应初始化 relationshipMatrix', async () => {
+        const appState = createMockAppState();
+        const { useGroupChat } = await import('../src/composables/useGroupChat');
+        const groupChat = useGroupChat(appState);
+
+        const group = groupChat.createGroupChat('测试群', ['role-1', 'role-2']);
+
+        expect(group.relationshipMatrix).toBeDefined();
+        expect(typeof group.relationshipMatrix).toBe('object');
+        // 3 entities (role-1, role-2, director) × 2 = 6 pairs
+        expect(Object.keys(group.relationshipMatrix).length).toBe(6);
+        expect(group.relationshipMatrix['role-1→role-2']).toBe(0);
+        expect(group.relationshipMatrix['role-1→director']).toBe(0);
+    });
+
+    it('updateAffinity 应正确更新好感度', async () => {
+        const appState = createMockAppState();
+        const { useGroupChat } = await import('../src/composables/useGroupChat');
+        const groupChat = useGroupChat(appState);
+
+        const group = groupChat.createGroupChat('测试群', ['role-1', 'role-2']);
+        groupChat.switchToGroup(group.id);
+
+        groupChat.updateAffinity('role-1', 'role-2', 75);
+
+        expect(group.relationshipMatrix['role-1→role-2']).toBe(75);
+    });
+
+    it('更新群聊成员时应同步矩阵', async () => {
+        const appState = createMockAppState();
+        // 添加第三个角色
+        appState.roleList.value.push({
+            id: 'role-3', name: '新角色', systemPrompt: '', temperature: 1.0,
+            maxTokens: 2000, memoryWindow: 15, avatar: '', styleGuide: '',
+            appearance: '', speakingStyle: '',
+        });
+
+        const { useGroupChat } = await import('../src/composables/useGroupChat');
+        const groupChat = useGroupChat(appState);
+
+        const group = groupChat.createGroupChat('测试群', ['role-1', 'role-2']);
+        groupChat.switchToGroup(group.id);
+        groupChat.updateAffinity('role-1', 'role-2', 50);
+
+        // 更新群聊：增加 role-3
+        groupChat.switchToGroup(group.id);
+        groupChat.updateGroupChat(group.id, '测试群', ['role-1', 'role-2', 'role-3'], '', '', 0, '');
+
+        // 旧关系保留
+        expect(group.relationshipMatrix['role-1→role-2']).toBe(50);
+        // 新关系初始化
+        expect(group.relationshipMatrix['role-1→role-3']).toBe(0);
+        expect(group.relationshipMatrix['role-3→role-1']).toBe(0);
+    });
+});

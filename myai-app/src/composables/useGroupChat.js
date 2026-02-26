@@ -2,6 +2,14 @@ import { ref, computed } from 'vue';
 import { generateUUID } from '../utils/uuid';
 import { STORAGE_KEYS } from '../utils/storage';
 import { parseDualLayerResponse, formatRoleplayText } from '../utils/textParser';
+import {
+    initMatrix,
+    syncMatrix,
+    buildRelationshipHint,
+    analyzeAndUpdate,
+    getAffinity,
+    setAffinity,
+} from './useRelationship';
 
 const FETCH_TIMEOUT_MS = 60000; // 群聊超时 60s（多角色需要更长时间）
 
@@ -100,6 +108,7 @@ export function useGroupChat(appState) {
             maxTokens: 0,    // 0 = 用角色默认
             participantIds,
             chatHistory: [],
+            relationshipMatrix: initMatrix(participantIds),  // v5.2: 关系矩阵
             createdAt: new Date().toISOString(),
         };
 
@@ -236,6 +245,8 @@ export function useGroupChat(appState) {
             checkGroupSummary();
             // 检查是否所有角色都 PASS 了（剧情卡壳，触发影子导演）
             checkAutoDirector();
+            // v5.2: 一轮结束后分析对话更新关系矩阵
+            analyzeRelationships();
         }
     }
 
@@ -781,6 +792,21 @@ Your personality and speaking style MUST be consistent with your character setti
         if (targetRole.appearance) {
             apiMessages.push({ role: 'system', content: `[Appearance] ${targetRole.appearance}` });
         }
+        // v5.2: 注入关系矩阵提示
+        if (group.relationshipMatrix) {
+            const relationHint = buildRelationshipHint(
+                targetRole.id,
+                group.relationshipMatrix,
+                allParticipants
+            );
+            if (relationHint) {
+                apiMessages.push({
+                    role: 'system',
+                    content: relationHint,
+                });
+            }
+        }
+
         if (targetRole.speakingStyle) {
             apiMessages.push({ role: 'system', content: `[Style] ${targetRole.speakingStyle}` });
         }
@@ -879,6 +905,12 @@ Your personality and speaking style MUST be consistent with your character setti
         if (newModel !== undefined) group.model = newModel;
         if (newMaxTokens !== undefined) group.maxTokens = newMaxTokens;
         if (newGenre !== undefined) group.genre = newGenre;
+        // v5.2: 同步关系矩阵（增减成员时）
+        if (group.relationshipMatrix) {
+            group.relationshipMatrix = syncMatrix(group.relationshipMatrix, newParticipantIds);
+        } else {
+            group.relationshipMatrix = initMatrix(newParticipantIds);
+        }
         saveGroups();
         showToast('群聊已更新');
     }
@@ -944,6 +976,44 @@ Your personality and speaking style MUST be consistent with your character setti
         speakAsRole(targetRoleId);
     }
 
+    // v5.2: 分析对话并更新关系矩阵
+    async function analyzeRelationships() {
+        const group = currentGroup.value;
+        if (!group || !group.relationshipMatrix) return;
+        if (!globalSettings.apiKey) return;
+
+        const recentMsgs = group.chatHistory.slice(-15);
+        if (recentMsgs.filter(m => m.role === 'assistant').length < 2) return;
+
+        try {
+            const updatedMatrix = await analyzeAndUpdate(
+                recentMsgs,
+                group.relationshipMatrix,
+                participants.value,
+                {
+                    baseUrl: globalSettings.baseUrl,
+                    apiKey: globalSettings.apiKey,
+                }
+            );
+
+            if (updatedMatrix) {
+                group.relationshipMatrix = updatedMatrix;
+                saveGroups();
+                console.log('[Relationship] 关系矩阵已更新');
+            }
+        } catch (error) {
+            console.warn('[Relationship] 更新失败:', error.message);
+        }
+    }
+
+    // v5.2: 手动更新关系矩阵某条关系
+    function updateAffinity(fromId, toId, value) {
+        const group = currentGroup.value;
+        if (!group || !group.relationshipMatrix) return;
+        setAffinity(group.relationshipMatrix, fromId, toId, value);
+        saveGroups();
+    }
+
     return {
         // 状态
         groupChats,
@@ -974,5 +1044,8 @@ Your personality and speaking style MUST be consistent with your character setti
         sendWhisper,
         generateDirectorEvent,
         setOnRoleComplete: (fn) => { onRoleComplete = fn; },
+        // v5.2: 关系矩阵
+        updateAffinity,
+        analyzeRelationships,
     };
 }
