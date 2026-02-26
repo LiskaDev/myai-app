@@ -1887,9 +1887,45 @@ details.reasoning-block[open]>summary {
     font-size: 1rem !important;
   }
 
+  /* --- Settings Modal: 全局溢出控制 --- */
+  .settings-panel {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+
+  .settings-panel>* {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
   /* --- Settings Modal: 内容区紧凑间距 --- */
   .settings-panel>div:last-child {
     padding: 12px !important;
+  }
+
+  /* --- AI 一键生成卡片：移动端竖排 --- */
+  .ai-gen-card {
+    padding: 10px !important;
+  }
+
+  .ai-gen-card .flex.items-center.gap-2 {
+    flex-wrap: wrap;
+  }
+
+  .ai-gen-card .flex.items-center.gap-2 .ml-auto {
+    margin-left: 0 !important;
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  .ai-gen-card .flex.gap-2 {
+    flex-direction: column;
+  }
+
+  .ai-gen-btn {
+    width: 100% !important;
+    min-width: unset !important;
   }
 
   /* --- 已有功能紧凑布局 --- */
