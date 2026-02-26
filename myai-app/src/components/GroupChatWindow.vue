@@ -324,6 +324,13 @@ function getSubconsciousThought(roleId) {
         || props.currentGroup?.subconsciousThoughts?.[roleId]
         || null;
 }
+
+// 移动端点击切换 Tooltip
+const activeThoughtRoleId = ref(null);
+function toggleThoughtTooltip(e, roleId) {
+    e.stopPropagation();
+    activeThoughtRoleId.value = activeThoughtRoleId.value === roleId ? null : roleId;
+}
 </script>
 
 <template>
@@ -472,13 +479,18 @@ function getSubconsciousThought(roleId) {
                         🎭
                     </div>
                     <div class="text-center mt-0.5 opacity-0 group-hover:opacity-100 transition text-[10px] text-gray-400">💬</div>
-                    <!-- v5.3: 潜意识 Tooltip -->
-                    <div v-if="getSubconsciousThought(item.msg.roleId)"
-                         class="thought-tooltip"
-                         :style="{ borderColor: getRoleColor(item.msg.roleId) + '60' }">
-                        <span class="thought-tooltip-icon">💭</span>
-                        <span class="thought-tooltip-text">{{ getSubconsciousThought(item.msg.roleId).thought }}</span>
-                    </div>
+                    <!-- v5.3: 潜意识 指示器 + Tooltip -->
+                    <template v-if="getSubconsciousThought(item.msg.roleId)">
+                        <div class="thought-indicator"
+                             @click.stop="toggleThoughtTooltip($event, item.msg.roleId)"
+                             :style="{ background: getRoleColor(item.msg.roleId) }">💭</div>
+                        <div class="thought-tooltip"
+                             :class="{ 'thought-tooltip-visible': activeThoughtRoleId === item.msg.roleId }"
+                             :style="{ borderColor: getRoleColor(item.msg.roleId) + '60' }">
+                            <span class="thought-tooltip-icon">💭</span>
+                            <span class="thought-tooltip-text">{{ getSubconsciousThought(item.msg.roleId).thought }}</span>
+                        </div>
+                    </template>
                 </div>
 
                 <div class="max-w-[80%] min-w-0 message-wrapper">
@@ -1133,6 +1145,31 @@ function getSubconsciousThought(roleId) {
 }
 
 /* === v5.3: 潜意识 Tooltip === */
+.thought-indicator {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.5rem;
+    cursor: pointer;
+    z-index: 31;
+    border: 1.5px solid rgba(15, 23, 42, 0.9);
+    animation: indicatorPulse 2s ease-in-out infinite;
+    transition: transform 0.2s ease;
+}
+.thought-indicator:active {
+    transform: scale(0.85);
+}
+@keyframes indicatorPulse {
+    0%, 100% { opacity: 0.8; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
 .thought-tooltip {
     position: absolute;
     left: 50px;
@@ -1155,10 +1192,18 @@ function getSubconsciousThought(roleId) {
     word-break: break-word;
 }
 
+/* 桌面端：hover 显示 */
 .group:hover .thought-tooltip {
     opacity: 1;
     transform: translateX(0) scale(1);
     pointer-events: auto;
+}
+
+/* 移动端：点击显示 */
+.thought-tooltip-visible {
+    opacity: 1 !important;
+    transform: translateX(0) scale(1) !important;
+    pointer-events: auto !important;
 }
 
 .thought-tooltip::before {
@@ -1292,5 +1337,31 @@ function getSubconsciousThought(roleId) {
 @keyframes floatPulse {
     0%, 100% { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 30px rgba(147, 130, 220, 0.06); }
     50% { box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), 0 0 40px rgba(147, 130, 220, 0.12); }
+}
+
+/* === 移动端适配 === */
+@media (max-width: 640px) {
+    .floating-thoughts-container {
+        top: auto;
+        bottom: 80px;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: 160px;
+        align-items: stretch;
+        padding: 8px 12px;
+    }
+    .floating-thought {
+        max-width: 100%;
+    }
+    .thought-tooltip {
+        left: 0;
+        top: auto;
+        bottom: 60px;
+        max-width: calc(100vw - 80px);
+    }
+    .thought-tooltip::before {
+        display: none;
+    }
 }
 </style>
