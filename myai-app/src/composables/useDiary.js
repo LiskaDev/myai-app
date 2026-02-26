@@ -79,29 +79,40 @@ export function useDiary(appState) {
             const isGroup = options.isGroup || false;
             const groupName = options.groupName || '';
 
+            // 📜 日记链：获取上一篇日记，让新日记延续旧目标和情感
+            let prevDiaryContext = '';
+            const prevDiaries = diaries.value
+                .filter(d => d.roleId === role.id && (isGroup ? d.groupId === options.groupId : !d.groupId))
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+            if (prevDiaries.length > 0) {
+                prevDiaryContext = `\n\n【你上一篇日记的内容（请延续其中的情感线索、目标和计划）】\n「${prevDiaries[0].content}」`;
+            }
+
             let prompt;
             if (isGroup) {
                 prompt = `你是"${role.name}"。以下是今天在群聊"${groupName}"中发生的对话：
 
-${chatContext}
+${chatContext}${prevDiaryContext}
 
 请以【${role.name}】的第一人称视角，用写私密日记的口吻，总结今天在群里发生的事情，对群里每个人的看法变化，以及你内心真实的感受。
 要求：
 - 不超过 200 字
 - 写得像真正的私密日记，有情感波动
 - 可以吐槽、暗恋、吃醋、开心等真实情绪
+- 如果上一篇日记中有未完成的目标或计划，请提及进展
 - 不要用"作为AI"这类破坏沉浸的词
 - 以日期开头，如"X月X日 晴"`;
             } else {
                 prompt = `你是"${role.name}"。以下是今天你和"${userName}"之间的对话：
 
-${chatContext}
+${chatContext}${prevDiaryContext}
 
 请以【${role.name}】的第一人称视角，用写私密日记的口吻，总结今天发生的事情以及你对【${userName}】看法的改变。
 要求：
 - 不超过 200 字
 - 写得像真正的私密日记，有情感波动
 - 可以吐槽、暗恋、害羞、开心等真实情绪
+- 如果上一篇日记中有未完成的目标或计划，请提及进展
 - 不要用"作为AI"这类破坏沉浸的词
 - 以日期开头，如"X月X日 晴"`;
             }
