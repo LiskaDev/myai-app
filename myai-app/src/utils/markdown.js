@@ -1,5 +1,6 @@
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
+import { extractImageTags } from './textParser';
 
 // 禁用 GFM 删除线扩展：防止 AI 回复中的 ~~text~~ 被渲染成删除线
 marked.use({
@@ -21,9 +22,10 @@ const PURIFY_CONFIG = {
         'p', 'br', 'strong', 'em', 'b', 'i', 'u',
         'code', 'pre', 'blockquote', 'ul', 'ol', 'li',
         'a', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr'
+        'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr',
+        'img', 'div'  // v5.4: AI 生成图片
     ],
-    ALLOWED_ATTR: ['class', 'href', 'target', 'rel', 'title'],
+    ALLOWED_ATTR: ['class', 'href', 'target', 'rel', 'title', 'src', 'alt', 'loading'],
     ALLOW_DATA_ATTR: false,
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'style'],
     FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
@@ -35,9 +37,11 @@ const PURIFY_CONFIG = {
 export function renderMarkdown(content) {
     if (!content) return '';
 
-    // 先处理自定义格式 *动作描写* -> <span class="action-text">动作描写</span>
-    // 注意：不处理 **粗体** 和 ***粗斜体***
-    let processed = content.replace(/(?<!\*)\*(?!\*)([^*\n]+)(?<!\*)\*(?!\*)/g, '<span class="action-text">*$1*</span>');
+    // v5.4: 先提取 <image:> 标签并替换为 <img> HTML
+    const { content: imageProcessed } = extractImageTags(content);
+
+    // 处理自定义格式 *动作描写* -> <span class="action-text">动作描写</span>
+    let processed = imageProcessed.replace(/(?<!\*)\*(?!\*)([^*\n]+)(?<!\*)\*(?!\*)/g, '<span class="action-text">*$1*</span>');
 
     // 然后用 marked 解析 Markdown
     const rawHtml = marked.parse(processed);

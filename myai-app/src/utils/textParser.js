@@ -170,6 +170,31 @@ export function formatRoleplayText(text) {
 }
 
 /**
+ * v5.4: 提取 <image: description> 标签并转换为 pollinations.ai 图片
+ * 流式安全：隐藏未完整的 <image:... 残片
+ * 返回: { content: string（标签已替换为 <img>）, hasImages: boolean }
+ */
+export function extractImageTags(text) {
+    if (!text) return { content: text, hasImages: false };
+
+    let hasImages = false;
+
+    // 1. 替换完整的 <image: description> 标签为 <img>
+    const processed = text.replace(/<image:\s*([^>]+)>/gi, (match, desc) => {
+        hasImages = true;
+        const prompt = desc.trim();
+        const encoded = encodeURIComponent(prompt);
+        const url = `https://image.pollinations.ai/prompt/${encoded}?width=512&height=768&nologo=true`;
+        return `<div class="ai-image-wrapper"><img src="${url}" alt="${prompt.replace(/"/g, '&quot;')}" class="ai-generated-image" loading="lazy" /><span class="ai-image-caption">📸 AI 生成</span></div>`;
+    });
+
+    // 2. 流式安全：隐藏残缺的 <image:... 片段
+    const cleaned = processed.replace(/<image:[^>]*$/i, '');
+
+    return { content: cleaned, hasImages };
+}
+
+/**
  * 双重流式卫兵解析器 v5.3
  * 支持多个 <inner> 标签的提取
  */

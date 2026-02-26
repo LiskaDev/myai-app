@@ -1834,3 +1834,79 @@ details.reasoning-block[open]>summary {
 .header-avatar.expr-avatar {
   transition: filter 0.5s ease, transform 0.3s ease;
 }
+
+/* ===== v5.4: AI 生成图片 ===== */
+.ai-image-wrapper {
+  position: relative;
+  display: inline-block;
+  margin: 8px 0;
+  max-width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 40px rgba(99, 102, 241, 0.08);
+  background: linear-gradient(135deg, rgba(30, 30, 50, 0.6), rgba(20, 20, 35, 0.8));
+}
+
+.ai-generated-image {
+  display: block;
+  max-width: 320px;
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+  transition: transform 0.3s ease, opacity 0.5s ease;
+  opacity: 0;
+  animation: imageFadeIn 0.6s ease 0.3s forwards;
+}
+
+.ai-generated-image[src] {
+  min-height: 200px;
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.08) 25%, rgba(139, 92, 246, 0.15) 50%, rgba(99, 102, 241, 0.08) 75%);
+  background-size: 200% 100%;
+  animation: imageShimmer 1.5s ease-in-out infinite, imageFadeIn 0.6s ease 0.3s forwards;
+}
+
+@keyframes imageShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes imageFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ai-image-wrapper:hover .ai-generated-image {
+  transform: scale(1.02);
+}
+
+.ai-image-caption {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  color: rgba(196, 181, 253, 0.9);
+  font-size: 0.65rem;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .ai-generated-image {
+    max-width: 260px;
+  }
+}
