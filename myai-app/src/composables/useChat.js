@@ -2,6 +2,7 @@ import { parseDualLayerResponse, formatRoleplayText } from '../utils/textParser'
 import { usePromptBuilder } from './usePromptBuilder';
 import { useAutoSummary } from './useAutoSummary';
 import { useUserPersona } from './useUserPersona';
+import { useTimeline } from './useTimeline';
 import { useMemory } from './useMemory';
 
 // 🛡️ 超时配置
@@ -27,6 +28,7 @@ export function useChat(appState) {
     // 导入拆分后的子模块
     const { constructPrompt } = usePromptBuilder(appState);
     const { checkAndTriggerSummary } = useAutoSummary(appState);
+    const { checkAndTriggerTimeline } = useTimeline(appState);
     const { checkAndCompressMemories } = useMemory(appState);
 
     // 发送消息
@@ -66,6 +68,8 @@ export function useChat(appState) {
             await chat(input);
             // 🧠 对话完成后检查是否需要自动摘要
             checkAndTriggerSummary();
+            // 📅 检查是否需要分析剧情时间线
+            checkAndTriggerTimeline();
             // 🗄️ 检查是否需要压缩旧记忆
             checkAndCompressMemories();
         } catch (error) {

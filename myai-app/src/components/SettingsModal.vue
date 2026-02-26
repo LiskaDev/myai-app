@@ -49,6 +49,7 @@ const TABS = props.isGroupMode
   : [
       { id: 'role', icon: '🎭', label: '角色' },
       { id: 'memory', icon: '🧠', label: '记忆' },
+      { id: 'timeline', icon: '📅', label: '时间线' },
       { id: 'persona', icon: '👤', label: '画像' },
       { id: 'general', icon: '⚙️', label: '通用' },
       { id: 'data', icon: '💾', label: '数据' },
@@ -113,6 +114,57 @@ const activeTab = ref(props.isGroupMode ? 'general' : 'role');
       <!-- ========== 用户画像 Tab ========== -->
       <template v-if="activeTab === 'persona'">
         <UserPersonaSettings />
+      </template>
+
+      <!-- ========== 时间线 Tab ========== -->
+      <template v-if="activeTab === 'timeline' && !isGroupMode">
+        <section class="space-y-4">
+          <div class="flex items-center justify-between px-1">
+            <h3 class="font-semibold text-gray-300 flex items-center text-shadow">
+              <span class="mr-2">📅</span> 剧情时间线
+              <span v-if="currentRole.timeline?.length" class="ml-2 text-xs font-normal text-gray-500">
+                {{ currentRole.timeline.length }} 条事件
+              </span>
+            </h3>
+            <button v-if="currentRole.timeline?.length"
+                    @click="currentRole.timeline = []; emit('show-toast', '时间线已清空', 'info')"
+                    class="text-xs text-red-400/60 hover:text-red-400 transition">
+              清空全部
+            </button>
+          </div>
+
+          <p class="text-xs text-gray-500 px-1 leading-relaxed">
+            每 15 轮对话后，AI 会自动提取关键剧情事件，帮助角色保持故事连贯性。
+          </p>
+
+          <!-- 时间线列表 -->
+          <div v-if="currentRole.timeline?.length" class="space-y-2">
+            <div v-for="(event, idx) in currentRole.timeline" :key="idx"
+                 class="glass bg-glass-message rounded-xl px-4 py-3 flex items-start gap-3 group">
+              <span class="flex-shrink-0 mt-0.5 text-sm">
+                {{ event.importance === 'high' ? '⚡' : event.importance === 'medium' ? '📌' : '·' }}
+              </span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-gray-200 leading-relaxed">{{ event.event }}</div>
+                <div class="text-xs text-gray-600 mt-1" v-if="event.timestamp">
+                  {{ new Date(event.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                </div>
+              </div>
+              <button @click="currentRole.timeline.splice(idx, 1)" class="opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-red-500/20 transition flex-shrink-0" title="删除">
+                <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 空状态 -->
+          <div v-else class="text-center py-8">
+            <div class="text-3xl mb-2">📅</div>
+            <div class="text-sm text-gray-500">还没有时间线事件</div>
+            <div class="text-xs text-gray-600 mt-1">多聊几轮后 AI 会自动提取关键剧情</div>
+          </div>
+        </section>
       </template>
 
       <!-- ========== 群聊 Tab ========== -->

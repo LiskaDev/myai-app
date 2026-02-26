@@ -1,5 +1,6 @@
 import { formatSummaryForPrompt } from '../utils/summary';
 import { useUserPersona } from './useUserPersona';
+import { useTimeline } from './useTimeline';
 
 /**
  * Prompt 构建器 - 负责组装发送给 API 的消息列表
@@ -102,6 +103,16 @@ Remember: You are an actor playing a role. The USER is the co-author, not someon
             apiMessages.push({
                 role: 'system',
                 content: formatSummaryForPrompt(summary),
+            });
+        }
+
+        // Step 3.5: Timeline (剧情时间线 — 摘要之后、记忆之前)
+        const { buildTimelineForPrompt } = useTimeline(appState);
+        const timelineText = buildTimelineForPrompt();
+        if (timelineText) {
+            apiMessages.push({
+                role: 'system',
+                content: timelineText,
             });
         }
 

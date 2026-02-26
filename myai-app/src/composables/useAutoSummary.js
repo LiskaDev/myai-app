@@ -3,9 +3,9 @@ import {
     shouldTriggerSummary,
     getMessageRanges,
 } from '../utils/summary';
+import { acquireBackgroundLock, releaseBackgroundLock, isBackgroundLocked } from './useTimeline';
 
-// 🧠 摘要状态 - 防止重复触发
-let isSummarizing = false;
+// 🧠 摘要也使用共享后台锁，防止与时间线分析并发
 
 /**
  * 自动摘要 Composable - 在对话达到阈值时自动压缩历史消息
@@ -26,7 +26,7 @@ export function useAutoSummary(appState) {
         const role = currentRole.value;
         const existingSummary = role.autoSummary || role.storySummary || '';
 
-        if (shouldTriggerSummary(messages.value, existingSummary) && !isSummarizing) {
+        if (shouldTriggerSummary(messages.value, existingSummary) && !isBackgroundLocked()) {
             // 异步执行摘要，不阻塞用户操作
             generateAutoSummary().catch(err => {
                 console.warn('[Summary] 自动摘要失败:', err.message);
@@ -38,15 +38,14 @@ export function useAutoSummary(appState) {
      * 生成自动摘要
      */
     async function generateAutoSummary() {
-        if (isSummarizing) return;
-        isSummarizing = true;
+        if (!acquireBackgroundLock()) return;
 
         try {
             const role = currentRole.value;
             const { toSummarize, toKeep } = getMessageRanges(messages.value);
 
             if (toSummarize.length === 0) {
-                isSummarizing = false;
+                releaseBackgroundLock();
                 return;
             }
 
@@ -94,7 +93,7 @@ export function useAutoSummary(appState) {
         } catch (error) {
             showToast('摘要生成失败，请稍后重试', 'error');
         } finally {
-            isSummarizing = false;
+            releaseBackgroundLock();
         }
     }
 
