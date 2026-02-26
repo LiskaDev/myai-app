@@ -6,6 +6,7 @@ import RoleAdvancedSettings from './settings/RoleAdvancedSettings.vue';
 import CharacterDepthSettings from './settings/CharacterDepthSettings.vue';
 import ParameterSettings from './settings/ParameterSettings.vue';
 import MemoryManager from './settings/MemoryManager.vue';
+import UserPersonaSettings from './settings/UserPersonaSettings.vue';
 
 const props = defineProps({
   globalSettings: Object,
@@ -41,11 +42,13 @@ const TABS = props.isGroupMode
   ? [
       { id: 'general', icon: '⚙️', label: '通用' },
       { id: 'group', icon: '👥', label: '群聊' },
+      { id: 'persona', icon: '👤', label: '画像' },
       { id: 'data', icon: '💾', label: '数据' },
     ]
   : [
       { id: 'role', icon: '🎭', label: '角色' },
       { id: 'memory', icon: '🧠', label: '记忆' },
+      { id: 'persona', icon: '👤', label: '画像' },
       { id: 'general', icon: '⚙️', label: '通用' },
       { id: 'data', icon: '💾', label: '数据' },
     ];
@@ -104,6 +107,11 @@ const activeTab = ref(props.isGroupMode ? 'general' : 'role');
       <!-- ========== 通用 Tab ========== -->
       <template v-if="activeTab === 'general'">
         <GlobalSettings :globalSettings="globalSettings" />
+      </template>
+
+      <!-- ========== 用户画像 Tab ========== -->
+      <template v-if="activeTab === 'persona'">
+        <UserPersonaSettings />
       </template>
 
       <!-- ========== 群聊 Tab ========== -->

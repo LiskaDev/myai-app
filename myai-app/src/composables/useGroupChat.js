@@ -10,6 +10,7 @@ import {
     getAffinity,
     setAffinity,
 } from './useRelationship';
+import { useUserPersona } from './useUserPersona';
 
 const FETCH_TIMEOUT_MS = 60000; // 群聊超时 60s（多角色需要更长时间）
 
@@ -179,6 +180,14 @@ export function useGroupChat(appState) {
         });
 
         saveGroups();
+
+        // 🧠 用户画像：后台静默分析
+        const { onUserMessageSent } = useUserPersona();
+        onUserMessageSent(groupMessages.value, {
+            apiKey: globalSettings.apiKey,
+            baseUrl: globalSettings.baseUrl,
+            model: globalSettings.model,
+        });
 
         // @ 提及解析：如果导演消息中 @了某角色，自动让该角色回复
         const mentionMatch = trimmed.match(/@(\S+)/);

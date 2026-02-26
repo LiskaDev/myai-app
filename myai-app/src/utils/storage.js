@@ -109,3 +109,31 @@ export function importData(jsonString) {
         return { success: false, error: e.message };
     }
 }
+
+// ===== 用户画像存储 =====
+const PERSONA_KEY = 'myai_user_persona_v1';
+const PERSONA_MAX_TRAITS = 60;
+
+export function loadUserPersona() {
+    try {
+        const raw = localStorage.getItem(PERSONA_KEY);
+        if (!raw) return getDefaultPersona();
+        return JSON.parse(raw);
+    } catch {
+        return getDefaultPersona();
+    }
+}
+
+export function saveUserPersona(persona) {
+    if (persona.traits.length > PERSONA_MAX_TRAITS) {
+        persona.traits = persona.traits.slice(-PERSONA_MAX_TRAITS);
+    }
+    localStorage.setItem(PERSONA_KEY, JSON.stringify(persona));
+}
+
+function getDefaultPersona() {
+    return {
+        traits: [],
+        messageCountSinceLastAnalysis: 0,
+    };
+}

@@ -1,6 +1,7 @@
 import { parseDualLayerResponse, formatRoleplayText } from '../utils/textParser';
 import { usePromptBuilder } from './usePromptBuilder';
 import { useAutoSummary } from './useAutoSummary';
+import { useUserPersona } from './useUserPersona';
 
 // 🛡️ 超时配置
 const FETCH_TIMEOUT_MS = 30000; // 30秒超时
@@ -48,6 +49,14 @@ export function useChat(appState) {
             content: input,
         });
         userInput.value = '';
+
+        // 🧠 用户画像：后台静默分析
+        const { onUserMessageSent } = useUserPersona();
+        onUserMessageSent(messages.value, {
+            apiKey: globalSettings.apiKey,
+            baseUrl: globalSettings.baseUrl,
+            model: globalSettings.model,
+        });
 
         isThinking.value = true;
 

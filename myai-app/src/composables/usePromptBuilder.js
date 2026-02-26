@@ -1,4 +1,5 @@
 import { formatSummaryForPrompt } from '../utils/summary';
+import { useUserPersona } from './useUserPersona';
 
 /**
  * Prompt 构建器 - 负责组装发送给 API 的消息列表
@@ -130,6 +131,15 @@ Remember: You are an actor playing a role. The USER is the co-author, not someon
             apiMessages.push({
                 role: msg.role,
                 content: msg.content,
+            });
+        }
+
+        // Step 6: 用户画像注入（全局长期记忆）
+        const { personaSummaryForPrompt } = useUserPersona();
+        if (personaSummaryForPrompt.value) {
+            apiMessages.push({
+                role: 'system',
+                content: personaSummaryForPrompt.value,
             });
         }
 
