@@ -136,7 +136,7 @@ export function formatRoleplayText(text) {
     let html = text.replace(/<image:\s*([^>]+)>/gi, (match, desc) => {
         const prompt = desc.trim();
         const encoded = encodeURIComponent(prompt);
-        const url = `https://gen.pollinations.ai/image/${encoded}?width=512&height=768&nologo=true`;
+        const url = `https://image.pollinations.ai/prompt/${encoded}?width=512&height=768&nologo=true`;
         const placeholder = `__AI_IMAGE_${imagePlaceholders.length}__`;
         imagePlaceholders.push(`<div class="ai-image-wrapper"><img src="${url}" alt="${prompt.replace(/"/g, '&quot;')}" class="ai-generated-image" loading="lazy" /><span class="ai-image-caption">📸 AI 生成</span></div>`);
         return placeholder;
@@ -202,7 +202,7 @@ export function extractImageTags(text) {
         hasImages = true;
         const prompt = desc.trim();
         const encoded = encodeURIComponent(prompt);
-        const url = `https://gen.pollinations.ai/image/${encoded}?width=512&height=768&nologo=true`;
+        const url = `https://image.pollinations.ai/prompt/${encoded}?width=512&height=768&nologo=true`;
         return `<div class="ai-image-wrapper"><img src="${url}" alt="${prompt.replace(/"/g, '&quot;')}" class="ai-generated-image" loading="lazy" /><span class="ai-image-caption">📸 AI 生成</span></div>`;
     });
 
