@@ -131,22 +131,9 @@ export function formatRoleplayText(text) {
         return '';
     }
 
-    // Step -1: v5.4 提取 <image:> 标签，用占位符代替（避免被 HTML Escape 破坏）
-    const imagePlaceholders = [];
-    let html = text.replace(/<image:\s*([^>]+)>/gi, (match, desc) => {
-        const prompt = desc.trim();
-        const encoded = encodeURIComponent(prompt);
-        const url = `https://image.pollinations.ai/prompt/${encoded}?width=512&height=768&nologo=true`;
-        const placeholder = `__AI_IMAGE_${imagePlaceholders.length}__`;
-        imagePlaceholders.push(`<div class="ai-image-wrapper"><img src="${url}" alt="${prompt.replace(/"/g, '&quot;')}" class="ai-generated-image" loading="lazy" /><span class="ai-image-caption">📸 AI 生成</span></div>`);
-        return placeholder;
-    });
-    // 流式安全：隐藏残缺的 <image:... 片段
-    html = html.replace(/<image:[^>]*$/i, '');
-
     // Step 0: HTML Escape to prevent XSS (preserve newlines)
     // 完整转义：包括引号和反引号以防止属性注入
-    html = html
+    let html = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -179,37 +166,7 @@ export function formatRoleplayText(text) {
     // Step 6: Convert line breaks to <br> for proper display
     html = html.replace(/\n/g, '<br>');
 
-    // Step 7: v5.4 恢复图片占位符为实际 HTML
-    imagePlaceholders.forEach((imgHtml, i) => {
-        html = html.replace(`__AI_IMAGE_${i}__`, imgHtml);
-    });
-
     return html;
-}
-
-/**
- * v5.4: 提取 <image: description> 标签并转换为 pollinations.ai 图片
- * 流式安全：隐藏未完整的 <image:... 残片
- * 返回: { content: string（标签已替换为 <img>）, hasImages: boolean }
- */
-export function extractImageTags(text) {
-    if (!text) return { content: text, hasImages: false };
-
-    let hasImages = false;
-
-    // 1. 替换完整的 <image: description> 标签为 <img>
-    const processed = text.replace(/<image:\s*([^>]+)>/gi, (match, desc) => {
-        hasImages = true;
-        const prompt = desc.trim();
-        const encoded = encodeURIComponent(prompt);
-        const url = `https://image.pollinations.ai/prompt/${encoded}?width=512&height=768&nologo=true`;
-        return `<div class="ai-image-wrapper"><img src="${url}" alt="${prompt.replace(/"/g, '&quot;')}" class="ai-generated-image" loading="lazy" /><span class="ai-image-caption">📸 AI 生成</span></div>`;
-    });
-
-    // 2. 流式安全：隐藏残缺的 <image:... 片段
-    const cleaned = processed.replace(/<image:[^>]*$/i, '');
-
-    return { content: cleaned, hasImages };
 }
 
 /**
