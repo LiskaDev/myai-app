@@ -9,6 +9,60 @@
  * 使用 indexOf + substring 而非正则，更稳定不会卡死。
  */
 
+// ========================================
+// v5.2: 表情标签系统 (Expression Avatar)
+// ========================================
+
+// 允许的情绪列表
+const VALID_EXPRESSIONS = ['joy', 'sad', 'angry', 'blush', 'surprise', 'scared', 'smirk', 'neutral'];
+
+// AI 自创词 → 最近匹配映射
+const EXPRESSION_FALLBACK = {
+    happy: 'joy', excited: 'joy', cheerful: 'joy', delighted: 'joy', laugh: 'joy',
+    crying: 'sad', depressed: 'sad', melancholy: 'sad', sorrow: 'sad', upset: 'sad',
+    furious: 'angry', rage: 'angry', irritated: 'angry', mad: 'angry', annoyed: 'angry',
+    shy: 'blush', embarrassed: 'blush', flustered: 'blush', bashful: 'blush',
+    shocked: 'surprise', amazed: 'surprise', stunned: 'surprise', astonished: 'surprise',
+    afraid: 'scared', terrified: 'scared', nervous: 'scared', anxious: 'scared', fear: 'scared',
+    sly: 'smirk', teasing: 'smirk', mischievous: 'smirk', playful: 'smirk', cunning: 'smirk',
+    calm: 'neutral', confused: 'neutral', thinking: 'neutral', serious: 'neutral',
+};
+
+/**
+ * 提取 <expr:emotion> 标签
+ * 流式安全：未完整的 <expr... 残片会被静默隐藏
+ * 返回: { content: string, expression: string|null }
+ */
+export function extractExpression(text) {
+    if (!text) return { content: text, expression: null };
+
+    // 1. 尝试匹配完整标签 <expr:word>
+    const fullMatch = text.match(/<expr:(\w+)>/i);
+    if (fullMatch) {
+        const rawEmotion = fullMatch[1].toLowerCase();
+        // 校验 → 映射 → 兜底
+        let expression = 'neutral';
+        if (VALID_EXPRESSIONS.includes(rawEmotion)) {
+            expression = rawEmotion;
+        } else if (EXPRESSION_FALLBACK[rawEmotion]) {
+            expression = EXPRESSION_FALLBACK[rawEmotion];
+        }
+        // 从正文移除标签
+        const content = text.replace(/<expr:\w+>/gi, '').trim();
+        return { content, expression };
+    }
+
+    // 2. 流式安全：隐藏残缺的 <expr... 片段（还在传输中）
+    //    匹配: <e, <ex, <exp, <expr, <expr:, <expr:jo 等
+    const partialMatch = text.match(/<e(?:x(?:p(?:r(?::(?:\w*)?)?)?)?)?$/i);
+    if (partialMatch) {
+        const content = text.substring(0, partialMatch.index).trim();
+        return { content, expression: null };
+    }
+
+    return { content: text, expression: null };
+}
+
 /**
  * v5.4: 提取第一个 <inner> 标签到内心戏框
  * 后续 <inner> 标签去除标签，内容保留在正文中（以思绪样式显示）
@@ -121,11 +175,17 @@ export function formatRoleplayText(text) {
  */
 export function parseDualLayerResponse(rawText) {
     // 0. 安全兜底
-    if (!rawText) return { reasoning: null, inner: null, content: "" };
+    if (!rawText) return { reasoning: null, inner: null, content: "", expression: null };
 
     let reasoning = null;
     let inner = null;
+    let expression = null;
     let content = rawText; // 初始文本
+
+    // === 第零道关卡：表情标签提取 ===
+    const exprResult = extractExpression(content);
+    content = exprResult.content;
+    expression = exprResult.expression;
 
     // === 第一道关卡：R1 思考卫兵 ===
     const thinkStart = content.indexOf('<think>');
@@ -137,7 +197,8 @@ export function parseDualLayerResponse(rawText) {
             return {
                 reasoning: content.substring(thinkStart + 7).trim(),
                 inner: null,
-                content: "" // 静默
+                content: "", // 静默
+                expression,
             };
         } else {
             // [状态：思考已闭合] -> ✅ 放行
@@ -158,7 +219,8 @@ export function parseDualLayerResponse(rawText) {
         return {
             reasoning: reasoning,
             inner: inner,
-            content: "" // 静默
+            content: "", // 静默
+            expression,
         };
     }
 
@@ -171,7 +233,8 @@ export function parseDualLayerResponse(rawText) {
     return {
         reasoning: reasoning,
         inner: inner,
-        content: content
+        content: content,
+        expression: expression,
     };
 }
 

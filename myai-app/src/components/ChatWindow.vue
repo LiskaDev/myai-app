@@ -127,13 +127,13 @@ function getOriginalIndex(visibleIndex) {
 
 function safeParseMessage(message) {
   const source = message?.rawContent || message?.content || '';
-  let parsed = { reasoning: null, inner: null, content: '' };
+  let parsed = { reasoning: null, inner: null, content: '', expression: null };
 
   try {
     parsed = parseDualLayerResponse(source) || parsed;
   } catch (e) {
     console.warn('Parser error:', e);
-    parsed = { reasoning: null, inner: null, content: '' };
+    parsed = { reasoning: null, inner: null, content: '', expression: null };
   }
 
   // Use parser output, fallback to message.thinking for R1 reasoning_content
@@ -148,6 +148,7 @@ function safeParseMessage(message) {
     thought,
     inner,
     bodyHtml,
+    expression: parsed.expression,
     raw: source
   };
 }
@@ -385,10 +386,16 @@ function isCurrentMatch(originalIndex) {
                @touchend="longPress.onTouchEnd"
                @touchmove="longPress.onTouchMove">
             <div class="flex items-start space-x-3 w-full">
-              <div v-if="currentRole.avatar" class="avatar flex-shrink-0">
+              <div v-if="currentRole.avatar"
+                   class="avatar flex-shrink-0 expr-avatar"
+                   :class="[parsedMessages[visibleIndex]?.expression ? 'expr-' + parsedMessages[visibleIndex].expression : '',
+                            getOriginalIndex(visibleIndex) === messages.length - 1 ? 'expr-latest' : '']">
                 <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover">
               </div>
-              <div v-else class="avatar-placeholder avatar-ai text-white flex-shrink-0">🎭</div>
+              <div v-else
+                   class="avatar-placeholder avatar-ai text-white flex-shrink-0 expr-avatar"
+                   :class="[parsedMessages[visibleIndex]?.expression ? 'expr-' + parsedMessages[visibleIndex].expression : '',
+                            getOriginalIndex(visibleIndex) === messages.length - 1 ? 'expr-latest' : '']">🎭</div>
 
               <div class="max-w-[80%] message-wrapper">
                 <!-- Layer 0: R1 Reasoning (折叠图标: ✨ 思考中, 💡 思考完成) -->

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, nextTick, computed } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
-import { parseDualLayerResponse } from '../utils/textParser';
+import { parseDualLayerResponse, extractExpression } from '../utils/textParser';
 import RelationshipRadar from './RelationshipRadar.vue';
 
 const props = defineProps({
@@ -174,6 +174,14 @@ function safeRender(content) {
     } catch {
         return content;
     }
+}
+
+// v5.2: 提取消息的表情标签
+function getExpression(msg) {
+    if (!msg || msg.role !== 'assistant') return null;
+    const source = msg.rawContent || msg.content || '';
+    const result = extractExpression(source);
+    return result.expression;
 }
 
 // 点击消息切换选中状态
@@ -403,11 +411,17 @@ function handleSend() {
                 <!-- 角色头像（可点击让该角色继续说） -->
                 <div class="flex-shrink-0 cursor-pointer group" @click="$emit('speak-as-role', item.msg.roleId)"
                      :title="`让${item.msg.roleName}继续说`">
-                    <div v-if="item.msg.avatar" class="w-10 h-10 rounded-full overflow-hidden transition group-hover:ring-2 group-hover:ring-white/30"
+                    <div v-if="item.msg.avatar"
+                         class="w-10 h-10 rounded-full overflow-hidden transition group-hover:ring-2 group-hover:ring-white/30 expr-avatar"
+                         :class="[getExpression(item.msg) ? 'expr-' + getExpression(item.msg) : '',
+                                  item.index === messages.length - 1 ? 'expr-latest' : '']"
                          :style="{ border: `2px solid ${getRoleColor(item.msg.roleId)}` }">
                         <img :src="item.msg.avatar" class="w-full h-full object-cover" />
                     </div>
-                    <div v-else class="w-10 h-10 rounded-full flex items-center justify-center text-sm transition group-hover:ring-2 group-hover:ring-white/30"
+                    <div v-else
+                         class="w-10 h-10 rounded-full flex items-center justify-center text-sm transition group-hover:ring-2 group-hover:ring-white/30 expr-avatar"
+                         :class="[getExpression(item.msg) ? 'expr-' + getExpression(item.msg) : '',
+                                  item.index === messages.length - 1 ? 'expr-latest' : '']"
                          :style="{ background: getRoleColor(item.msg.roleId), border: `2px solid ${getRoleColor(item.msg.roleId)}` }">
                         🎭
                     </div>

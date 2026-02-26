@@ -768,6 +768,7 @@ ${dialogueText}
 You are participating in a multi-character group chat. Stay in character as "${targetRole.name}" at ALL times.
 Never break character. Use *asterisks* for actions, "quotes" for dialogue.${frameworkLengthHint}
 Your personality and speaking style MUST be consistent with your character settings. Do NOT become generic or polite if your character is not.
+Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/surprise/scared/smirk/neutral)
 [/ROLEPLAY FRAMEWORK]`,
         });
 

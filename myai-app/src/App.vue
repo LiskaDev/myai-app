@@ -8,6 +8,7 @@ import { useGestures } from './composables/useGestures';
 import { useGroupChat } from './composables/useGroupChat';
 import { useBranch } from './composables/useBranch';
 import { useSoundEffects } from './composables/useSoundEffects';
+import { extractExpression } from './utils/textParser';
 
 // Import Components
 import ChatWindow from './components/ChatWindow.vue';
@@ -52,6 +53,27 @@ const pressureColor = computed(() => {
   if (p < 0.5) return `hsl(${120 - p * 120}, 70%, 50%)`;
   if (p < 0.8) return `hsl(${120 - p * 120}, 80%, 50%)`;
   return `hsl(0, 80%, 55%)`;
+});
+
+// v5.2: 最新 AI 消息的表情（用于标题栏头像）
+const latestExpression = computed(() => {
+  if (groupChat.isGroupMode.value) {
+    const msgs = groupChat.groupMessages.value;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'assistant') {
+        const result = extractExpression(msgs[i].rawContent || msgs[i].content || '');
+        return result.expression;
+      }
+    }
+  } else {
+    for (let i = messages.value.length - 1; i >= 0; i--) {
+      if (messages.value[i].role === 'assistant') {
+        const result = extractExpression(messages.value[i].rawContent || messages.value[i].content || '');
+        return result.expression;
+      }
+    }
+  }
+  return null;
 });
 
 // Mobile Gestures
@@ -373,10 +395,14 @@ function handleAvatarError(type, roleId) {
         </button>
         <!-- AI 头像 -->
         <template v-if="!groupChat.isGroupMode.value">
-          <div v-if="currentRole.avatar" class="avatar header-avatar flex-shrink-0">
+          <div v-if="currentRole.avatar"
+               class="avatar header-avatar flex-shrink-0 expr-avatar"
+               :class="latestExpression ? 'expr-' + latestExpression : ''">
             <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover" @error="handleAvatarError('ai', currentRoleId)">
           </div>
-          <div v-else class="avatar-placeholder avatar-ai text-white header-avatar flex-shrink-0">🎭</div>
+          <div v-else
+               class="avatar-placeholder avatar-ai text-white header-avatar flex-shrink-0 expr-avatar"
+               :class="latestExpression ? 'expr-' + latestExpression : ''">🎭</div>
           <div class="text-shadow min-w-0">
             <h1 class="font-bold text-lg header-title truncate">{{ currentRole.name || 'MyAI-RolePlay' }}</h1>
             <p class="text-xs text-gray-300 truncate">{{ isThinking ? '正在输入...' : (isStreaming ? '正在回复...' : '在线') }}</p>
