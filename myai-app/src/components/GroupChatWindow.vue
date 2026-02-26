@@ -260,7 +260,7 @@ function handleSend() {
 
 <template>
     <div ref="containerRef"
-         class="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+         class="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-4"
          style="scroll-behavior: smooth;">
 
         <!-- 空消息时的提示 -->
@@ -744,7 +744,7 @@ function handleSend() {
     -webkit-backdrop-filter: blur(16px);
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-left: 2px solid rgba(99, 102, 241, 0.35);
+    border-left: 2px solid rgba(99, 102, 241, 0.25);
     padding: 12px 16px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
@@ -928,7 +928,7 @@ function handleSend() {
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 10px 14px;
+    padding: 14px 14px;
     border-radius: 8px;
     border: none;
     background: none;
