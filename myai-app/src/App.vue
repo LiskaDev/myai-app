@@ -173,12 +173,21 @@ function handleGlobalKeydown(e) {
 }
 
 // --- Sound Effect Triggers ---
-// Play 'notify' when AI finishes replying
+// Play 'notify' when AI finishes replying (single chat)
 watch(isStreaming, (now, prev) => {
   if (prev && !now) sfx.play('notify');
 });
+// Group chat: distinguish director events from normal AI replies
+const pendingDirectorEvent = ref(false);
 watch(() => groupChat.isGroupStreaming.value, (now, prev) => {
-  if (prev && !now) sfx.play('notify');
+  if (prev && !now) {
+    if (pendingDirectorEvent.value) {
+      sfx.play('event');
+      pendingDirectorEvent.value = false;
+    } else {
+      sfx.play('notify');
+    }
+  }
 });
 
 // Wrap sendMessage to play 'send' sound
@@ -521,7 +530,7 @@ function handleAvatarError(type, roleId) {
         @edit-message="groupChat.editGroupMessage"
         @inject-world-event="groupChat.injectWorldEvent"
         @send-whisper="groupChat.sendWhisper"
-        @generate-director-event="() => { sfx.play('event'); groupChat.generateDirectorEvent(true); }"
+        @generate-director-event="() => { pendingDirectorEvent = true; groupChat.generateDirectorEvent(true); }"
       />
     </template>
 
