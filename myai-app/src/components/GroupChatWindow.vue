@@ -169,14 +169,36 @@ const filteredMentions = computed(() => {
 function safeRender(content) {
     try {
         if (!content) return '';
-        // 检测是否已经是格式化后的 HTML（包含 rp-dialogue 等 span 标签）
-        // 如果是，直接返回，防止多次转义
-        if (content.includes('class="rp-') || content.includes('class=&quot;rp-')) {
+
+        // 🛡️ 检测已经被多次转义的内容（核心防护）
+        // 如果内容包含 &amp; 或 &lt; 并且涉及 rp- 相关标签，说明已经被污染
+        if (content.includes('&amp;') && content.includes('rp-')) {
+            // 反复解码直到稳定
+            let decoded = content;
+            for (let i = 0; i < 20; i++) {
+                const next = decoded
+                    .replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#39;/g, "'")
+                    .replace(/&#96;/g, '`');
+                if (next === decoded) break;
+                decoded = next;
+            }
+            // 从解码后的内容中提取纯文本，去掉所有 HTML 标签
+            const plainText = decoded.replace(/<[^>]*>/g, '');
+            // 重新格式化
+            const parsed = parseDualLayerResponse(plainText);
+            return parsed.content || plainText;
+        }
+
+        // 如果内容已经包含格式化的 span 标签，直接返回
+        if (content.includes('<span class="rp-')) {
             return content;
         }
+
         const parsed = parseDualLayerResponse(content);
-        // parseDualLayerResponse 已经调用了 formatRoleplayText，输出是安全的 HTML
-        // 不再通过 renderMarkdown 二次处理，避免 marked.parse 重新转义 span 标签
         return parsed.content || '';
     } catch {
         return content;
