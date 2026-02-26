@@ -558,7 +558,6 @@ function handleAvatarError(type, roleId) {
         :is-streaming="groupChat.isGroupStreaming.value"
         :current-speaking-role="groupChat.currentSpeakingRole.value"
         :global-settings="globalSettings"
-        :subconscious-thoughts="groupChat.subconsciousThoughts.value"
         :class="{ 'blur-background': showSettings }"
         @send-director="groupChat.sendDirectorMessage"
         @continue-round="groupChat.continueOneRound"
