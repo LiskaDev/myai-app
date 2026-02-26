@@ -11,6 +11,7 @@ const props = defineProps({
     isStreaming: Boolean,
     currentSpeakingRole: String,
     globalSettings: Object,
+    subconsciousThoughts: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits([
@@ -295,6 +296,34 @@ function handleSend() {
     emit('send-director', directorInput.value);
     directorInput.value = '';
 }
+
+// v5.3: 潜意识漂浮气泡队列
+const floatingThoughts = ref([]);
+let floatIdCounter = 0;
+
+watch(() => props.subconsciousThoughts, (newThoughts) => {
+    if (!newThoughts || Object.keys(newThoughts).length === 0) return;
+    // 将所有新想法加入浮动队列，错开时间
+    const entries = Object.values(newThoughts);
+    entries.forEach((entry, i) => {
+        setTimeout(() => {
+            const id = ++floatIdCounter;
+            floatingThoughts.value.push({ ...entry, id });
+            // 6.5秒后自动移除（动画时间 6s + 缓冲）
+            setTimeout(() => {
+                floatingThoughts.value = floatingThoughts.value.filter(t => t.id !== id);
+            }, 6500);
+        }, i * 1800);
+    });
+}, { deep: true });
+
+// 获取角色的最新潜意识想法（用于头像 Tooltip）
+function getSubconsciousThought(roleId) {
+    // 优先从响应式 props，其次从持久化数据
+    return props.subconsciousThoughts?.[roleId]
+        || props.currentGroup?.subconsciousThoughts?.[roleId]
+        || null;
+}
 </script>
 
 <template>
@@ -426,7 +455,7 @@ function handleSend() {
             <!-- AI 角色消息（非编辑） -->
             <div v-else-if="item.type === 'message' && item.msg.role === 'assistant'" class="flex items-start space-x-3">
                 <!-- 角色头像（可点击让该角色继续说） -->
-                <div class="flex-shrink-0 cursor-pointer group" @click="$emit('speak-as-role', item.msg.roleId)"
+                <div class="flex-shrink-0 cursor-pointer group relative" @click="$emit('speak-as-role', item.msg.roleId)"
                      :title="`让${item.msg.roleName}继续说`">
                     <div v-if="item.msg.avatar"
                          class="w-10 h-10 rounded-full overflow-hidden transition group-hover:ring-2 group-hover:ring-white/30 expr-avatar"
@@ -443,6 +472,13 @@ function handleSend() {
                         🎭
                     </div>
                     <div class="text-center mt-0.5 opacity-0 group-hover:opacity-100 transition text-[10px] text-gray-400">💬</div>
+                    <!-- v5.3: 潜意识 Tooltip -->
+                    <div v-if="getSubconsciousThought(item.msg.roleId)"
+                         class="thought-tooltip"
+                         :style="{ borderColor: getRoleColor(item.msg.roleId) + '60' }">
+                        <span class="thought-tooltip-icon">💭</span>
+                        <span class="thought-tooltip-text">{{ getSubconsciousThought(item.msg.roleId).thought }}</span>
+                    </div>
                 </div>
 
                 <div class="max-w-[80%] min-w-0 message-wrapper">
@@ -491,6 +527,24 @@ function handleSend() {
              class="flex items-center space-x-2 text-gray-400 text-sm pl-13">
         </div>
     </div>
+
+    <!-- v5.3: 潜意识漂浮思想气泡 -->
+    <TransitionGroup name="float-thought" tag="div" class="floating-thoughts-container">
+        <div v-for="ft in floatingThoughts" :key="ft.id"
+             class="floating-thought"
+             :style="{ '--float-color': getRoleColor(ft.roleId || '') }">
+            <div v-if="ft.avatar" class="floating-thought-avatar">
+                <img :src="ft.avatar" class="w-full h-full object-cover rounded-full" />
+            </div>
+            <div v-else class="floating-thought-avatar"
+                 :style="{ background: getRoleColor(ft.roleId || '') }">🎭</div>
+            <div class="floating-thought-content">
+                <span class="floating-thought-name"
+                      :style="{ color: getRoleColor(ft.roleId || '') }">{{ ft.roleName }}</span>
+                <span class="floating-thought-text">💭 {{ ft.thought }}</span>
+            </div>
+        </div>
+    </TransitionGroup>
 
     <!-- ▁▁ 悟空按钮：▆️ 继续一轮 (FAB) -->
     <Transition name="fab">
@@ -1076,5 +1130,167 @@ function handleSend() {
 /* 群聊输入框 - prevent iOS zoom */
 .group-chat-input {
     font-size: 16px;
+}
+
+/* === v5.3: 潜意识 Tooltip === */
+.thought-tooltip {
+    position: absolute;
+    left: 50px;
+    top: 0;
+    min-width: 160px;
+    max-width: 240px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.95));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(147, 130, 220, 0.25);
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(147, 130, 220, 0.08);
+    z-index: 30;
+    opacity: 0;
+    transform: translateX(-8px) scale(0.95);
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    white-space: normal;
+    word-break: break-word;
+}
+
+.group:hover .thought-tooltip {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    pointer-events: auto;
+}
+
+.thought-tooltip::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 12px;
+    width: 8px;
+    height: 8px;
+    background: rgba(15, 23, 42, 0.92);
+    border-left: 1px solid rgba(147, 130, 220, 0.25);
+    border-bottom: 1px solid rgba(147, 130, 220, 0.25);
+    transform: rotate(45deg);
+}
+
+.thought-tooltip-icon {
+    font-size: 0.85rem;
+    margin-right: 4px;
+}
+
+.thought-tooltip-text {
+    font-size: 0.75rem;
+    color: rgba(196, 181, 253, 0.9);
+    line-height: 1.4;
+    font-style: italic;
+}
+
+/* === v5.3: 漂浮思想气泡 === */
+.floating-thoughts-container {
+    position: fixed;
+    top: 60px;
+    right: 0;
+    width: 320px;
+    max-height: calc(100vh - 120px);
+    z-index: 25;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 12px;
+    overflow: hidden;
+}
+
+.floating-thought {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.92));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(147, 130, 220, 0.2);
+    border-left: 3px solid var(--float-color, rgba(147, 130, 220, 0.4));
+    border-radius: 14px;
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.3),
+        0 0 30px rgba(147, 130, 220, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    max-width: 300px;
+    animation: floatPulse 3s ease-in-out infinite;
+    pointer-events: auto;
+    cursor: default;
+}
+
+.floating-thought-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 1.5px solid var(--float-color, rgba(147, 130, 220, 0.4));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+}
+
+.floating-thought-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.floating-thought-name {
+    font-size: 0.65rem;
+    font-weight: 600;
+    opacity: 0.8;
+    white-space: nowrap;
+}
+
+.floating-thought-text {
+    font-size: 0.75rem;
+    color: rgba(196, 181, 253, 0.85);
+    font-style: italic;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+/* 漂浮气泡入场/出场动画 */
+.float-thought-enter-active {
+    animation: floatIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.float-thought-leave-active {
+    animation: floatOut 0.6s ease-in forwards;
+}
+
+@keyframes floatIn {
+    from {
+        opacity: 0;
+        transform: translateX(60px) scale(0.85);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes floatOut {
+    from {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(40px) translateY(-10px) scale(0.9);
+    }
+}
+
+@keyframes floatPulse {
+    0%, 100% { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 30px rgba(147, 130, 220, 0.06); }
+    50% { box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), 0 0 40px rgba(147, 130, 220, 0.12); }
 }
 </style>

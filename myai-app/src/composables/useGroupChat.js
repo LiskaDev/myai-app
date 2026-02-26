@@ -36,6 +36,7 @@ export function useGroupChat(appState) {
     const currentSpeakingRole = ref(null); // 当前正在说话的角色名
     const groupAbortController = ref(null);
     let isGroupSummarizing = false; // 防止重复触发群聊摘要
+    const subconsciousThoughts = ref({}); // { [roleId]: { thought, roleName, timestamp } }
 
     // 当前群聊
     const currentGroup = computed(() => {
@@ -109,6 +110,8 @@ export function useGroupChat(appState) {
             participantIds,
             chatHistory: [],
             relationshipMatrix: initMatrix(participantIds),  // v5.2: 关系矩阵
+            roundCount: 0,                // 潜意识轮次计数
+            subconsciousThoughts: {},     // { [roleId]: { thought, roleName, timestamp } }
             createdAt: new Date().toISOString(),
         };
 
@@ -247,6 +250,8 @@ export function useGroupChat(appState) {
             checkAutoDirector();
             // v5.2: 一轮结束后分析对话更新关系矩阵
             analyzeRelationships();
+            // v5.3: 潜意识思想生成（每 3 轮）
+            generateSubconsciousThoughts();
         }
     }
 
@@ -1022,6 +1027,102 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
         saveGroups();
     }
 
+    // v5.3: 潜意识思想生成
+    async function generateSubconsciousThoughts() {
+        const group = currentGroup.value;
+        if (!group || !globalSettings.apiKey) return;
+
+        // 递增轮次计数
+        if (!group.roundCount) group.roundCount = 0;
+        group.roundCount++;
+
+        // 每 3 轮触发一次
+        if (group.roundCount % 3 !== 0) return;
+
+        const recentMsgs = group.chatHistory.slice(-20);
+        if (recentMsgs.filter(m => m.role === 'assistant').length < 2) return;
+
+        // 构建对话摘要（简短版，节约 token）
+        const chatSummary = recentMsgs
+            .filter(m => m.role === 'assistant' || m.role === 'director')
+            .slice(-10)
+            .map(m => {
+                const name = m.roleName || '导演';
+                const content = (m.rawContent || m.content || '')
+                    .replace(/<think>[\s\S]*?<\/think>/g, '')
+                    .replace(/<inner>[\s\S]*?<\/inner>/g, '')
+                    .replace(/<expr:\w+>/gi, '')
+                    .trim()
+                    .slice(0, 100);
+                return `${name}: ${content}`;
+            })
+            .join('\n');
+
+        const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+        const apiUrl = `${baseUrl}/chat/completions`;
+
+        console.log('[Subconscious] 🧠 开始生成潜意识想法...');
+
+        // 为每个角色并行请求
+        const promises = participants.value.map(async (role) => {
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${globalSettings.apiKey}`,
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [{
+                            role: 'system',
+                            content: `你是一个角色扮演分析师。根据对话内容，写出"${role.name}"此刻内心真正的、不加掩饰的想法。\n要求：\n- 仅一句话，不超过25个字\n- 体现"表里不一"：可以与表面表现完全相反\n- 用第一人称（"我"）\n- 不要加引号或标点解释\n角色设定：${(role.systemPrompt || role.description || '').slice(0, 200)}`
+                        }, {
+                            role: 'user',
+                            content: `最近对话：\n${chatSummary}\n\n${role.name}此刻心里真正想的是：`
+                        }],
+                        max_tokens: 80,
+                        temperature: 1.2,
+                        stream: false,
+                    }),
+                    signal: AbortSignal.timeout(15000),
+                });
+
+                if (!response.ok) return null;
+                const data = await response.json();
+                const thought = data.choices?.[0]?.message?.content?.trim();
+                if (!thought) return null;
+
+                return { roleId: role.id, roleName: role.name, thought, avatar: role.avatar || '', timestamp: Date.now() };
+            } catch (e) {
+                console.warn(`[Subconscious] ${role.name} 生成失败:`, e.message);
+                return null;
+            }
+        });
+
+        const results = await Promise.allSettled(promises);
+        const newThoughts = {};
+        let hasNew = false;
+
+        for (const result of results) {
+            if (result.status === 'fulfilled' && result.value) {
+                const { roleId, roleName, thought, avatar, timestamp } = result.value;
+                newThoughts[roleId] = { thought, roleName, avatar, timestamp };
+                hasNew = true;
+                console.log(`[Subconscious] 💭 ${roleName}: ${thought}`);
+            }
+        }
+
+        if (hasNew) {
+            // 更新响应式状态（触发 UI）
+            subconsciousThoughts.value = { ...newThoughts };
+            // 持久化到 group 数据
+            if (!group.subconsciousThoughts) group.subconsciousThoughts = {};
+            Object.assign(group.subconsciousThoughts, newThoughts);
+            saveGroups();
+        }
+    }
+
     return {
         // 状态
         groupChats,
@@ -1055,5 +1156,7 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
         // v5.2: 关系矩阵
         updateAffinity,
         analyzeRelationships,
+        // v5.3: 潜意识思想
+        subconsciousThoughts,
     };
 }
