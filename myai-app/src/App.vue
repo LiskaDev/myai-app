@@ -143,7 +143,7 @@ function handleStartNewDay() {
     }
 
     const systemHint = {
-        role: 'user',
+        role: isGroup ? 'director' : 'user',
         content: hintContent,
     };
 
@@ -152,8 +152,12 @@ function handleStartNewDay() {
 
     if (isGroup) {
         groupChat.saveGroups();
+        // 自动触发群聊一轮回复
+        groupChat.continueOneRound();
     } else {
         appState.saveData();
+        // 自动触发单聊 AI 回复
+        chatFunctions.chat(hintContent).catch(() => {});
     }
     showToast(`☀️ 新的一天开始了！（第 ${newDay} 天）`);
 }
