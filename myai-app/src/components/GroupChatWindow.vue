@@ -1112,7 +1112,7 @@ function toggleThoughtTooltip(e, roleId) {
 .group-fab {
     position: absolute;
     right: 16px;
-    bottom: 76px;
+    bottom: 140px;
     padding: 10px 20px;
     border-radius: 24px;
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
@@ -1207,14 +1207,7 @@ function toggleThoughtTooltip(e, roleId) {
     word-break: break-word;
 }
 
-/* 桌面端：hover 显示 */
-.group:hover .thought-tooltip {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-    pointer-events: auto;
-}
-
-/* 移动端：点击显示 */
+/* 点击切换显示（全平台统一） */
 .thought-tooltip-visible {
     opacity: 1 !important;
     transform: translateX(0) scale(1) !important;
