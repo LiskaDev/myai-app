@@ -169,8 +169,15 @@ const filteredMentions = computed(() => {
 function safeRender(content) {
     try {
         if (!content) return '';
+        // 检测是否已经是格式化后的 HTML（包含 rp-dialogue 等 span 标签）
+        // 如果是，直接返回，防止多次转义
+        if (content.includes('class="rp-') || content.includes('class=&quot;rp-')) {
+            return content;
+        }
         const parsed = parseDualLayerResponse(content);
-        return renderMarkdown(parsed.content || content);
+        // parseDualLayerResponse 已经调用了 formatRoleplayText，输出是安全的 HTML
+        // 不再通过 renderMarkdown 二次处理，避免 marked.parse 重新转义 span 标签
+        return parsed.content || '';
     } catch {
         return content;
     }
