@@ -317,6 +317,21 @@ watch(() => props.subconsciousThoughts, (newThoughts) => {
     });
 }, { deep: true });
 
+// 每个角色的最后一条消息索引（潜意识 Tooltip 只显示在最后一条）
+const lastMsgIndexByRole = computed(() => {
+    const map = {};
+    props.messages.forEach((msg, idx) => {
+        if (msg.role === 'assistant' && msg.roleId) {
+            map[msg.roleId] = idx;
+        }
+    });
+    return map;
+});
+
+function isLastMessageOfRole(roleId, index) {
+    return lastMsgIndexByRole.value[roleId] === index;
+}
+
 // 获取角色的最新潜意识想法（用于头像 Tooltip）
 function getSubconsciousThought(roleId) {
     // 优先从响应式 props，其次从持久化数据
@@ -479,8 +494,8 @@ function toggleThoughtTooltip(e, roleId) {
                         🎭
                     </div>
                     <div class="text-center mt-0.5 opacity-0 group-hover:opacity-100 transition text-[10px] text-gray-400">💬</div>
-                    <!-- v5.3: 潜意识 指示器 + Tooltip -->
-                    <template v-if="getSubconsciousThought(item.msg.roleId)">
+                    <!-- v5.3: 潜意识 指示器 + Tooltip（仅显示在该角色最后一条消息上） -->
+                    <template v-if="getSubconsciousThought(item.msg.roleId) && isLastMessageOfRole(item.msg.roleId, item.index)">
                         <div class="thought-indicator"
                              @click.stop="toggleThoughtTooltip($event, item.msg.roleId)"
                              :style="{ background: getRoleColor(item.msg.roleId) }">💭</div>
