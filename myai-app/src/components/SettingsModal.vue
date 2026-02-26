@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import GlobalSettings from './settings/GlobalSettings.vue';
 import RoleBasicSettings from './settings/RoleBasicSettings.vue';
 import RoleAdvancedSettings from './settings/RoleAdvancedSettings.vue';
@@ -43,6 +43,7 @@ const TABS = props.isGroupMode
   ? [
       { id: 'general', icon: '⚙️', label: '通用' },
       { id: 'group', icon: '👥', label: '群聊' },
+      { id: 'timeline', icon: '📅', label: '时间线' },
       { id: 'persona', icon: '👤', label: '画像' },
       { id: 'data', icon: '💾', label: '数据' },
     ]
@@ -56,6 +57,28 @@ const TABS = props.isGroupMode
     ];
 
 const activeTab = ref(props.isGroupMode ? 'general' : 'role');
+
+// 时间线数据源：群聊用 group.timeline，单聊用 role.timeline
+const timelineSource = computed(() => {
+  if (props.isGroupMode) return props.currentGroup?.timeline || [];
+  return props.currentRole?.timeline || [];
+});
+
+function clearTimelineData() {
+  if (props.isGroupMode && props.currentGroup) {
+    props.currentGroup.timeline = [];
+  } else if (props.currentRole) {
+    props.currentRole.timeline = [];
+  }
+}
+
+function removeTimelineItem(idx) {
+  if (props.isGroupMode && props.currentGroup?.timeline) {
+    props.currentGroup.timeline.splice(idx, 1);
+  } else if (props.currentRole?.timeline) {
+    props.currentRole.timeline.splice(idx, 1);
+  }
+}
 </script>
 
 <template>
@@ -117,17 +140,17 @@ const activeTab = ref(props.isGroupMode ? 'general' : 'role');
       </template>
 
       <!-- ========== 时间线 Tab ========== -->
-      <template v-if="activeTab === 'timeline' && !isGroupMode">
+      <template v-if="activeTab === 'timeline'">
         <section class="space-y-4">
           <div class="flex items-center justify-between px-1">
             <h3 class="font-semibold text-gray-300 flex items-center text-shadow">
               <span class="mr-2">📅</span> 剧情时间线
-              <span v-if="currentRole.timeline?.length" class="ml-2 text-xs font-normal text-gray-500">
-                {{ currentRole.timeline.length }} 条事件
+              <span v-if="timelineSource?.length" class="ml-2 text-xs font-normal text-gray-500">
+                {{ timelineSource.length }} 条事件
               </span>
             </h3>
-            <button v-if="currentRole.timeline?.length"
-                    @click="currentRole.timeline = []; emit('show-toast', '时间线已清空', 'info')"
+            <button v-if="timelineSource?.length"
+                    @click="clearTimelineData(); emit('show-toast', '时间线已清空', 'info')"
                     class="text-xs text-red-400/60 hover:text-red-400 transition">
               清空全部
             </button>
@@ -138,8 +161,8 @@ const activeTab = ref(props.isGroupMode ? 'general' : 'role');
           </p>
 
           <!-- 时间线列表 -->
-          <div v-if="currentRole.timeline?.length" class="space-y-2">
-            <div v-for="(event, idx) in currentRole.timeline" :key="idx"
+          <div v-if="timelineSource?.length" class="space-y-2">
+            <div v-for="(event, idx) in timelineSource" :key="idx"
                  class="glass bg-glass-message rounded-xl px-4 py-3 flex items-start gap-3 group">
               <span class="flex-shrink-0 mt-0.5 text-sm">
                 {{ event.importance === 'high' ? '⚡' : event.importance === 'medium' ? '📌' : '·' }}
@@ -150,7 +173,7 @@ const activeTab = ref(props.isGroupMode ? 'general' : 'role');
                   {{ new Date(event.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
                 </div>
               </div>
-              <button @click="currentRole.timeline.splice(idx, 1)" class="opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-red-500/20 transition flex-shrink-0" title="删除">
+              <button @click="removeTimelineItem(idx)" class="opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-red-500/20 transition flex-shrink-0" title="删除">
                 <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>

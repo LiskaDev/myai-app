@@ -19,6 +19,18 @@ const AFFINITY_LEVELS = [
     { min: 60, max: 100, label: '非常亲密', en: 'very close/trusting' },
 ];
 
+// v5.6: 动态关系标签
+const DYNAMIC_LABELS = [
+    'ally',      // 盟友
+    'rival',     // 寿手
+    'crush',     // 暗恋
+    'mentor',    // 导师
+    'protector', // 保护者
+    'enemy',     // 敌人
+    'partner',   // 搭档
+    'family',    // 家人
+];
+
 /**
  * 生成矩阵键名
  */
@@ -63,6 +75,49 @@ function initMatrix(participantIds) {
     }
 
     return matrix;
+}
+
+/**
+ * v5.6: 获取动态标签
+ */
+function getDynamic(matrix, fromId, toId) {
+    if (!matrix) return '';
+    return matrix[`dynamic_${matrixKey(fromId, toId)}`] || '';
+}
+
+/**
+ * v5.6: 设置动态标签
+ */
+function setDynamic(matrix, fromId, toId, label) {
+    if (!matrix) return;
+    if (label && DYNAMIC_LABELS.includes(label)) {
+        matrix[`dynamic_${matrixKey(fromId, toId)}`] = label;
+    } else {
+        delete matrix[`dynamic_${matrixKey(fromId, toId)}`];
+    }
+}
+
+/**
+ * v5.6: 获取共同秘密
+ */
+function getSharedSecret(matrix, id1, id2) {
+    if (!matrix) return '';
+    // 排序保证两个方向查询结果一致
+    const key = [id1, id2].sort().join('_');
+    return matrix[`secret_${key}`] || '';
+}
+
+/**
+ * v5.6: 设置共同秘密
+ */
+function setSharedSecret(matrix, id1, id2, secret) {
+    if (!matrix) return;
+    const key = [id1, id2].sort().join('_');
+    if (secret) {
+        matrix[`secret_${key}`] = secret;
+    } else {
+        delete matrix[`secret_${key}`];
+    }
 }
 
 /**
@@ -115,13 +170,23 @@ function buildRelationshipHint(roleId, matrix, allParticipants) {
 
     const hints = [];
 
-    // 对其他角色的好感度
+    // 对其他角色的好感度 + 动态标签 + 共同秘密
     for (const other of allParticipants) {
         if (other.id === roleId) continue;
         const value = getAffinity(matrix, roleId, other.id);
+        const dynamic = getDynamic(matrix, roleId, other.id);
+        const secret = getSharedSecret(matrix, roleId, other.id);
+
+        const parts = [];
         if (value !== 0) {
             const text = affinityToText(value);
-            hints.push(`对「${other.name}」：${text}(${value > 0 ? '+' : ''}${value})`);
+            parts.push(`${text}(${value > 0 ? '+' : ''}${value})`);
+        }
+        if (dynamic) parts.push(`[关系:「${dynamic}」]`);
+        if (secret) parts.push(`[共同秘密: ${secret}]`);
+
+        if (parts.length > 0) {
+            hints.push(`对「${other.name}」：${parts.join(' ')}`);
         }
     }
 
@@ -136,7 +201,7 @@ function buildRelationshipHint(roleId, matrix, allParticipants) {
 
     return `[Relationship Dynamics - 当前情感倾向]
 ${hints.join('\n')}
-请让这些情感自然地影响你的态度、用词和行为，但不要直接引用这些数值。
+请让这些情感和关系动态自然地影响你的态度、用词和行为，但不要直接引用这些数值。
 [/Relationship Dynamics]`;
 }
 
@@ -189,22 +254,23 @@ async function analyzeAndUpdate(recentMessages, matrix, participants, apiConfig)
         }
     }
 
-    const prompt = `你是一个角色关系分析器。请分析以下群聊对话，判断角色之间的好感度变化。
+    const prompt = `你是一个角色关系分析器。请分析以下群聊对话，判断角色之间的好感度变化、动态关系标签和共同秘密。
 
 参与角色：${roleNames}、导演
 
-当前好感度矩阵（-100到100）：
+当前好感度矩阵（-100到30）：
 ${currentState.join('\n')}
 
 最近对话：
 ${relevantMsgs}
 
-请基于对话内容，输出好感度**变化量**（正数表示好感增加，负数表示好感降低）。
-变化幅度应该比较小（通常 ±1~10，极端情况 ±15），关系的变化是渐进的。
-如果某对关系没有明显变化，不要输出。
+请输出：
+1. 好感度**变化量**（正数表示增加，负数表示降低，通常 ±1~10，极端 ±15）
+2. 动态关系标签（可选，仅在关系明显时）：ally/rival/crush/mentor/protector/enemy/partner/family
+3. 共同秘密（可选，仅在对话中显示两人有秘密时）
 
 严格按以下 JSON 格式输出，不要加任何其他文字：
-{"changes":[{"from":"角色名","to":"角色名","delta":数字}]}
+{"changes":[{"from":"角色名","to":"角色名","delta":数字,"dynamic":"标签或空","secret":"秘密或空"}]}
 
 如果没有任何变化，输出：{"changes":[]}`;
 
@@ -258,7 +324,17 @@ ${relevantMsgs}
             updatedMatrix[key] = clampAffinity(oldValue + change.delta);
             anyChange = true;
 
-            console.log(`[Relationship] ${change.from}→${change.to}: ${oldValue} → ${updatedMatrix[key]} (${change.delta > 0 ? '+' : ''}${change.delta})`);
+            // v5.6: 处理动态标签
+            if (change.dynamic && DYNAMIC_LABELS.includes(change.dynamic)) {
+                updatedMatrix[`dynamic_${key}`] = change.dynamic;
+            }
+            // v5.6: 处理共同秘密
+            if (change.secret && change.secret.length > 2) {
+                const secretKey = [fromId, toId].sort().join('_');
+                updatedMatrix[`secret_${secretKey}`] = change.secret;
+            }
+
+            console.log(`[Relationship] ${change.from}→${change.to}: ${oldValue} → ${updatedMatrix[key]} (${change.delta > 0 ? '+' : ''}${change.delta})${change.dynamic ? ` [${change.dynamic}]` : ''}`);
         }
 
         return anyChange ? updatedMatrix : null;
@@ -273,12 +349,17 @@ export {
     AFFINITY_MIN,
     AFFINITY_MAX,
     AFFINITY_LEVELS,
+    DYNAMIC_LABELS,
     matrixKey,
     clampAffinity,
     affinityToText,
     initMatrix,
     getAffinity,
     setAffinity,
+    getDynamic,
+    setDynamic,
+    getSharedSecret,
+    setSharedSecret,
     syncMatrix,
     buildRelationshipHint,
     analyzeAndUpdate,

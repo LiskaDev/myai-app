@@ -11,6 +11,7 @@ import {
     setAffinity,
 } from './useRelationship';
 import { useUserPersona } from './useUserPersona';
+import { acquireBackgroundLock, releaseBackgroundLock, isBackgroundLocked, buildTimelinePrompt, parseTimelineEvents } from './useTimeline';
 
 const FETCH_TIMEOUT_MS = 60000; // 群聊超时 60s（多角色需要更长时间）
 
@@ -260,6 +261,8 @@ export function useGroupChat(appState) {
             analyzeRelationships();
             // 🔗 跨场景记忆同步：将重要事件写入角色永久记忆
             syncGroupEventsToMemory();
+            // 📅 群聊剧情时间线分析
+            checkGroupTimeline();
         }
     }
 
@@ -836,6 +839,20 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
             });
         }
 
+        // 注入群聊剧情时间线（如果有）
+        if (group.timeline?.length > 0) {
+            const events = group.timeline
+                .map(e => {
+                    const imp = e.importance === 'high' ? '⚡' : (e.importance === 'medium' ? '📌' : '·');
+                    return `${imp} ${e.event}`;
+                })
+                .join('\n');
+            apiMessages.push({
+                role: 'system',
+                content: `[剧情时间线 - 故事中已发生的重要事件，请保持连贯]\n${events}`,
+            });
+        }
+
         // 上下文窗口：只取最近 N 条消息
         const windowSize = targetRole.memoryWindow || 15;
         const recentMessages = group.chatHistory.slice(-windowSize);
@@ -1148,6 +1165,74 @@ ${chatText}
         if (!group || !group.relationshipMatrix) return;
         setAffinity(group.relationshipMatrix, fromId, toId, value);
         saveGroups();
+    }
+
+    // 📅 群聊剧情时间线分析
+    let groupTimelineLastCount = 0;
+    function checkGroupTimeline() {
+        const group = currentGroup.value;
+        if (!group) return;
+        const dirMsgCount = group.chatHistory.filter(m => m.role === 'director').length;
+        if (dirMsgCount - groupTimelineLastCount < 15) return;
+
+        analyzeGroupTimeline().catch(err => {
+            console.warn('[GroupTimeline] 分析失败:', err.message);
+        });
+    }
+
+    async function analyzeGroupTimeline() {
+        if (!acquireBackgroundLock()) return;
+        try {
+            const group = currentGroup.value;
+            if (!group) return;
+            const dirMsgCount = group.chatHistory.filter(m => m.role === 'director').length;
+
+            const recentMsgs = group.chatHistory.slice(-20);
+            const dialogueText = recentMsgs
+                .filter(m => ['director', 'assistant'].includes(m.role))
+                .map(m => {
+                    const name = m.role === 'director' ? '导演' : (m.roleName || '角色');
+                    return `${name}: ${m.rawContent || m.content || ''}`;
+                })
+                .join('\n');
+
+            if (!dialogueText.trim()) { groupTimelineLastCount = dirMsgCount; return; }
+
+            const existingEvents = (group.timeline || []).slice(-5).map(e => e.event).join('；');
+            const prompt = buildTimelinePrompt(dialogueText, group.name, existingEvents);
+
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const response = await fetch(`${baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: [{ role: 'user', content: prompt }],
+                    max_tokens: 400,
+                    temperature: 0.3,
+                }),
+            });
+
+            if (!response.ok) throw new Error(`API 错误 ${response.status}`);
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content?.trim();
+            if (!content) { groupTimelineLastCount = dirMsgCount; return; }
+
+            const newEvents = parseTimelineEvents(content);
+            if (newEvents.length > 0) {
+                if (!group.timeline) group.timeline = [];
+                group.timeline.push(...newEvents);
+                if (group.timeline.length > 30) group.timeline = group.timeline.slice(-30);
+                saveGroups();
+                console.log(`[GroupTimeline] 提取了 ${newEvents.length} 条新事件`);
+            }
+            groupTimelineLastCount = dirMsgCount;
+        } finally {
+            releaseBackgroundLock();
+        }
     }
 
 
