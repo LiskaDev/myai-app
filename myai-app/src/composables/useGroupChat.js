@@ -984,7 +984,9 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
         if (!globalSettings.apiKey) return;
 
         const recentMsgs = group.chatHistory.slice(-15);
-        if (recentMsgs.filter(m => m.role === 'assistant').length < 2) return;
+        if (recentMsgs.filter(m => m.role === 'assistant').length < 1) return;
+
+        console.log('[Relationship] 开始分析对话...');
 
         try {
             const updatedMatrix = await analyzeAndUpdate(
@@ -1000,7 +1002,10 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
             if (updatedMatrix) {
                 group.relationshipMatrix = updatedMatrix;
                 saveGroups();
-                console.log('[Relationship] 关系矩阵已更新');
+                showToast('📊 关系矩阵已更新', 'success');
+                console.log('[Relationship] ✅ 关系矩阵已更新');
+            } else {
+                console.log('[Relationship] 本轮无明显关系变化');
             }
         } catch (error) {
             console.warn('[Relationship] 更新失败:', error.message);
