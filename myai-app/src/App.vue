@@ -312,29 +312,29 @@ function handleAvatarError(type, roleId) {
   <div id="app" class="h-full flex flex-col relative">
 
     <!-- 顶部导航栏 -->
-    <header class="glass-strong bg-glass-dark px-4 py-3 flex items-center justify-between border-b border-white/10 flex-shrink-0 z-20">
-      <div class="flex items-center space-x-3">
-        <button @click="showSidebar = !showSidebar" class="p-2 rounded-full hover:bg-white/10 transition">
+    <header class="glass-strong bg-glass-dark px-4 py-3 flex items-center justify-between border-b border-white/10 flex-shrink-0 z-20 header-bar">
+      <div class="flex items-center space-x-3 min-w-0 flex-1">
+        <button @click="showSidebar = !showSidebar" class="p-2 rounded-full hover:bg-white/10 transition flex-shrink-0">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
           </svg>
         </button>
         <!-- AI 头像 -->
         <template v-if="!groupChat.isGroupMode.value">
-          <div v-if="currentRole.avatar" class="avatar">
+          <div v-if="currentRole.avatar" class="avatar header-avatar flex-shrink-0">
             <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover" @error="handleAvatarError('ai', currentRoleId)">
           </div>
-          <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
-          <div class="text-shadow">
-            <h1 class="font-bold text-lg">{{ currentRole.name || 'MyAI-RolePlay' }}</h1>
-            <p class="text-xs text-gray-300">{{ isThinking ? '正在输入...' : (isStreaming ? '正在回复...' : '在线') }}</p>
+          <div v-else class="avatar-placeholder avatar-ai text-white header-avatar flex-shrink-0">🎭</div>
+          <div class="text-shadow min-w-0">
+            <h1 class="font-bold text-lg header-title truncate">{{ currentRole.name || 'MyAI-RolePlay' }}</h1>
+            <p class="text-xs text-gray-300 truncate">{{ isThinking ? '正在输入...' : (isStreaming ? '正在回复...' : '在线') }}</p>
           </div>
         </template>
         <template v-else>
-          <div class="avatar-placeholder avatar-ai text-white">👥</div>
-          <div class="text-shadow">
-            <h1 class="font-bold text-lg">{{ groupChat.currentGroup.value?.name || '群聊' }}</h1>
-            <p class="text-xs text-gray-300">
+          <div class="avatar-placeholder avatar-ai text-white header-avatar flex-shrink-0">👥</div>
+          <div class="text-shadow min-w-0">
+            <h1 class="font-bold text-lg header-title truncate">{{ groupChat.currentGroup.value?.name || '群聊' }}</h1>
+            <p class="text-xs text-gray-300 truncate">
               {{ groupChat.isGroupStreaming.value
                   ? `${groupChat.currentSpeakingRole.value || '角色'} 正在输入...`
                   : `${groupChat.participants.value.length} 位参与者` }}
@@ -342,28 +342,28 @@ function handleAvatarError(type, roleId) {
           </div>
         </template>
       </div>
-      <div class="flex items-center space-x-2">
+      <div class="flex items-center space-x-2 header-actions flex-shrink-0">
         <!-- 搜索按钮 -->
-        <button @click="toggleSearch" class="p-2 rounded-full hover:bg-white/10 transition" :class="{ 'bg-white/15': showSearch }" title="搜索消息 (Ctrl+F)">
+        <button @click="toggleSearch" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" :class="{ 'bg-white/15': showSearch }" title="搜索消息 (Ctrl+F)">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
         </button>
         <!-- 清空聊天按钮 -->
-        <button @click="groupChat.isGroupMode.value ? groupChat.clearGroupChat() : clearChat()" class="p-2 rounded-full hover:bg-white/10 transition" title="清空聊天">
+        <button @click="groupChat.isGroupMode.value ? groupChat.clearGroupChat() : clearChat()" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="清空聊天">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
           </svg>
         </button>
         <!-- 编辑群聊按钮（仅群聊模式） -->
-        <button v-if="groupChat.isGroupMode.value" @click="showEditGroupModal = true" class="p-2 rounded-full hover:bg-white/10 transition" title="编辑群聊">
+        <button v-if="groupChat.isGroupMode.value" @click="showEditGroupModal = true" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="编辑群聊">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
           </svg>
         </button>
         <!-- 设置按钮 -->
-        <button @click="showSettings = true" class="p-2 rounded-full hover:bg-white/10 transition" title="设置">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button @click="showSettings = true" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="设置">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
           </svg>

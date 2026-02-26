@@ -568,6 +568,7 @@ function handleSend() {
                 </div>
             </div>
 
+            <!-- 主输入行：textarea + 发送/停止 -->
             <form @submit.prevent="handleSend" class="flex items-end space-x-2">
                 <div class="flex-1 relative">
                     <textarea ref="inputRef" v-model="directorInput"
@@ -576,30 +577,12 @@ function handleSend() {
                         :disabled="isStreaming"
                         placeholder="以导演身份发言（输入 @ 点名角色）..."
                         rows="1"
-                        class="w-full glass-light bg-glass-light text-gray-100 rounded-2xl px-4 py-3 resize-none input-focus outline-none border border-white/10 focus:border-primary transition max-h-32 overflow-y-auto text-shadow-light"
+                        class="w-full glass-light bg-glass-light text-gray-100 rounded-2xl px-4 py-3 resize-none input-focus outline-none border border-white/10 focus:border-primary transition max-h-32 overflow-y-auto text-shadow-light group-chat-input"
                         style="min-height: 48px;"></textarea>
                 </div>
-                <!-- 🌍 世界事件按钮 -->
-                <button type="button"
-                        @click="toggleEventPanel"
-                        :disabled="isStreaming"
-                        class="send-btn w-12 h-12 rounded-full flex items-center justify-center transition disabled:opacity-40"
-                        :class="showEventPanel ? 'bg-emerald-600 ring-2 ring-emerald-400/50' : 'bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600'"
-                        title="注入世界事件">
-                    <span class="text-lg">🌍</span>
-                </button>
-                <!-- 🤫 悄悄话按钮 -->
-                <button type="button"
-                        @click="toggleWhisperPanel"
-                        :disabled="isStreaming"
-                        class="send-btn w-12 h-12 rounded-full flex items-center justify-center transition disabled:opacity-40"
-                        :class="showWhisperPanel ? 'bg-purple-600 ring-2 ring-purple-400/50' : 'bg-gradient-to-br from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600'"
-                        title="发送悄悄话">
-                    <span class="text-lg">🤫</span>
-                </button>
                 <!-- 发送按钮 -->
                 <button type="submit" :disabled="!directorInput.trim() || isStreaming"
-                        class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                         v-if="!isStreaming"
                         title="发送导演消息">
                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -608,22 +591,41 @@ function handleSend() {
                 </button>
                 <!-- 停止按钮 -->
                 <button type="button" @click="$emit('stop-generation')"
-                        class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center transition"
+                        class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center transition flex-shrink-0"
                         v-if="isStreaming" title="停止生成">
                     <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
                         <rect x="6" y="6" width="12" height="12" rx="2"></rect>
                     </svg>
                 </button>
-                <!-- 继续一轮按钮 -->
+            </form>
+            <!-- 功能按钮行 -->
+            <div class="group-footer-actions">
+                <!-- 🌍 世界事件 -->
+                <button type="button"
+                        @click="toggleEventPanel"
+                        :disabled="isStreaming"
+                        class="group-action-btn disabled:opacity-40"
+                        :class="showEventPanel ? 'active-event' : ''">
+                    <span>🌍</span>
+                    <span class="group-action-label">事件</span>
+                </button>
+                <!-- 🤫 悄悄话 -->
+                <button type="button"
+                        @click="toggleWhisperPanel"
+                        :disabled="isStreaming"
+                        class="group-action-btn disabled:opacity-40"
+                        :class="showWhisperPanel ? 'active-whisper' : ''">
+                    <span>🤫</span>
+                    <span class="group-action-label">悄悄话</span>
+                </button>
+                <!-- ▶️ 继续一轮 -->
                 <button type="button" @click="$emit('continue-round')"
                         :disabled="isStreaming"
-                        class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="继续一轮（所有角色各说一句）">
-                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"></path>
-                    </svg>
+                        class="group-action-btn disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span>▶️</span>
+                    <span class="group-action-label">继续一轮</span>
                 </button>
-            </form>
+            </div>
         </div>
     </footer>
 </template>
@@ -878,5 +880,63 @@ function handleSend() {
     border: 1px solid rgba(99, 102, 241, 0.25);
     border-radius: 16px;
     padding: 12px 16px;
+}
+
+/* ============== 群聊底部功能按钮行 ============== */
+.group-footer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.group-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.group-action-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.group-action-btn:active {
+    transform: scale(0.95);
+}
+
+.group-action-btn.active-event {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #6ee7b7;
+}
+
+.group-action-btn.active-whisper {
+    background: rgba(147, 51, 234, 0.2);
+    border-color: rgba(147, 51, 234, 0.4);
+    color: #c4b5fd;
+}
+
+.group-action-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* 群聊输入框 - prevent iOS zoom */
+.group-chat-input {
+    font-size: 16px;
 }
 </style>

@@ -34,10 +34,10 @@ const MODEL_OPTIONS = [
 
 const TOKEN_PRESETS = [
     { value: 0, label: '跟随角色设置' },
-    { value: 500, label: '简短 (500)' },
-    { value: 1000, label: '适中 (1000)' },
-    { value: 2000, label: '较长 (2000)' },
-    { value: 4000, label: '长文 (4000)' },
+    { value: 500, label: '简短（~250字）' },
+    { value: 1000, label: '适中（~500字）' },
+    { value: 2000, label: '较长（~1000字）' },
+    { value: 4000, label: '长文（~2000字）' },
 ];
 
 onMounted(() => {

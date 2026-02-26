@@ -698,6 +698,34 @@ ${dialogueText}
             ? `\n剧本基调：${group.genre}`
             : '';
 
+        // 根据 maxTokens 设置动态调整回复长度指导
+        const effectiveMaxTokens = (group.maxTokens && group.maxTokens > 0)
+            ? group.maxTokens
+            : (targetRole.maxTokens || 2000);
+
+        let lengthGuidance;
+        let frameworkLengthHint = '';
+        if (effectiveMaxTokens >= 2000) {
+            lengthGuidance = '【重要：回复长度要求】你必须写出详细、丰富的长回复。每次回复至少写4-6段（300字以上），包含：详细的动作描写、表情变化、心理活动、环境互动和对话。禁止只写一两句话';
+            frameworkLengthHint = '\nIMPORTANT: Write LONG, DETAILED responses (at least 300+ characters). Include actions, emotions, descriptions. Short replies are NOT acceptable.';
+        } else if (effectiveMaxTokens >= 1000) {
+            lengthGuidance = '【重要：回复长度要求】每次回复请写2-4段（150字以上），包含动作描写、表情或心理活动和对话，不要只写一两句简短的话';
+            frameworkLengthHint = '\nIMPORTANT: Write moderately detailed responses (at least 150+ characters). Include actions and dialogue. Do NOT write just one short sentence.';
+        } else if (effectiveMaxTokens >= 500) {
+            lengthGuidance = '每次回复写1-2段，包含一些动作或表情描写';
+        } else {
+            lengthGuidance = '简洁有力，不要长篇大论（群聊节奏要快）';
+        }
+
+        // 从角色设定中提取性格关键词用于强化提醒
+        const personalitySummary = targetRole.systemPrompt
+            ? targetRole.systemPrompt.slice(0, 200)
+            : '';
+
+        const personalityReminder = personalitySummary
+            ? `\n6. 【性格强化】你必须始终体现「${targetRole.name}」的核心性格特征。绝对不能变成一个温和、友善的通用角色。你的每一句话、每一个动作都要符合你的人设`
+            : '';
+
         const groupContext = `[群聊模式] 你现在在群聊"${group.name}"中。${topicLine}${genreLine}
 群聊成员：${allParticipants.map(r => r.name).join('、')}。
 你是「${targetRole.name}」。其他角色：${otherNames}。
@@ -707,15 +735,16 @@ ${dialogueText}
 1. 始终以「${targetRole.name}」的身份和语气回复
 2. 你可以回应其他角色的发言，也可以主动发起新话题
 3. 保持对话自然，像真正的群聊一样
-4. 简洁有力，不要长篇大论（群聊节奏要快）
-5. 如果当前话题与你无关，或者你没什么想补充的，请直接只回复 [PASS]（不要加任何其他内容）`;
+4. ${lengthGuidance}
+5. 如果当前话题与你无关，或者你没什么想补充的，请直接只回复 [PASS]（不要加任何其他内容）${personalityReminder}`;
 
         // Roleplay framework
         apiMessages.push({
             role: 'system',
             content: `[ROLEPLAY FRAMEWORK - GROUP CHAT MODE]
 You are participating in a multi-character group chat. Stay in character as "${targetRole.name}" at ALL times.
-Never break character. Use *asterisks* for actions, "quotes" for dialogue.
+Never break character. Use *asterisks* for actions, "quotes" for dialogue.${frameworkLengthHint}
+Your personality and speaking style MUST be consistent with your character settings. Do NOT become generic or polite if your character is not.
 [/ROLEPLAY FRAMEWORK]`,
         });
 
@@ -723,7 +752,7 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         if (targetRole.systemPrompt) {
             apiMessages.push({
                 role: 'system',
-                content: targetRole.systemPrompt,
+                content: `[CHARACTER DEFINITION - ${targetRole.name}]\n${targetRole.systemPrompt}\n[/CHARACTER DEFINITION]\n\n重要：以上是你的核心人设，你的所有回复都必须严格符合这个性格设定。`,
             });
         }
 
@@ -898,6 +927,9 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.
         group.chatHistory.push(whisperMsg);
         saveGroups();
         showToast(`🤫 悄悄话已发送给 ${role?.name || '角色'}`);
+
+        // 自动触发目标角色回复悄悄话
+        speakAsRole(targetRoleId);
     }
 
     return {

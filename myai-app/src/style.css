@@ -1424,10 +1424,54 @@ details.reasoning-block[open]>summary {
 /* ============== Mobile Responsiveness ============== */
 @media (max-width: 640px) {
 
+  /* === Header === */
+  .header-bar {
+    padding: 6px 10px !important;
+    gap: 4px;
+  }
+
+  .header-avatar {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .header-title {
+    font-size: 0.95rem !important;
+    max-width: 120px;
+  }
+
+  .header-actions {
+    gap: 0px !important;
+  }
+
+  .header-action-btn {
+    padding: 6px !important;
+  }
+
+  .header-action-btn svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
   /* Sidebar width limit */
   .sidebar {
     width: 85vw !important;
     max-width: 320px;
+  }
+
+  /* === Input area === */
+  textarea {
+    font-size: 16px !important; /* prevent iOS auto-zoom */
+  }
+
+  /* Single chat footer */
+  footer form {
+    gap: 6px;
+  }
+
+  footer .send-btn {
+    width: 44px !important;
+    height: 44px !important;
   }
 
   /* Toolbar buttons larger touch target */
@@ -1438,8 +1482,8 @@ details.reasoning-block[open]>summary {
 
   /* Header compact */
   header {
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
   }
 
   /* Bubble padding compact */
@@ -1455,6 +1499,16 @@ details.reasoning-block[open]>summary {
   /* Settings bottom safe area */
   .settings-panel {
     padding-bottom: 100px;
+  }
+
+  /* === Group chat footer actions === */
+  .group-footer-actions {
+    gap: 6px;
+  }
+
+  .group-action-btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
   }
 }
 
