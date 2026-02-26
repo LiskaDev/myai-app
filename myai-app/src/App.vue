@@ -21,6 +21,7 @@ import GroupChatWindow from './components/GroupChatWindow.vue';
 import CreateGroupModal from './components/CreateGroupModal.vue';
 import EditGroupModal from './components/EditGroupModal.vue';
 import DiaryModal from './components/DiaryModal.vue';
+import StoryExportModal from './components/StoryExportModal.vue';
 
 // Initialize State
 const appState = useAppState();
@@ -38,6 +39,7 @@ const showEditGroupModal = ref(false);
 const showDiaryModal = ref(false);
 const showDiaryRolePicker = ref(false);
 const showMoonMenu = ref(false);
+const showStoryExport = ref(false);
 const diaryDisplayList = ref([]);
 
 // 🌙 结束今天 — 生成日记
@@ -588,6 +590,10 @@ function handleAvatarError(type, roleId) {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
           </svg>
         </button>
+        <!-- 📖 导出故事按钮 -->
+        <button @click="showStoryExport = true" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="导出为故事">
+          <span class="text-base">📖</span>
+        </button>
         <!-- 🌙 夜晚菜单按钮 -->
         <div class="relative">
           <button @click="showMoonMenu = !showMoonMenu" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition relative" title="🌙 夜晚菜单" :disabled="diary.isGenerating.value">
@@ -775,6 +781,17 @@ function handleAvatarError(type, roleId) {
       @toggle-memory-expand="toggleMemoryExpand"
       @refine-memory="refineMemoryWithAI"
       @show-toast="showToast"
+    />
+
+    <!-- 📖 故事导出弹窗 -->
+    <StoryExportModal
+      v-if="showStoryExport"
+      :messages="groupChat.isGroupMode.value ? groupChat.groupMessages.value : messages"
+      :role-name="groupChat.isGroupMode.value ? (groupChat.currentGroup.value?.name || '群聊') : (currentRole.name || '角色')"
+      :is-group="groupChat.isGroupMode.value"
+      :participants="groupChat.isGroupMode.value ? groupChat.participants.value : []"
+      :global-settings="globalSettings"
+      @close="showStoryExport = false"
     />
 
     <!-- 导入数据模态框 -->
