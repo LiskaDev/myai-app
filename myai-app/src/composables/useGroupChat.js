@@ -1002,7 +1002,6 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
             if (updatedMatrix) {
                 group.relationshipMatrix = updatedMatrix;
                 saveGroups();
-                showToast('📊 关系矩阵已更新', 'success');
                 console.log('[Relationship] ✅ 关系矩阵已更新');
             } else {
                 console.log('[Relationship] 本轮无明显关系变化');
