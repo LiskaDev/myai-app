@@ -408,7 +408,7 @@ function handleSend() {
                     </div>
                     <!-- 消息内容 -->
                     <div class="group-speech-bubble cursor-pointer"
-                         :class="{ 'selected': activeMessageIndex === item.index }"
+                         :class="{ 'selected': activeMessageIndex === item.index, 'latest-bubble': item.index === messages.length - 1 && item.msg.role === 'assistant' }"
                          :style="{ borderLeftColor: getRoleColor(item.msg.roleId) }"
                          @click.stop="toggleSelect(item.index)">
                         <div v-if="item.msg.content" class="vn-body markdown-body"
@@ -743,21 +743,39 @@ function handleSend() {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-left: 3px solid #6366f1;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-left: 2px solid rgba(99, 102, 241, 0.35);
     padding: 12px 16px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
 }
 
 .group-speech-bubble:hover {
-    border-color: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .group-speech-bubble.selected {
-    border-color: rgba(129, 140, 248, 0.4);
-    box-shadow: 0 0 16px rgba(129, 140, 248, 0.15);
+    border-color: rgba(129, 140, 248, 0.3);
+    box-shadow: 0 0 12px rgba(129, 140, 248, 0.1);
+}
+
+/* Only the latest message gets the full glow */
+.group-speech-bubble.latest-bubble {
+    border-left-width: 3px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), -4px 0 16px -4px var(--glow-color, rgba(99, 102, 241, 0.2));
+    animation: bubble-glow-in 0.6s ease forwards;
+}
+
+@keyframes bubble-glow-in {
+    from {
+        border-left-width: 2px;
+        opacity: 0.7;
+    }
+    to {
+        border-left-width: 3px;
+        opacity: 1;
+    }
 }
 
 /* 消息操作工具栏 */
