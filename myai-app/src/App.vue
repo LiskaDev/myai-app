@@ -7,6 +7,7 @@ import { useTTS } from './composables/useTTS';
 import { useGestures } from './composables/useGestures';
 import { useGroupChat } from './composables/useGroupChat';
 import { useBranch } from './composables/useBranch';
+import { useSoundEffects } from './composables/useSoundEffects';
 
 // Import Components
 import ChatWindow from './components/ChatWindow.vue';
@@ -25,6 +26,8 @@ const memoryFunctions = useMemory(appState);
 const ttsFunctions = useTTS(appState);
 const groupChat = useGroupChat(appState);
 const branchFunctions = useBranch(appState);
+// Sound effects — pass globalSettings directly for mute/volume sync
+const sfx = useSoundEffects(appState.globalSettings);
 
 const showCreateGroupModal = ref(false);
 const showEditGroupModal = ref(false);
@@ -167,6 +170,22 @@ function handleGlobalKeydown(e) {
     e.preventDefault();
     showSearch.value = true;
   }
+}
+
+// --- Sound Effect Triggers ---
+// Play 'notify' when AI finishes replying
+watch(isStreaming, (now, prev) => {
+  if (prev && !now) sfx.play('notify');
+});
+watch(() => groupChat.isGroupStreaming.value, (now, prev) => {
+  if (prev && !now) sfx.play('notify');
+});
+
+// Wrap sendMessage to play 'send' sound
+function sendMessageWithSound() {
+  if (!userInput.value?.trim()) return;
+  sfx.play('send');
+  sendMessage();
 }
 
 // --- Scroll Logic ---
@@ -455,10 +474,10 @@ function handleAvatarError(type, roleId) {
 
       <!-- 底部输入区域（单聊） -->
       <footer class="glass-strong bg-glass-dark border-t border-white/10 p-3 flex-shrink-0">
-        <form @submit.prevent="sendMessage" class="flex items-end space-x-2">
+        <form @submit.prevent="sendMessageWithSound" class="flex items-end space-x-2">
           <div class="flex-1 relative">
             <textarea ref="inputArea" v-model="userInput"
-                      @keydown.enter.exact.prevent="sendMessage"
+                      @keydown.enter.exact.prevent="sendMessageWithSound"
                       @keydown.enter.shift.exact="handleShiftEnter"
                       :disabled="isStreaming"
                       :placeholder="`与 ${currentRole.name || 'AI'} 对话...`"
@@ -502,7 +521,7 @@ function handleAvatarError(type, roleId) {
         @edit-message="groupChat.editGroupMessage"
         @inject-world-event="groupChat.injectWorldEvent"
         @send-whisper="groupChat.sendWhisper"
-        @generate-director-event="() => groupChat.generateDirectorEvent(true)"
+        @generate-director-event="() => { sfx.play('event'); groupChat.generateDirectorEvent(true); }"
       />
     </template>
 

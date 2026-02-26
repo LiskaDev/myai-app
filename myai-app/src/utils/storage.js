@@ -29,7 +29,10 @@ export const DEFAULT_GLOBAL_SETTINGS = {
         fontSize: 1.0,
         dialogueColor: '#e5e7eb',
         dialogueSymbol: '"'
-    }
+    },
+    // v5.1: Sound effects
+    soundMuted: true,
+    soundVolume: 0.2,
 };
 
 // 保存数据到 localStorage

@@ -178,6 +178,23 @@ function resetCustomStyle() {
              @click="globalSettings.immersiveMode = !globalSettings.immersiveMode"></div>
       </div>
 
+      <!-- 🔊 音效开关 -->
+      <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
+        <div>
+          <label class="block text-sm text-gray-300">🔊 Sound Effects (音效)</label>
+          <p class="text-xs text-gray-400">UI 交互音效和 AI 回复提示音</p>
+        </div>
+        <div class="toggle-switch" :class="{ 'active': !globalSettings.soundMuted }"
+             @click="globalSettings.soundMuted = !globalSettings.soundMuted"></div>
+      </div>
+      <div v-if="!globalSettings.soundMuted" class="mt-2">
+        <label class="block text-xs text-gray-400 mb-1">音量: {{ Math.round((globalSettings.soundVolume || 0.2) * 100) }}%</label>
+        <input type="range" min="0.05" max="0.5" step="0.05"
+               :value="globalSettings.soundVolume || 0.2"
+               @input="globalSettings.soundVolume = parseFloat($event.target.value)"
+               class="w-full accent-primary" />
+      </div>
+
       <!-- 文字风格选择 -->
       <div class="pt-3 mt-3 border-t border-white/10">
         <label class="block text-sm text-gray-300 mb-2">🎨 Roleplay Text Style (角色扮演文字风格)</label>
