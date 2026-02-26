@@ -38,6 +38,7 @@ const expandedPassGroups = ref(new Set());
 // 世界事件面板
 const showEventPanel = ref(false);
 const showCommandMenu = ref(false);
+watch(showCommandMenu, (v) => { if (v) activeThoughtRoleId.value = null; });
 const customEventText = ref('');
 const showRelationshipPanel = ref(false);
 
