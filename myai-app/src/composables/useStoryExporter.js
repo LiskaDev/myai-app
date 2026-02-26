@@ -69,7 +69,7 @@ export function formatStorySegment(text, roleName, roleColor) {
 
     // 格式化 *动作* → 斜体灰紫色
     html = html.replace(/\*([^*]+)\*/g,
-        '<em style="color:#b4a0d8;font-style:italic;">$1</em>');
+        '<em style="color:#c4a882;font-style:italic;">$1</em>');
 
     // 格式化 "对话" → 正常白色
     html = html.replace(/"([^"]+)"/g, '"$1"');
@@ -82,7 +82,7 @@ export function formatStorySegment(text, roleName, roleColor) {
     let innerHtml = '';
     if (innerMatches.length > 0) {
         innerHtml = innerMatches.map(inner =>
-            `<div style="margin:8px 0;padding:8px 14px;border-left:2px solid ${roleColor}33;color:#9a8cb8;font-style:italic;font-size:0.9em;">💭 ${escapeHtml(inner)}</div>`
+            `<div class="inner-thought">💭 ${escapeHtml(inner)}</div>`
         ).join('');
     }
 
@@ -192,107 +192,135 @@ function wrapInHTMLDocument(title, roleName, dateStr, bodyContent) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escapeHtml(title)} — ${escapeHtml(roleName)}</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-    background:#0a0a0f;
-    color:#e0dce8;
-    font-family:'Noto Serif SC', 'Georgia', serif;
-    line-height:1.8;
+    background:#0d0f14;
+    color:#e8e4d9;
+    font-family:'Noto Serif SC', 'Georgia', 'Times New Roman', serif;
+    line-height:1.9;
     min-height:100vh;
+    -webkit-font-smoothing:antialiased;
 }
 .container {
-    max-width:700px;
+    max-width:680px;
     margin:0 auto;
-    padding:60px 28px 80px;
+    padding:64px 32px 80px;
 }
 /* Cover */
 .cover {
     text-align:center;
-    margin-bottom:60px;
-    padding:40px 0;
-    border-bottom:1px solid rgba(255,255,255,0.08);
+    margin-bottom:64px;
+    padding:48px 0 40px;
+    border-bottom:1px solid rgba(232,228,217,0.08);
 }
 .cover-deco {
-    width:60px;
-    height:2px;
-    margin:0 auto 24px;
-    background:linear-gradient(90deg,transparent,#818cf8,#f472b6,transparent);
-    border-radius:2px;
+    width:80px;
+    height:1px;
+    margin:0 auto 28px;
+    background:linear-gradient(90deg,transparent,rgba(232,228,217,0.4),transparent);
 }
 .cover h1 {
-    font-size:1.8rem;
+    font-size:1.75rem;
     font-weight:700;
-    color:#f0ecf8;
-    margin-bottom:8px;
-    letter-spacing:2px;
+    color:#f5f0e8;
+    margin-bottom:10px;
+    letter-spacing:3px;
+    line-height:1.4;
 }
 .cover .sub {
-    font-size:0.85rem;
-    color:#6b6880;
-    margin-top:12px;
+    font-size:0.8rem;
+    color:rgba(232,228,217,0.35);
+    margin-top:16px;
+    letter-spacing:1px;
 }
 /* Messages */
 .msg-block {
-    margin-bottom:28px;
-    animation: fadeIn 0.3s ease;
+    margin-bottom:32px;
+    padding-left:16px;
+    border-left:2px solid rgba(232,228,217,0.06);
+    transition:border-color 0.3s;
 }
-@keyframes fadeIn {
-    from { opacity:0; transform:translateY(8px); }
-    to { opacity:1; transform:translateY(0); }
+.msg-block:hover {
+    border-left-color:rgba(232,228,217,0.15);
 }
 .role-name {
-    font-size:0.8rem;
-    font-weight:700;
-    letter-spacing:1px;
-    text-transform:uppercase;
+    font-size:0.78rem;
+    font-weight:600;
+    letter-spacing:1.5px;
     display:block;
-    margin-bottom:6px;
-    opacity:0.9;
+    margin-bottom:8px;
+    opacity:0.85;
 }
 .msg-content {
-    font-size:1rem;
+    font-size:1.02rem;
     line-height:2;
-    color:#d8d4e2;
+    color:#ddd8cc;
+}
+.msg-content em {
+    color:#c4a882;
+    font-style:italic;
 }
 /* Day separator */
 .day-sep {
     text-align:center;
-    color:#4a4660;
-    font-size:0.85rem;
-    margin:40px 0;
-    letter-spacing:4px;
+    color:rgba(232,228,217,0.2);
+    font-size:0.8rem;
+    margin:48px 0;
+    letter-spacing:6px;
 }
 /* Breathing gap */
 .breath {
     text-align:center;
-    color:#3a3650;
-    font-size:1.2rem;
-    margin:40px 0;
-    letter-spacing:8px;
+    color:rgba(232,228,217,0.12);
+    font-size:0.9rem;
+    margin:48px 0;
+    letter-spacing:12px;
 }
 /* AI polished story text */
 .story-text {
     text-indent:2em;
+    color:#ddd8cc;
 }
 .story-text br + br { content:''; display:block; margin-top:1em; }
+/* Inner thought */
+.inner-thought {
+    margin:10px 0;
+    padding:10px 16px;
+    border-left:2px solid rgba(196,168,130,0.2);
+    color:rgba(196,168,130,0.7);
+    font-style:italic;
+    font-size:0.92em;
+    line-height:1.7;
+}
 /* Footer */
 .footer {
     text-align:center;
-    margin-top:60px;
+    margin-top:64px;
     padding-top:32px;
-    border-top:1px solid rgba(255,255,255,0.06);
-    color:#3a3650;
-    font-size:0.75rem;
+    border-top:1px solid rgba(232,228,217,0.06);
+    color:rgba(232,228,217,0.18);
+    font-size:0.72rem;
+    letter-spacing:0.5px;
 }
 .footer a {
-    color:#6366f1;
+    color:rgba(232,228,217,0.3);
     text-decoration:none;
+    border-bottom:1px solid rgba(232,228,217,0.1);
+    transition:color 0.2s;
 }
+.footer a:hover { color:rgba(232,228,217,0.5); }
 /* Mobile */
 @media (max-width: 640px) {
-    .container { padding:40px 18px 60px; }
+    .container { padding:40px 20px 60px; }
     .cover h1 { font-size:1.4rem; }
+    .msg-block { padding-left:12px; }
+}
+/* Print */
+@media print {
+    body { background:#fff; color:#1a1a1a; }
+    .msg-content { color:#333; }
+    .msg-block { border-left-color:#ddd; }
 }
 </style>
 </head>

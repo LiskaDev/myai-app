@@ -642,6 +642,7 @@ function handleAvatarError(type, roleId) {
       :isGroupMode="groupChat.isGroupMode.value"
       @switch-role="(id) => { groupChat.exitGroupMode(); switchRole(id); }"
       @create-role="createNewRole"
+      @ai-create-role="() => { createNewRole(); showSidebar = false; showSettings = true; }"
       @delete-role="confirmDeleteRole"
       @close="showSidebar = false"
       @avatar-error="handleAvatarError"

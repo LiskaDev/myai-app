@@ -11,6 +11,7 @@ defineProps({
 defineEmits([
   'switch-role',
   'create-role',
+  'ai-create-role',
   'delete-role',
   'close',
   'avatar-error',
@@ -57,10 +58,12 @@ defineEmits([
         </div>
       </div>
 
-      <!-- 添加新角色按钮 -->
-      <div class="mt-4">
+      <div class="mt-4 space-y-2">
         <button @click="$emit('create-role')" class="w-full glass bg-glass-message text-gray-300 rounded-xl px-4 py-3 text-center hover:bg-glass-light transition border border-dashed border-white/20">
           ➕ 创建新角色
+        </button>
+        <button @click="$emit('ai-create-role')" class="w-full text-gray-300 rounded-xl px-4 py-3 text-center hover:bg-glass-light transition border border-dashed border-white/20" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(168, 85, 247, 0.06));">
+          ✨ AI 生成角色
         </button>
       </div>
 
