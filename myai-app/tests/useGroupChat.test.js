@@ -221,7 +221,7 @@ describe('useGroupChat - 群聊编辑', () => {
             ['role-1', 'role-2'],
             '新描述',
             'deepseek-reasoner',
-            2000,
+            'long',
             '校园恋爱'
         );
 
@@ -229,7 +229,7 @@ describe('useGroupChat - 群聊编辑', () => {
         expect(updated.name).toBe('新名字');
         expect(updated.description).toBe('新描述');
         expect(updated.model).toBe('deepseek-reasoner');
-        expect(updated.maxTokens).toBe(2000);
+        expect(updated.responseLength).toBe('long');
         expect(updated.genre).toBe('校园恋爱');
     });
 
@@ -239,7 +239,7 @@ describe('useGroupChat - 群聊编辑', () => {
         const groupChat = useGroupChat(appState);
         const group = groupChat.createGroupChat('测试群', ['role-1', 'role-2']);
 
-        groupChat.updateGroupChat(group.id, '新名字', ['role-1'], '', '', 0, '');
+        groupChat.updateGroupChat(group.id, '新名字', ['role-1'], '', '', '', '');
 
         expect(appState.showToast).toHaveBeenCalledWith(
             expect.stringContaining('至少'),

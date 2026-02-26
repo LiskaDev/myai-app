@@ -249,6 +249,16 @@ watch(() => messages.value.length, () => {
   }
 });
 
+// 切换角色时强制滚动到底部
+watch(() => currentRoleId.value, () => {
+  nextTick(() => setTimeout(() => scrollToBottom(true), 50));
+});
+
+// 切换群聊时强制滚动到底部
+watch(() => groupChat.currentGroupId.value, () => {
+  nextTick(() => setTimeout(() => scrollToBottom(true), 50));
+});
+
 // 🛡️ 清理 Timer 和 Storage 监听器
 onUnmounted(() => {
   cleanupTimers();
@@ -323,7 +333,8 @@ onMounted(() => {
   if (window.speechSynthesis) {
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }
-  scrollToBottom();
+  // 延迟确保 DOM 完全渲染后再强制滚动到底部
+  setTimeout(() => scrollToBottom(true), 100);
   window.addEventListener('keydown', handleGlobalKeydown);
 });
 

@@ -128,7 +128,7 @@ const activeTab = ref(props.isGroupMode ? 'general' : 'role');
               </div>
               <div>
                 <label class="block text-sm text-gray-400 mb-1">📏 回复长度</label>
-                <div class="text-gray-200 text-sm">{{ currentGroup.maxTokens ? currentGroup.maxTokens + ' tokens' : '跟随角色' }}</div>
+                <div class="text-gray-200 text-sm">{{ { short: '简短', normal: '适中', long: '较长', novel: '长文' }[currentGroup.responseLength] || '跟随角色' }}</div>
               </div>
             </div>
             <div>

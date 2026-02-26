@@ -1,7 +1,15 @@
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
-// 配置 marked 选项
+// 禁用 GFM 删除线扩展：防止 AI 回复中的 ~~text~~ 被渲染成删除线
+marked.use({
+    extensions: [{
+        name: 'del',
+        level: 'inline',
+        start(src) { return undefined; },  // 不匹配任何内容，等于禁用
+    }]
+});
+
 marked.setOptions({
     breaks: true,
     gfm: true,
@@ -10,7 +18,7 @@ marked.setOptions({
 // 配置 DOMPurify - 严格的白名单模式
 const PURIFY_CONFIG = {
     ALLOWED_TAGS: [
-        'p', 'br', 'strong', 'em', 'b', 'i', 'u', 's', 'del',
+        'p', 'br', 'strong', 'em', 'b', 'i', 'u',
         'code', 'pre', 'blockquote', 'ul', 'ol', 'li',
         'a', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr'

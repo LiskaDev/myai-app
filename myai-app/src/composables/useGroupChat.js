@@ -105,7 +105,7 @@ export function useGroupChat(appState) {
             description: description || '',
             genre: '',        // 剧本基调：校园恋爱/搞笑日常/废土生存 等
             model: '',       // 空 = 用全局设置
-            maxTokens: 0,    // 0 = 用角色默认
+            responseLength: '',  // 空 = 跟随角色设置, short/normal/long/novel
             participantIds,
             chatHistory: [],
             relationshipMatrix: initMatrix(participantIds),  // v5.2: 关系矩阵
@@ -292,8 +292,10 @@ export function useGroupChat(appState) {
         const isReasoner = model.includes('reasoner');
 
         // 回复长度优先级：群聊设置 > 角色设置 > 默认
-        const maxTokens = (group?.maxTokens && group.maxTokens > 0)
-            ? group.maxTokens
+        const lengthSetting = group?.responseLength || '';
+        const LENGTH_TO_TOKENS = { short: 500, normal: 1000, long: 2000, novel: 4000 };
+        const maxTokens = lengthSetting && LENGTH_TO_TOKENS[lengthSetting]
+            ? LENGTH_TO_TOKENS[lengthSetting]
             : (role.maxTokens || 2000);
 
         // 创建 AbortController
@@ -721,23 +723,24 @@ ${dialogueText}
             ? `\n剧本基调：${group.genre}`
             : '';
 
-        // 根据 maxTokens 设置动态调整回复长度指导
-        const effectiveMaxTokens = (group.maxTokens && group.maxTokens > 0)
-            ? group.maxTokens
-            : (targetRole.maxTokens || 2000);
+        // 根据 responseLength 语义设置动态调整回复长度指导
+        const effectiveLength = group.responseLength || '';
 
         let lengthGuidance;
         let frameworkLengthHint = '';
-        if (effectiveMaxTokens >= 2000) {
+        if (effectiveLength === 'novel') {
             lengthGuidance = '【重要：回复长度要求】你必须写出详细、丰富的长回复。每次回复至少写4-6段（300字以上），包含：详细的动作描写、表情变化、心理活动、环境互动和对话。禁止只写一两句话';
             frameworkLengthHint = '\nIMPORTANT: Write LONG, DETAILED responses (at least 300+ characters). Include actions, emotions, descriptions. Short replies are NOT acceptable.';
-        } else if (effectiveMaxTokens >= 1000) {
+        } else if (effectiveLength === 'long') {
             lengthGuidance = '【重要：回复长度要求】每次回复请写2-4段（150字以上），包含动作描写、表情或心理活动和对话，不要只写一两句简短的话';
             frameworkLengthHint = '\nIMPORTANT: Write moderately detailed responses (at least 150+ characters). Include actions and dialogue. Do NOT write just one short sentence.';
-        } else if (effectiveMaxTokens >= 500) {
+        } else if (effectiveLength === 'normal') {
             lengthGuidance = '每次回复写1-2段，包含一些动作或表情描写';
-        } else {
+        } else if (effectiveLength === 'short') {
             lengthGuidance = '简洁有力，不要长篇大论（群聊节奏要快）';
+        } else {
+            // 跟随角色设置 / 默认：不添加特别强的长度约束
+            lengthGuidance = '根据剧情需要，自然地回复，不要太长也不要太短';
         }
 
         // 从角色设定中提取性格关键词用于强化提醒
@@ -891,7 +894,7 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
     }
 
     // 编辑群聊（改名 + 增减成员）
-    function updateGroupChat(groupId, newName, newParticipantIds, newDescription, newModel, newMaxTokens, newGenre) {
+    function updateGroupChat(groupId, newName, newParticipantIds, newDescription, newModel, newResponseLength, newGenre) {
         const group = groupChats.value.find(g => g.id === groupId);
         if (!group) return;
 
@@ -904,7 +907,7 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
         group.participantIds = newParticipantIds;
         if (newDescription !== undefined) group.description = newDescription;
         if (newModel !== undefined) group.model = newModel;
-        if (newMaxTokens !== undefined) group.maxTokens = newMaxTokens;
+        if (newResponseLength !== undefined) group.responseLength = newResponseLength;
         if (newGenre !== undefined) group.genre = newGenre;
         // v5.2: 同步关系矩阵（增减成员时）
         if (group.relationshipMatrix) {

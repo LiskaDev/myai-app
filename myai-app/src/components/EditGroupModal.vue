@@ -12,7 +12,7 @@ const groupName = ref('');
 const groupDescription = ref('');
 const groupGenre = ref('');
 const groupModel = ref('');
-const groupMaxTokens = ref(0);
+const groupResponseLength = ref('');
 const selectedIds = ref([]);
 
 const GENRE_OPTIONS = [
@@ -32,12 +32,12 @@ const MODEL_OPTIONS = [
     { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner (R1)' },
 ];
 
-const TOKEN_PRESETS = [
-    { value: 0, label: '跟随角色设置' },
-    { value: 500, label: '简短（~250字）' },
-    { value: 1000, label: '适中（~500字）' },
-    { value: 2000, label: '较长（~1000字）' },
-    { value: 4000, label: '长文（~2000字）' },
+const LENGTH_OPTIONS = [
+    { value: '', label: '跟随角色设置' },
+    { value: 'short', label: '简短（日常短回复）' },
+    { value: 'normal', label: '适中（标准模式）' },
+    { value: 'long', label: '较长（详细描写）' },
+    { value: 'novel', label: '长文（沉浸小说）' },
 ];
 
 onMounted(() => {
@@ -45,7 +45,7 @@ onMounted(() => {
     groupDescription.value = props.group?.description || '';
     groupGenre.value = props.group?.genre || '';
     groupModel.value = props.group?.model || '';
-    groupMaxTokens.value = props.group?.maxTokens || 0;
+    groupResponseLength.value = props.group?.responseLength || '';
     selectedIds.value = [...(props.group?.participantIds || [])];
 });
 
@@ -61,7 +61,7 @@ function toggleRole(roleId) {
 
 function handleSave() {
     if (!canSave.value) return;
-    emit('save', props.group.id, groupName.value.trim(), [...selectedIds.value], groupDescription.value.trim(), groupModel.value, groupMaxTokens.value, groupGenre.value);
+    emit('save', props.group.id, groupName.value.trim(), [...selectedIds.value], groupDescription.value.trim(), groupModel.value, groupResponseLength.value, groupGenre.value);
 }
 </script>
 
@@ -131,9 +131,9 @@ function handleSave() {
                     </div>
                     <div>
                         <label class="block text-sm text-gray-400 mb-1">📏 回复长度</label>
-                        <select v-model.number="groupMaxTokens"
+                        <select v-model="groupResponseLength"
                                 class="w-full glass-light bg-glass-light rounded-xl px-3 py-2.5 text-gray-100 text-sm outline-none border border-white/10 focus:border-primary transition appearance-none cursor-pointer">
-                            <option v-for="preset in TOKEN_PRESETS" :key="preset.value" :value="preset.value">{{ preset.label }}</option>
+                            <option v-for="opt in LENGTH_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                         </select>
                     </div>
                 </div>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick, computed } from 'vue';
+import { ref, watch, nextTick, computed, onMounted } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
 import { parseDualLayerResponse, extractExpression } from '../utils/textParser';
 import RelationshipRadar from './RelationshipRadar.vue';
@@ -270,6 +270,23 @@ watch(() => {
             }
         }
     });
+});
+
+// 切换群聊 / 初次加载时强制滚动到底部
+watch(() => props.currentGroup?.id, () => {
+    nextTick(() => setTimeout(() => {
+        if (containerRef.value) {
+            containerRef.value.scrollTop = containerRef.value.scrollHeight;
+        }
+    }, 50));
+});
+
+onMounted(() => {
+    setTimeout(() => {
+        if (containerRef.value) {
+            containerRef.value.scrollTop = containerRef.value.scrollHeight;
+        }
+    }, 100);
 });
 
 function handleSend() {
