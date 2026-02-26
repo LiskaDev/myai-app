@@ -4,6 +4,7 @@ export const STORAGE_KEYS = {
     ROLES: 'myai_roles_v1',
     GROUPS: 'myai_groups_v1',
     SESSION: 'myai_session_v1',
+    DIARIES: 'myai_diaries_v1',
 };
 
 // 默认全局设置

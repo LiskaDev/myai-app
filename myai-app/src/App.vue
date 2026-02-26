@@ -8,6 +8,7 @@ import { useGestures } from './composables/useGestures';
 import { useGroupChat } from './composables/useGroupChat';
 import { useBranch } from './composables/useBranch';
 import { useSoundEffects } from './composables/useSoundEffects';
+import { useDiary } from './composables/useDiary';
 import { extractExpression } from './utils/textParser';
 
 // Import Components
@@ -19,6 +20,7 @@ import ImportDataModal from './components/ImportDataModal.vue';
 import GroupChatWindow from './components/GroupChatWindow.vue';
 import CreateGroupModal from './components/CreateGroupModal.vue';
 import EditGroupModal from './components/EditGroupModal.vue';
+import DiaryModal from './components/DiaryModal.vue';
 
 // Initialize State
 const appState = useAppState();
@@ -29,9 +31,62 @@ const groupChat = useGroupChat(appState);
 const branchFunctions = useBranch(appState);
 // Sound effects — pass globalSettings directly for mute/volume sync
 const sfx = useSoundEffects(appState.globalSettings);
+const diary = useDiary(appState);
 
 const showCreateGroupModal = ref(false);
 const showEditGroupModal = ref(false);
+const showDiaryModal = ref(false);
+const showDiaryRolePicker = ref(false);
+const diaryDisplayList = ref([]);
+
+// 🌙 结束今天 — 生成日记
+async function handleEndDay() {
+    if (groupChat.isGroupMode.value) {
+        // 群聊：弹出角色选择
+        showDiaryRolePicker.value = true;
+    } else {
+        // 单聊：直接生成
+        const role = appState.currentRole.value;
+        const msgs = appState.messages.value;
+        const entry = await diary.generateDiary(role, msgs);
+        if (entry) {
+            diaryDisplayList.value = [entry];
+            showDiaryModal.value = true;
+        }
+    }
+}
+
+async function handleDiaryRolePick(role) {
+    showDiaryRolePicker.value = false;
+    const msgs = groupChat.groupMessages.value;
+    const entry = await diary.generateDiary(role, msgs, {
+        isGroup: true,
+        groupId: groupChat.currentGroupId.value,
+        groupName: groupChat.currentGroup.value?.name || '群聊',
+    });
+    if (entry) {
+        diaryDisplayList.value = [entry];
+        showDiaryModal.value = true;
+    }
+}
+
+function handleMarkDiaryRead(diaryId) {
+    diary.markAsRead(diaryId);
+}
+
+function openDiaryHistory() {
+    const roleId = groupChat.isGroupMode.value ? null : appState.currentRoleId.value;
+    if (roleId) {
+        diaryDisplayList.value = diary.getDiariesForRole(roleId);
+    } else {
+        diaryDisplayList.value = diary.diaries.value.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+    if (diaryDisplayList.value.length === 0) {
+        appState.showToast?.('还没有日记哦');
+        return;
+    }
+    showDiaryModal.value = true;
+}
 
 // Token pressure indicator
 const contextPressure = computed(() => {
@@ -330,12 +385,21 @@ onMounted(() => {
   setupWatchers();
   loadVoices();
   groupChat.loadGroups();
+  diary.loadDiaries();
   if (window.speechSynthesis) {
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }
   // 延迟确保 DOM 完全渲染后再强制滚动到底部
   setTimeout(() => scrollToBottom(true), 100);
   window.addEventListener('keydown', handleGlobalKeydown);
+  // 自动弹出未读日记
+  setTimeout(() => {
+    const unread = diary.getUnreadDiaries();
+    if (unread.length > 0) {
+      diaryDisplayList.value = unread;
+      showDiaryModal.value = true;
+    }
+  }, 800);
 });
 
 onUnmounted(() => {
@@ -449,6 +513,10 @@ function handleAvatarError(type, roleId) {
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
           </svg>
+        </button>
+        <!-- 🌙 结束今天 / 日记按钮 -->
+        <button @click="handleEndDay" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition relative" title="结束今天 / 生成日记" :disabled="diary.isGenerating.value">
+          <span class="text-base" :class="{ 'animate-pulse': diary.isGenerating.value }">🌙</span>
         </button>
         <!-- 设置按钮 -->
         <button @click="showSettings = true" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="设置">
@@ -645,6 +713,38 @@ function handleAvatarError(type, roleId) {
       @save="saveEditMessage"
       @cancel="cancelEditMessage"
     />
+
+    <!-- 🌙 日记弹窗 -->
+    <DiaryModal
+      :show="showDiaryModal"
+      :diaries="diaryDisplayList"
+      :is-generating="diary.isGenerating.value"
+      @close="showDiaryModal = false"
+      @mark-read="handleMarkDiaryRead"
+    />
+
+    <!-- 群聊日记角色选择 -->
+    <Transition name="toast">
+      <div v-if="showDiaryRolePicker" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showDiaryRolePicker = false"></div>
+        <div class="relative glass bg-glass-dark rounded-2xl max-w-sm w-full p-6 border border-white/10 shadow-2xl">
+          <h3 class="text-lg font-bold mb-1 text-white">🌙 今晚想偷看谁的日记？</h3>
+          <p class="text-xs text-gray-400 mb-4">选择一个角色来生成 TA 的私密日记</p>
+          <div class="space-y-2">
+            <button v-for="role in groupChat.participants.value" :key="role.id"
+                    @click="handleDiaryRolePick(role)"
+                    class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition border border-white/5">
+              <div v-if="role.avatar" class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
+                <img :src="role.avatar" class="w-full h-full object-cover" />
+              </div>
+              <div v-else class="w-9 h-9 rounded-full bg-indigo-500/30 flex items-center justify-center flex-shrink-0 text-sm">🎭</div>
+              <span class="text-sm text-gray-200">{{ role.name }}</span>
+            </button>
+          </div>
+          <button @click="showDiaryRolePicker = false" class="mt-4 w-full py-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 text-sm transition">取消</button>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Toast 提示 -->
     <Transition name="toast">
