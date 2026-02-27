@@ -104,7 +104,7 @@ export function sanitizeRoleData(data) {
  * @param {object} apiConfig { baseUrl, apiKey, model? }
  * @returns {Promise<{success: boolean, data?: object, error?: string}>}
  */
-export async function generateRoleFromDescription(description, apiConfig) {
+export async function generateRoleFromDescription(description, apiConfig, externalSignal) {
     if (!description || !description.trim()) {
         return { success: false, error: '请输入角色描述' };
     }
@@ -119,6 +119,15 @@ export async function generateRoleFromDescription(description, apiConfig) {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
+
+        // 如果有外部信号，监听它来中止内部控制器
+        if (externalSignal) {
+            if (externalSignal.aborted) {
+                clearTimeout(timeoutId);
+                return { success: false, error: '已取消' };
+            }
+            externalSignal.addEventListener('abort', () => controller.abort(), { once: true });
+        }
 
         const response = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
@@ -155,7 +164,7 @@ export async function generateRoleFromDescription(description, apiConfig) {
         return { success: true, data: roleData };
     } catch (error) {
         if (error.name === 'AbortError') {
-            return { success: false, error: '生成超时，请重试' };
+            return { success: false, error: '已取消' };
         }
         return { success: false, error: error.message || '生成失败，请重试' };
     }

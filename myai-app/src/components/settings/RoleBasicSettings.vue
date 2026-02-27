@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onBeforeUnmount } from 'vue';
 import { generateRoleFromDescription } from '../../composables/useRoleGenerator';
 
 const props = defineProps({
@@ -7,23 +7,32 @@ const props = defineProps({
   globalSettings: Object
 });
 
-const emit = defineEmits(['show-toast']);
+const emit = defineEmits(['show-toast', 'ai-role-generated']);
 
 // AI 生成状态
 const aiDescription = ref('');
 const isGenerating = ref(false);
+const abortControllerRef = ref(null);
 
 async function handleGenerate() {
   if (!aiDescription.value.trim() || isGenerating.value) return;
 
   isGenerating.value = true;
 
+  // 创建 AbortController 以支持取消
+  const controller = new AbortController();
+  abortControllerRef.value = controller;
+
   const result = await generateRoleFromDescription(aiDescription.value, {
     baseUrl: props.globalSettings?.baseUrl,
     apiKey: props.globalSettings?.apiKey,
-  });
+  }, controller.signal);
 
+  abortControllerRef.value = null;
   isGenerating.value = false;
+
+  // 如果被取消了，静默返回
+  if (controller.signal.aborted) return;
 
   if (result.success) {
     // 填充所有字段到当前角色
@@ -39,9 +48,28 @@ async function handleGenerate() {
     aiDescription.value = '';
     emit('show-toast', '✨ 角色生成成功！可自由修改各字段', 'info');
   } else {
-    emit('show-toast', result.error || '生成失败，请重试', 'error');
+    if (!result.error?.includes('AbortError') && !result.error?.includes('中止')) {
+      emit('show-toast', result.error || '生成失败，请重试', 'error');
+    }
   }
 }
+
+// 取消正在进行的生成
+function cancelGeneration() {
+  if (abortControllerRef.value) {
+    abortControllerRef.value.abort();
+    abortControllerRef.value = null;
+    isGenerating.value = false;
+  }
+}
+
+// 组件卸载时自动取消
+onBeforeUnmount(() => {
+  cancelGeneration();
+});
+
+// 暴露给父组件
+defineExpose({ cancelGeneration });
 </script>
 
 <template>

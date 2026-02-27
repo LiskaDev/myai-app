@@ -287,6 +287,9 @@ const showSearch = ref(false);
 const searchQuery = ref('');
 const currentMatchIndex = ref(0);
 
+// v5.9: 跟踪 AI 生成角色的待定状态，关闭设置时清理空角色
+const pendingAiRoleId = ref(null);
+
 const searchResults = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
   if (!query) return [];
@@ -315,6 +318,26 @@ function goToMatch(direction) {
   } else {
     currentMatchIndex.value = (currentMatchIndex.value - 1 + searchResults.value.length) % searchResults.value.length;
   }
+}
+
+// v5.9: 关闭设置时清理未完成的 AI 生成角色
+function handleSettingsClose() {
+  if (pendingAiRoleId.value) {
+    const pendingRole = roleList.value.find(r => r.id === pendingAiRoleId.value);
+    // 如果角色还是空的（没有 systemPrompt），说明用户取消了生成
+    if (pendingRole && !pendingRole.systemPrompt?.trim()) {
+      const idx = roleList.value.indexOf(pendingRole);
+      if (idx !== -1) {
+        roleList.value.splice(idx, 1);
+        // 切换回上一个角色
+        if (roleList.value.length > 0) {
+          switchRole(roleList.value[Math.max(0, idx - 1)].id);
+        }
+      }
+    }
+    pendingAiRoleId.value = null;
+  }
+  saveAndCloseSettings();
 }
 
 // Ctrl+F 快捷键
@@ -674,7 +697,7 @@ function handleAvatarError(type, roleId) {
       :isGroupMode="groupChat.isGroupMode.value"
       @switch-role="(id) => { groupChat.exitGroupMode(); switchRole(id); }"
       @create-role="createNewRole"
-      @ai-create-role="() => { createNewRole(); showSidebar = false; showSettings = true; }"
+      @ai-create-role="() => { createNewRole(); pendingAiRoleId = currentRole.id; showSidebar = false; showSettings = true; }"
       @delete-role="confirmDeleteRole"
       @close="showSidebar = false"
       @avatar-error="handleAvatarError"
@@ -800,7 +823,7 @@ function handleAvatarError(type, roleId) {
       :is-group-mode="groupChat.isGroupMode.value"
       :current-group="groupChat.currentGroup.value"
       :participants="groupChat.participants.value"
-      @close="saveAndCloseSettings"
+      @close="handleSettingsClose"
       @save-data="saveData"
       @clear-all-data="confirmClearAll"
       @export-data="exportData"
