@@ -1143,7 +1143,7 @@ details.reasoning-block[open]>summary {
 /* ============== Settings Panel ============== */
 .settings-panel {
   transition: transform 0.3s ease-out, opacity 0.3s ease-out;
-  z-index: 9999 !important;
+  z-index: 50;
 }
 
 .settings-panel.hidden {
