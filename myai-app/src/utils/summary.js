@@ -56,39 +56,38 @@ ${dialogueText}
  * 检查是否需要触发摘要
  * @param {Array} messages - 当前消息列表
  * @param {string} existingSummary - 已有摘要
+ * @param {number} summarizedUpTo - 已经摘要到的消息索引
  * @returns {boolean}
  */
-export function shouldTriggerSummary(messages, existingSummary = '') {
-    // 消息数超过阈值时触发
+export function shouldTriggerSummary(messages, existingSummary = '', summarizedUpTo = 0) {
+    // v5.9: 只计算未被摘要的消息数
+    const unsummarizedCount = messages.length - summarizedUpTo;
     const threshold = SUMMARY_CONFIG.TRIGGER_THRESHOLD;
-    const messageCount = messages.length;
 
-    // 如果已有摘要，阈值可以更宽松（增量压缩）
-    const adjustedThreshold = existingSummary ? threshold : Math.floor(threshold * 0.8);
-
-    return messageCount >= adjustedThreshold;
+    return unsummarizedCount >= threshold;
 }
 
 /**
  * 获取需要摘要的消息范围
+ * v5.9: 不再删除消息，只返回需要摘要的部分
  * @param {Array} messages - 完整消息列表
- * @returns {Object} { toSummarize: [], toKeep: [] }
+ * @param {number} summarizedUpTo - 已经摘要到的消息索引
+ * @returns {Object} { toSummarize: [], newSummarizedUpTo: number }
  */
-export function getMessageRanges(messages) {
+export function getMessageRanges(messages, summarizedUpTo = 0) {
     const keepCount = SUMMARY_CONFIG.KEEP_RECENT;
+    const endOfSummarize = messages.length - keepCount;
 
-    if (messages.length <= keepCount) {
+    if (endOfSummarize <= summarizedUpTo) {
         return {
             toSummarize: [],
-            toKeep: messages,
+            newSummarizedUpTo: summarizedUpTo,
         };
     }
 
-    const splitIndex = messages.length - keepCount;
-
     return {
-        toSummarize: messages.slice(0, splitIndex),
-        toKeep: messages.slice(splitIndex),
+        toSummarize: messages.slice(summarizedUpTo, endOfSummarize),
+        newSummarizedUpTo: endOfSummarize,
     };
 }
 

@@ -25,8 +25,9 @@ export function useAutoSummary(appState) {
     function checkAndTriggerSummary() {
         const role = currentRole.value;
         const existingSummary = role.autoSummary || role.storySummary || '';
+        const summarizedUpTo = role.summarizedUpTo || 0;
 
-        if (shouldTriggerSummary(messages.value, existingSummary) && !isBackgroundLocked()) {
+        if (shouldTriggerSummary(messages.value, existingSummary, summarizedUpTo) && !isBackgroundLocked()) {
             // 异步执行摘要，不阻塞用户操作
             generateAutoSummary().catch(err => {
                 console.warn('[Summary] 自动摘要失败:', err.message);
@@ -36,20 +37,22 @@ export function useAutoSummary(appState) {
 
     /**
      * 生成自动摘要
+     * v5.9: 不再删除旧消息，改为追踪 summarizedUpTo 索引
      */
     async function generateAutoSummary() {
         if (!acquireBackgroundLock()) return;
 
         try {
             const role = currentRole.value;
-            const { toSummarize, toKeep } = getMessageRanges(messages.value);
+            const summarizedUpTo = role.summarizedUpTo || 0;
+            const { toSummarize, newSummarizedUpTo } = getMessageRanges(messages.value, summarizedUpTo);
 
             if (toSummarize.length === 0) {
                 releaseBackgroundLock();
                 return;
             }
 
-            console.log(`[Summary] 正在压缩 ${toSummarize.length} 条消息...`);
+            console.log(`[Summary] 正在压缩 ${toSummarize.length} 条消息（索引 ${summarizedUpTo} → ${newSummarizedUpTo}）...`);
 
             const existingSummary = role.autoSummary || '';
             const summaryPrompt = buildSummaryPrompt(toSummarize, role, existingSummary);
@@ -81,10 +84,10 @@ export function useAutoSummary(appState) {
                 // 更新角色的自动摘要
                 role.autoSummary = newSummary;
 
-                // 压缩消息列表：只保留最近的消息
-                messages.value = toKeep;
+                // v5.9: 不删消息！只更新索引
+                role.summarizedUpTo = newSummarizedUpTo;
 
-                console.log(`[Summary] 摘要完成，保留 ${toKeep.length} 条消息`);
+                console.log(`[Summary] 摘要完成，已压缩到索引 ${newSummarizedUpTo}，全部 ${messages.value.length} 条消息保留`);
                 showToast('💾 对话记忆已自动压缩', 'info');
 
                 // 保存数据
