@@ -598,6 +598,24 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
+/* v5.9: Token 消耗量标签 */
+.token-badge {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 0.65rem;
+  color: rgba(156, 163, 175, 0.5);
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  transition: color 0.2s ease;
+  user-select: none;
+}
+
+.speech-bubble:hover .token-badge,
+.group-speech-bubble:hover .token-badge {
+  color: rgba(156, 163, 175, 0.8);
+}
+
 .vn-body {
   line-height: 1.85;
   font-size: 0.95rem;

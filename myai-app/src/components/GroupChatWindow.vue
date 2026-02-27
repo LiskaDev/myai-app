@@ -171,9 +171,7 @@ function safeRender(content) {
         if (!content) return '';
 
         // 🛡️ 检测已经被多次转义的内容（核心防护）
-        // 如果内容包含 &amp; 或 &lt; 并且涉及 rp- 相关标签，说明已经被污染
         if (content.includes('&amp;') && content.includes('rp-')) {
-            // 反复解码直到稳定
             let decoded = content;
             for (let i = 0; i < 20; i++) {
                 const next = decoded
@@ -186,14 +184,11 @@ function safeRender(content) {
                 if (next === decoded) break;
                 decoded = next;
             }
-            // 从解码后的内容中提取纯文本，去掉所有 HTML 标签
             const plainText = decoded.replace(/<[^>]*>/g, '');
-            // 重新格式化
             const parsed = parseDualLayerResponse(plainText);
             return parsed.content || plainText;
         }
 
-        // 如果内容已经包含格式化的 span 标签，直接返回
         if (content.includes('<span class="rp-')) {
             return content;
         }
@@ -202,6 +197,17 @@ function safeRender(content) {
         return parsed.content || '';
     } catch {
         return content;
+    }
+}
+
+// v5.9: 提取内心独白（用于思想气泡显示）
+function extractInner(content) {
+    try {
+        if (!content) return '';
+        const parsed = parseDualLayerResponse(content);
+        return (parsed.inner || '').trim();
+    } catch {
+        return '';
     }
 }
 
@@ -487,6 +493,11 @@ onMounted(() => {
                          :style="{ color: getRoleColor(item.msg.roleId) }">
                         {{ item.msg.roleName || '角色' }}
                     </div>
+                    <!-- v5.9: 内心独白思想气泡 -->
+                    <div v-if="globalSettings?.showInner && extractInner(item.msg.rawContent || item.msg.content)"
+                         class="thought-cloud">
+                        {{ extractInner(item.msg.rawContent || item.msg.content) }}
+                    </div>
                     <!-- 消息内容 -->
                     <div class="group-speech-bubble cursor-pointer"
                          :class="{ 'selected': activeMessageIndex === item.index, 'latest-bubble': item.index === messages.length - 1 && item.msg.role === 'assistant' }"
@@ -500,6 +511,9 @@ onMounted(() => {
                             <div class="dot"></div>
                             <div class="dot"></div>
                             <div class="dot"></div>
+                        </div>
+                        <div v-if="globalSettings?.showTokens && item.msg.tokens" class="token-badge">
+                            🪙 {{ item.msg.tokens.total }}
                         </div>
                     </div>
                     <!-- 操作按钮 -->

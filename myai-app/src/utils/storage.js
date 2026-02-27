@@ -34,6 +34,8 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     // v5.1: Sound effects
     soundMuted: true,
     soundVolume: 0.2,
+    // v5.9: Token display
+    showTokens: false,
 };
 
 // 保存数据到 localStorage

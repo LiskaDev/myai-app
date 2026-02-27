@@ -203,6 +203,7 @@ Example format:
                 max_tokens: effectiveMaxTokens,
                 frequency_penalty: frequencyPenalty,
                 stream: true,
+                stream_options: { include_usage: true },
             }),
             signal: combinedSignal, // 🛡️ 使用组合信号
         });
@@ -239,6 +240,7 @@ Example format:
         let buffer = '';
         let fullContent = '';
         let fullThinking = '';
+        let tokenUsage = null;
 
         while (true) {
             // 🛡️ 每次循环检查角色是否变化
@@ -294,6 +296,11 @@ Example format:
                         messages.value[msgIndex].content = parsed.content;
                         messages.value[msgIndex].inner = parsed.inner;
                     }
+
+                    // v5.9: 捕获 token 用量
+                    if (json.usage) {
+                        tokenUsage = json.usage;
+                    }
                 } catch (e) {
                     // 记录流式解析错误（仅开发模式详细日志）
                     if (import.meta.env.DEV) {
@@ -310,6 +317,15 @@ Example format:
 
         // 保存原始内容用于 Director Mode 编辑
         messages.value[msgIndex].rawContent = fullContent;
+
+        // v5.9: 保存 token 用量
+        if (tokenUsage) {
+            messages.value[msgIndex].tokens = {
+                prompt: tokenUsage.prompt_tokens || 0,
+                completion: tokenUsage.completion_tokens || 0,
+                total: tokenUsage.total_tokens || 0,
+            };
+        }
 
         // v5.4 FIX: Stream fallback - if content is empty but we have raw content
         if (!messages.value[msgIndex].content && fullContent) {

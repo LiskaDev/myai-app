@@ -335,6 +335,7 @@ export function useGroupChat(appState) {
                 temperature: role.temperature || 1.0,
                 max_tokens: maxTokens,
                 stream: true,
+                stream_options: { include_usage: true },
             }),
             signal: combinedSignal,
         });
@@ -365,6 +366,7 @@ export function useGroupChat(appState) {
         let buffer = '';
         let fullContent = '';
         let fullThinking = '';
+        let tokenUsage = null;
 
         while (true) {
             const { done, value } = await reader.read();
@@ -408,6 +410,8 @@ export function useGroupChat(appState) {
                         groupMessages.value[msgIndex].content = parsed.content;
                         groupMessages.value[msgIndex].inner = parsed.inner;
                     }
+                    // v5.9: 捕获 token 用量
+                    if (json.usage) tokenUsage = json.usage;
                 } catch (e) {
                     // Ignore parse errors in stream
                 }
@@ -417,6 +421,15 @@ export function useGroupChat(appState) {
         // 完成后处理
         if (groupMessages.value[msgIndex].thinking) {
             groupMessages.value[msgIndex].thinkingComplete = true;
+        }
+
+        // v5.9: 保存 token 用量
+        if (tokenUsage) {
+            groupMessages.value[msgIndex].tokens = {
+                prompt: tokenUsage.prompt_tokens || 0,
+                completion: tokenUsage.completion_tokens || 0,
+                total: tokenUsage.total_tokens || 0,
+            };
         }
 
         groupMessages.value[msgIndex].rawContent = fullContent;

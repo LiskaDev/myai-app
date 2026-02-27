@@ -195,6 +195,16 @@ function resetCustomStyle() {
                class="w-full accent-primary" />
       </div>
 
+      <!-- v5.9: Token 消耗量显示 -->
+      <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
+        <div>
+          <label class="block text-sm text-gray-300">🪙 Show Token Count (Token 消耗)</label>
+          <p class="text-xs text-gray-400">在每条 AI 回复上显示 Token 用量</p>
+        </div>
+        <div class="toggle-switch" :class="{ 'active': globalSettings.showTokens }"
+             @click="globalSettings.showTokens = !globalSettings.showTokens"></div>
+      </div>
+
       <!-- 文字风格选择 -->
       <div class="pt-3 mt-3 border-t border-white/10">
         <label class="block text-sm text-gray-300 mb-2">🎨 Roleplay Text Style (角色扮演文字风格)</label>

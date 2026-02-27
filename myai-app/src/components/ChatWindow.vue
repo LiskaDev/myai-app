@@ -420,6 +420,9 @@ function isCurrentMatch(originalIndex) {
                   <div class="message-body vn-body message-content"
                        :class="{ 'typing-cursor': isStreaming && getOriginalIndex(visibleIndex) === messages.length - 1 }"
                        v-html="parsedMessages[visibleIndex]?.bodyHtml"></div>
+                  <div v-if="globalSettings.showTokens && msg.tokens" class="token-badge">
+                    🪙 {{ msg.tokens.total }}
+                  </div>
                 </div>
 
                 <div class="message-toolbar" :class="{ 'active': activeMessageIndex === getOriginalIndex(visibleIndex) }">
