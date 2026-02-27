@@ -492,7 +492,8 @@ onMounted(() => {
                          :class="{ 'selected': activeMessageIndex === item.index, 'latest-bubble': item.index === messages.length - 1 && item.msg.role === 'assistant' }"
                          :style="{ borderLeftColor: getRoleColor(item.msg.roleId) }"
                          @click.stop="toggleSelect(item.index)">
-                        <div v-if="item.msg.content" class="vn-body markdown-body"
+                        <div v-if="item.msg.content" class="vn-body markdown-body message-content whitespace-pre-wrap"
+                             :class="['style-' + (globalSettings?.rpTextStyle || 'simple')]"
                              v-html="safeRender(item.msg.rawContent || item.msg.content)">
                         </div>
                         <div v-else class="typing-indicator">
@@ -834,9 +835,10 @@ onMounted(() => {
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-left: 2px solid rgba(99, 102, 241, 0.25);
-    padding: 12px 16px;
+    padding: 14px 18px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
+    line-height: 1.75;
 }
 
 .group-speech-bubble:hover {
