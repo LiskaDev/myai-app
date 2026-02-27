@@ -4,7 +4,6 @@ import GlobalSettings from './settings/GlobalSettings.vue';
 import RoleBasicSettings from './settings/RoleBasicSettings.vue';
 import RoleAdvancedSettings from './settings/RoleAdvancedSettings.vue';
 import CharacterDepthSettings from './settings/CharacterDepthSettings.vue';
-import ParameterSettings from './settings/ParameterSettings.vue';
 import MemoryManager from './settings/MemoryManager.vue';
 import UserPersonaSettings from './settings/UserPersonaSettings.vue';
 
@@ -111,7 +110,6 @@ function removeTimelineItem(idx) {
         <RoleBasicSettings :currentRole="currentRole" :globalSettings="globalSettings" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
         <RoleAdvancedSettings :currentRole="currentRole" :availableVoices="availableVoices" />
         <CharacterDepthSettings :currentRole="currentRole" />
-        <ParameterSettings :currentRole="currentRole" />
       </template>
 
       <!-- ========== 记忆 Tab ========== -->

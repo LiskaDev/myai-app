@@ -122,19 +122,19 @@ function clearAvatar() {
                  class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light text-sm">
         </div>
 
-        <!-- 对话规则 (原 Style Guide) -->
+        <!-- 写作风格 / 对话规则 -->
         <div>
           <div class="flex items-center gap-2 mb-1">
-            <label class="text-sm text-gray-400">🚫 对话规则 / 禁区</label>
+            <label class="text-sm text-gray-400">✍️ 写作风格 / 对话规则</label>
             <div class="tooltip-trigger relative group ml-auto">
               <span class="cursor-help text-gray-500 hover:text-gray-300 text-xs">❓</span>
               <div class="tooltip-content">
-                设置角色不能聊的话题或必须遵守的规则
+                控制 AI 的写作风格和行为规则。例如：语气温柔、不打破第四面墙、不谈AI技术等
               </div>
             </div>
           </div>
           <textarea v-model="currentRole.styleGuide" rows="2" 
-                    placeholder="例如：不能打破第四面墙，不能谈论现实世界的AI技术..."
+                    placeholder="例如：语气温柔关怀 / 不打破第四面墙 / 不谈现实AI技术..."
                     class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition resize-none text-shadow-light text-sm"></textarea>
         </div>
 
@@ -145,13 +145,31 @@ function clearAvatar() {
             <div class="tooltip-trigger relative group ml-auto">
               <span class="cursor-help text-gray-500 hover:text-gray-300 text-xs">❓</span>
               <div class="tooltip-content">
-                记录重要剧情发展，AI 会始终记住这些内容
+                手动摘要会优先于自动摘要。留空则使用系统自动生成的摘要
               </div>
             </div>
           </div>
           <textarea v-model="currentRole.storySummary" rows="2" 
-                    placeholder="例如：昨天你们一起去了咖啡厅，TA 不小心说漏了自己的秘密..."
+                    :placeholder="currentRole.autoSummary ? '已有自动摘要，手动输入将覆盖自动摘要...' : '例如：昨天你们一起去了咖啡厅，TA 不小心说漏了自己的秘密...'"
                     class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition resize-none text-shadow-light text-sm"></textarea>
+          <p v-if="currentRole.autoSummary && !currentRole.storySummary" class="text-xs text-gray-500 mt-1 line-clamp-2">
+            📝 自动摘要：{{ currentRole.autoSummary.substring(0, 100) }}{{ currentRole.autoSummary.length > 100 ? '...' : '' }}
+          </p>
+        </div>
+
+        <!-- Temperature (创造力) -->
+        <div>
+          <div class="flex justify-between text-sm mb-1">
+            <label class="text-gray-400">🎛️ Temperature (创造力)</label>
+            <span class="text-primary font-mono">{{ (currentRole.temperature || 1.0).toFixed(1) }}</span>
+          </div>
+          <input v-model.number="currentRole.temperature" type="range" min="0" max="2" step="0.1"
+                 class="w-full h-2 bg-glass-light rounded-lg appearance-none cursor-pointer accent-primary">
+          <div class="flex justify-between text-xs text-gray-500 mt-1">
+            <span>精确 0.0</span>
+            <span>平衡 1.0</span>
+            <span>创意 2.0</span>
+          </div>
         </div>
 
         <!-- TTS 声音选择 -->
