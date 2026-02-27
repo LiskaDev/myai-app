@@ -144,11 +144,13 @@ Example format:
                 let presencePenalty = 0;
 
                 if (responseLength === 'short') {
-                    lengthInstruction = "\n\n[SYSTEM COMMAND: EXTREME BREVITY MODE]\n- Keep response under 100 words.\n- Focus strictly on dialogue.\n- Remove filler words.\n- NO elaborate descriptions.";
+                    lengthInstruction = "\n\n[严格执行：回复长度限制]\n你必须保持极简回复。严格不超过100中文字。只写核心对话和必要动作。删除一切冗余描写。\n[CRITICAL LENGTH RULE] Keep response under 100 Chinese characters. Dialogue only. Remove all filler. Short responses ONLY.";
                     effectiveMaxTokens = Math.min(effectiveMaxTokens, 500);
                     presencePenalty = 0.5; // 鼓励简短
+                } else if (responseLength === 'normal') {
+                    lengthInstruction = "\n\n[回复长度要求]\n写2-3段，150-300字左右，包含动作描写和对话，不要太短也不要太长。\n[LENGTH RULE] Write 2-3 paragraphs (150-300 Chinese characters). Include action and dialogue.";
                 } else if (responseLength === 'long') {
-                    lengthInstruction = "\n\n[SYSTEM COMMAND: IMMERSIVE NOVEL MODE]\n- Ignore brevity constraints.\n- Write a slow-burn, detailed narrative (>400 words).\n- Describe sensory details (sight, sound, smell).\n- Focus on inner monologue and environmental atmosphere.";
+                    lengthInstruction = "\n\n[严格执行：长文模式]\n你必须写出沉浸式长篇叙事，至少300中文字以上。包含：感官描写（视觉、听觉、嗅觉）、内心独白、环境氛围、详细动作。严格禁止写少于200字的回复。\n[CRITICAL LENGTH RULE] You MUST write an immersive, slow-burn narrative (300+ Chinese characters minimum). Include sensory details, inner monologue, environment. Responses under 200 characters are FORBIDDEN.";
                     effectiveMaxTokens = Math.max(effectiveMaxTokens, 4000);
                     frequencyPenalty = 0.3; // 防止长文重复
                 }

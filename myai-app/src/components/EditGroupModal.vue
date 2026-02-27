@@ -12,7 +12,7 @@ const groupName = ref('');
 const groupDescription = ref('');
 const groupGenre = ref('');
 const groupModel = ref('');
-const groupResponseLength = ref('');
+const groupResponseLength = ref(''); // v5.9: 保留但永远为空（统一使用全局设置）
 const selectedIds = ref([]);
 
 const GENRE_OPTIONS = [
@@ -32,13 +32,7 @@ const MODEL_OPTIONS = [
     { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner (R1)' },
 ];
 
-const LENGTH_OPTIONS = [
-    { value: '', label: '跟随角色设置' },
-    { value: 'short', label: '简短（日常短回复）' },
-    { value: 'normal', label: '适中（标准模式）' },
-    { value: 'long', label: '较长（详细描写）' },
-    { value: 'novel', label: '长文（沉浸小说）' },
-];
+// v5.9: LENGTH_OPTIONS 已移除，回复长度统一使用全局设置
 
 onMounted(() => {
     groupName.value = props.group?.name || '';
@@ -120,22 +114,14 @@ function handleSave() {
                     </div>
                 </div>
 
-                <!-- 模型 & 回复长度设置 -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-1">🧠 模型</label>
-                        <select v-model="groupModel"
-                                class="w-full glass-light bg-glass-light rounded-xl px-3 py-2.5 text-gray-100 text-sm outline-none border border-white/10 focus:border-primary transition appearance-none cursor-pointer">
-                            <option v-for="opt in MODEL_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-1">📏 回复长度</label>
-                        <select v-model="groupResponseLength"
-                                class="w-full glass-light bg-glass-light rounded-xl px-3 py-2.5 text-gray-100 text-sm outline-none border border-white/10 focus:border-primary transition appearance-none cursor-pointer">
-                            <option v-for="opt in LENGTH_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                        </select>
-                    </div>
+                <!-- 模型设置 -->
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">🧠 模型</label>
+                    <select v-model="groupModel"
+                            class="w-full glass-light bg-glass-light rounded-xl px-3 py-2.5 text-gray-100 text-sm outline-none border border-white/10 focus:border-primary transition appearance-none cursor-pointer">
+                        <option v-for="opt in MODEL_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">回复长度请在全局设置中调整</p>
                 </div>
 
                 <div class="flex space-x-3 justify-end pt-2">

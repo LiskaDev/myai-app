@@ -210,10 +210,6 @@ function removeTimelineItem(idx) {
                 <label class="block text-sm text-gray-400 mb-1">🧠 模型</label>
                 <div class="text-gray-200 text-sm">{{ currentGroup.model || '跟随全局' }}</div>
               </div>
-              <div>
-                <label class="block text-sm text-gray-400 mb-1">📏 回复长度</label>
-                <div class="text-gray-200 text-sm">{{ { short: '简短', normal: '适中', long: '较长', novel: '长文' }[currentGroup.responseLength] || '跟随角色' }}</div>
-              </div>
             </div>
             <div>
               <label class="block text-sm text-gray-400 mb-2">参与角色（{{ participants?.length || 0 }} 人）</label>

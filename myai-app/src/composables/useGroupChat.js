@@ -307,12 +307,10 @@ export function useGroupChat(appState) {
         const model = group?.model || globalSettings.model || 'deepseek-reasoner';
         const isReasoner = model.includes('reasoner');
 
-        // 回复长度优先级：群聊设置 > 角色设置 > 默认
-        const lengthSetting = group?.responseLength || '';
+        // v5.9: 回复长度统一使用全局设置
+        const lengthSetting = globalSettings.responseLength || 'normal';
         const LENGTH_TO_TOKENS = { short: 500, normal: 1000, long: 2000, novel: 4000 };
-        const maxTokens = lengthSetting && LENGTH_TO_TOKENS[lengthSetting]
-            ? LENGTH_TO_TOKENS[lengthSetting]
-            : (role.maxTokens || 2000);
+        const maxTokens = LENGTH_TO_TOKENS[lengthSetting] || (role.maxTokens || 2000);
 
         // 创建 AbortController
         groupAbortController.value = new AbortController();
@@ -739,24 +737,23 @@ ${dialogueText}
             ? `\n剧本基调：${group.genre}`
             : '';
 
-        // 根据 responseLength 语义设置动态调整回复长度指导
-        const effectiveLength = group.responseLength || '';
+        // v5.9: 回复长度统一使用全局设置
+        const effectiveLength = globalSettings.responseLength || 'normal';
 
         let lengthGuidance;
         let frameworkLengthHint = '';
-        if (effectiveLength === 'novel') {
-            lengthGuidance = '【重要：回复长度要求】你必须写出详细、丰富的长回复。每次回复至少写4-6段（300字以上），包含：详细的动作描写、表情变化、心理活动、环境互动和对话。禁止只写一两句话';
-            frameworkLengthHint = '\nIMPORTANT: Write LONG, DETAILED responses (at least 300+ characters). Include actions, emotions, descriptions. Short replies are NOT acceptable.';
-        } else if (effectiveLength === 'long') {
-            lengthGuidance = '【重要：回复长度要求】每次回复请写2-4段（150字以上），包含动作描写、表情或心理活动和对话，不要只写一两句简短的话';
-            frameworkLengthHint = '\nIMPORTANT: Write moderately detailed responses (at least 150+ characters). Include actions and dialogue. Do NOT write just one short sentence.';
+        if (effectiveLength === 'long') {
+            lengthGuidance = '【严格执行：回复长度要求】你必须写出详细、丰富的长回复。每次回复至少4-6段（300字以上），包含：详细动作描写、表情变化、心理活动、环境互动和充分对话。严格禁止写少于200字的回复';
+            frameworkLengthHint = '\n[CRITICAL LENGTH RULE] You MUST write LONG, DETAILED responses (300+ Chinese characters minimum). Include rich action descriptions, emotional details, and environment. Responses shorter than 200 characters are FORBIDDEN.';
         } else if (effectiveLength === 'normal') {
-            lengthGuidance = '每次回复写1-2段，包含一些动作或表情描写';
+            lengthGuidance = '每次回复写2-3段，包含动作描写、表情或心理活动和对话，不要只写一两句话';
+            frameworkLengthHint = '\nWrite moderately detailed responses (150-300 characters). Include actions and dialogue. Do NOT write just one short sentence.';
         } else if (effectiveLength === 'short') {
-            lengthGuidance = '简洁有力，不要长篇大论（群聊节奏要快）';
+            lengthGuidance = '【严格执行：简洁回复】保持简短有力，每次回复不超过100字，1-2句话即可，群聊节奏要快';
+            frameworkLengthHint = '\n[CRITICAL LENGTH RULE] Keep responses EXTREMELY SHORT (under 100 Chinese characters). 1-2 sentences maximum. Fast-paced group chat rhythm.';
         } else {
-            // 跟随角色设置 / 默认：不添加特别强的长度约束
-            lengthGuidance = '根据剧情需要，自然地回复，不要太长也不要太短';
+            // auto: 不添加长度约束
+            lengthGuidance = '根据剧情需要自然回复';
         }
 
         // 从角色设定中提取性格关键词用于强化提醒
