@@ -897,6 +897,15 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
             }
         }
 
+        // v5.9: 用户画像注入（群聊也需要了解用户）
+        const { personaSummaryForPrompt } = useUserPersona();
+        if (personaSummaryForPrompt.value) {
+            apiMessages.push({
+                role: 'system',
+                content: personaSummaryForPrompt.value,
+            });
+        }
+
         return apiMessages;
     }
 

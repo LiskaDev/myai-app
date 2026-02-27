@@ -436,13 +436,18 @@ function cancelEditMessage() {
   editModal.originalContent = '';
 }
 
-// 导出数据
+// 导出数据（完整备份：角色 + 群聊 + 日记 + 画像）
 function exportData() {
   const data = {
+    version: '5.9',
+    exportTime: new Date().toISOString(),
     globalSettings: globalSettings,
     roleList: roleList.value,
     currentRoleId: currentRoleId.value,
-    exportTime: new Date().toISOString(),
+    // v5.9: 完整备份 —— 群聊、日记、用户画像
+    groups: JSON.parse(localStorage.getItem('myai_groups_v1') || '[]'),
+    diaries: JSON.parse(localStorage.getItem('myai_diaries_v1') || '[]'),
+    persona: JSON.parse(localStorage.getItem('myai_user_persona_v1') || 'null'),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -452,7 +457,7 @@ function exportData() {
   a.download = `myai_backup_${dateStr}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('备份文件已生成');
+  showToast('✅ 完整备份已生成（含群聊、日记、画像）');
 }
 
 // Lifecycle
@@ -482,7 +487,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown);
 });
 
-// 导入数据
+// 导入数据（从文件选择器获取解析后的数据）
 function handleImport() {
   try {
     if (!importJson.value.trim()) return;
@@ -490,14 +495,41 @@ function handleImport() {
     if (!data.globalSettings || !Array.isArray(data.roleList)) {
       throw new Error('无效的备份文件格式');
     }
-    if (confirm('确定要恢复此备份吗？当前的所有数据将被覆盖！')) {
-      Object.assign(globalSettings, data.globalSettings);
-      roleList.value = data.roleList;
-      currentRoleId.value = data.roleList[0]?.id;
-      saveData();
-      showImportModal.value = false;
-      showToast('数据恢复成功');
+
+    // 恢复核心数据
+    Object.assign(globalSettings, data.globalSettings);
+    roleList.value = data.roleList;
+    currentRoleId.value = data.currentRoleId || data.roleList[0]?.id;
+    saveData();
+
+    // v5.9: 恢复群聊数据
+    if (Array.isArray(data.groups)) {
+      localStorage.setItem('myai_groups_v1', JSON.stringify(data.groups));
+      groupChat.loadGroups();
     }
+
+    // v5.9: 恢复日记数据
+    if (Array.isArray(data.diaries)) {
+      localStorage.setItem('myai_diaries_v1', JSON.stringify(data.diaries));
+      diary.loadDiaries();
+    }
+
+    // v5.9: 恢复用户画像
+    if (data.persona) {
+      localStorage.setItem('myai_user_persona_v1', JSON.stringify(data.persona));
+    }
+
+    showImportModal.value = false;
+    importJson.value = '';
+
+    // 统计恢复了多少数据
+    const stats = [];
+    stats.push(`${data.roleList.length} 个角色`);
+    if (data.groups?.length) stats.push(`${data.groups.length} 个群聊`);
+    if (data.diaries?.length) stats.push(`${data.diaries.length} 篇日记`);
+    if (data.persona?.traits?.length) stats.push(`${data.persona.traits.length} 条画像`);
+
+    showToast(`✅ 数据恢复成功：${stats.join('、')}`);
   } catch (e) {
     showToast('导入失败: ' + e.message, 'error');
   }

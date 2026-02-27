@@ -169,11 +169,15 @@ describe('useRelationship - buildRelationshipHint', () => {
             { id: 'r2', name: 'Bob' },
         ]);
 
-        expect(hint).toContain('[Relationship Dynamics');
+        expect(hint).toContain('[Relationship Dynamics]');
         expect(hint).toContain('Bob');
         expect(hint).toContain('非常亲密');
         expect(hint).toContain('导演');
         expect(hint).toContain('反感');
+        // v5.9: 验证行为规则被包含
+        expect(hint).toContain('行为规则');
+        expect(hint).toContain('冷酷');
+        expect(hint).toContain('无条件信任');
     });
 
     it('null 矩阵返回空字符串', () => {

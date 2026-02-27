@@ -81,11 +81,11 @@ Remember: You are an actor playing a role. The USER is the co-author, not someon
             });
         }
 
-        // Inject Relationship
+        // Inject Relationship (with behavioral guidance)
         if (role.relationship) {
             apiMessages.push({
                 role: 'system',
-                content: `[Relationship] ${role.relationship}`,
+                content: `[Relationship with User]\n${role.relationship}\n请让这段关系自然地影响你的称呼、语气、亲密程度和行为方式。`,
             });
         }
 
