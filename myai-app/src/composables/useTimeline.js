@@ -43,18 +43,26 @@ export function useTimeline(appState) {
         messages,
     } = appState;
 
-    // 上次分析时的消息数
-    let lastAnalyzedCount = 0;
-
     /**
      * 检查是否应该触发时间线分析
+     * v5.9: 使用持久化计数器 + 锁冲突自动重试
      */
     function checkAndTriggerTimeline() {
+        const role = currentRole.value;
         const msgs = messages.value;
         const userMsgCount = msgs.filter(m => m.role === 'user').length;
+        const lastAnalyzed = role.timelineAnalyzedCount || 0;
 
         // 每 TRIGGER_INTERVAL 条用户消息触发
-        if (userMsgCount - lastAnalyzedCount >= TRIGGER_INTERVAL) {
+        if (userMsgCount - lastAnalyzed >= TRIGGER_INTERVAL) {
+            if (isBackgroundLocked()) {
+                // v5.9: 锁被占用（摘要正在运行），10秒后重试
+                console.log('[Timeline] 后台繁忙，10秒后重试...');
+                setTimeout(() => {
+                    checkAndTriggerTimeline();
+                }, 10000);
+                return;
+            }
             analyzeTimeline().catch(err => {
                 console.warn('[Timeline] 分析失败:', err.message);
             });
@@ -87,7 +95,7 @@ export function useTimeline(appState) {
                 .join('\n');
 
             if (!dialogueText.trim()) {
-                lastAnalyzedCount = userMsgCount;
+                role.timelineAnalyzedCount = userMsgCount;
                 return;
             }
 
@@ -122,7 +130,7 @@ export function useTimeline(appState) {
             const content = data.choices?.[0]?.message?.content?.trim();
 
             if (!content) {
-                lastAnalyzedCount = userMsgCount;
+                role.timelineAnalyzedCount = userMsgCount;
                 return;
             }
 
@@ -142,7 +150,8 @@ export function useTimeline(appState) {
                 console.log(`[Timeline] 提取了 ${newEvents.length} 条新事件，总计 ${role.timeline.length} 条`);
             }
 
-            lastAnalyzedCount = userMsgCount;
+            // v5.9: 持久化计数器（保存在 role 上，刷新不丢失）
+            role.timelineAnalyzedCount = userMsgCount;
 
         } finally {
             releaseBackgroundLock();
