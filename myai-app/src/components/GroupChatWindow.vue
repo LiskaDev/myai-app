@@ -328,7 +328,7 @@ onMounted(() => {
 
 <template>
     <div ref="containerRef"
-         class="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-4"
+         class="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-5"
          style="scroll-behavior: smooth;">
 
         <!-- 空消息时的提示 -->
@@ -832,13 +832,25 @@ onMounted(() => {
     background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border-radius: 16px;
+    border-radius: 18px;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-left: 2px solid rgba(99, 102, 241, 0.25);
-    padding: 14px 18px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border-left: 3px solid rgba(99, 102, 241, 0.25);
+    padding: 16px 20px 18px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.03);
     transition: all 0.3s ease;
-    line-height: 1.75;
+    line-height: 1.85;
+    letter-spacing: 0.02em;
+}
+
+/* 段落间距 */
+.group-speech-bubble .vn-body p + p,
+.group-speech-bubble .vn-body br + br {
+    margin-top: 0.6em;
+}
+
+/* 确保 RP 文本元素有良好间距 */
+.group-speech-bubble .vn-body > span + span {
+    margin-left: 0.15em;
 }
 
 .group-speech-bubble:hover {

@@ -309,7 +309,7 @@ export function useGroupChat(appState) {
 
         // v5.9: 回复长度统一使用全局设置
         const lengthSetting = globalSettings.responseLength || 'normal';
-        const LENGTH_TO_TOKENS = { short: 500, normal: 1000, long: 2000, novel: 4000 };
+        const LENGTH_TO_TOKENS = { short: 500, normal: 2000, long: 4000, auto: 2000 };
         const maxTokens = LENGTH_TO_TOKENS[lengthSetting] || (role.maxTokens || 2000);
 
         // 创建 AbortController
@@ -900,6 +900,25 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
             apiMessages.push({
                 role: 'system',
                 content: personaSummaryForPrompt.value,
+            });
+        }
+
+        // v5.9: 最终位置长度强制 — 放在最后一条消息后面，AI 最容易遵守
+        const finalLength = globalSettings.responseLength || 'normal';
+        if (finalLength === 'long') {
+            apiMessages.push({
+                role: 'system',
+                content: `[最终指令 - 严格执行] 你的回复必须至少300中文字，包含4-6段。写出详细的动作描写、表情变化、心理活动和对话。少于200字的回复是不可接受的。`,
+            });
+        } else if (finalLength === 'normal') {
+            apiMessages.push({
+                role: 'system',
+                content: `[最终指令 - 回复长度] 你的回复需要2-3段，约200-400中文字。包含动作描写、心理活动和对话。不要只写一两句话就结束，每次回复都要有足够的内容和细节。`,
+            });
+        } else if (finalLength === 'short') {
+            apiMessages.push({
+                role: 'system',
+                content: `[最终指令 - 简洁回复] 保持简短，不超过100中文字。1-2句话即可。`,
             });
         }
 
