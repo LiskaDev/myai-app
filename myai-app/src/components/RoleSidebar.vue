@@ -46,7 +46,12 @@ defineEmits([
             <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
             <div class="flex-1 min-w-0">
               <h3 class="font-semibold text-sm truncate">{{ role.name }}</h3>
-              <p class="text-xs text-gray-400 truncate">{{ role.chatHistory?.length || 0 }} 条对话</p>
+              <p class="text-xs text-gray-400 truncate italic">
+                {{ role.chatHistory?.length
+                  ? (role.chatHistory[role.chatHistory.length - 1]?.content || '').replace(/<[^>]+>/g, '').slice(0, 25) + '…'
+                  : (role.firstMessage || '点击开始对话').replace(/<[^>]+>/g, '').slice(0, 28)
+                }}
+              </p>
             </div>
             <!-- 删除按钮 -->
             <button @click.stop="$emit('delete-role', role.id)" class="delete-btn p-1 rounded-full hover:bg-red-500/20 transition" title="删除角色">

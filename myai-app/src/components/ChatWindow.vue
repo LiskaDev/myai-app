@@ -45,12 +45,30 @@ const emit = defineEmits([
   'fork-at',
   'switch-branch',
   'rename-branch',
-  'delete-branch'
+  'delete-branch',
+  'send-suggestion'
 ]);
 
 const containerRef = ref(null);
 const searchInputRef = ref(null);
 const moreMenuIndex = ref(null);
+
+// 🌟 快捷对话建议（基于角色特征动态生成）
+const quickSuggestions = computed(() => {
+  const name = props.currentRole.name || 'AI';
+  const prompt = (props.currentRole.systemPrompt || '').toLowerCase();
+  // 根据角色关键词提供不同的对话起点
+  if (prompt.includes('黑客') || prompt.includes('科技') || prompt.includes('赛博')) {
+    return [`嘿 ${name}，给我讲讲你的世界`, '你最厉害的一次黑入是什么？', '教我一些黑客技巧吧'];
+  } else if (prompt.includes('姐姐') || prompt.includes('温柔') || prompt.includes('照顾')) {
+    return [`${name}，今天好累啊…`, '能陪我聊聊天吗？', '给我讲个睡前故事吧'];
+  } else if (prompt.includes('冒险') || prompt.includes('勇者') || prompt.includes('魔法')) {
+    return ['这里是哪里？我怎么会在这？', `${name}，前方有什么危险吗？`, '我们出发冒险吧！'];
+  } else if (prompt.includes('恋') || prompt.includes('喜欢') || prompt.includes('心动')) {
+    return [`${name}，你在想什么呢？`, '今天天气真好呢…', '一起去散步吧'];
+  }
+  return [`你好 ${name}！`, '给我讲讲你自己吧', '我们来聊点有趣的'];
+});
 
 defineExpose({
   get scrollTop() {
@@ -77,6 +95,23 @@ const memoryHelpers = computed(() => {
 const longPress = useLongPress((e, messageIndex) => {
   emit('toggle-select', messageIndex);
 });
+
+// 📋 复制消息文本（移动端长按菜单代替了原生复制）
+function copyMessageText(msg) {
+  // 从 rawContent 直接提取纯文本，保留换行格式
+  const raw = msg.rawContent || msg.content || '';
+  const cleanText = raw
+    .replace(/<think>[\s\S]*?<\/think>/g, '')   // 去除完整 think 块
+    .replace(/<think>[\s\S]*$/g, '')             // 去除未闭合 think
+    .replace(/<inner>[\s\S]*?<\/inner>/g, '')    // 去除完整 inner 块
+    .replace(/<inner>[\s\S]*$/g, '')             // 去除未闭合 inner
+    .replace(/<[^>]+>/g, '')                     // 去除其他 HTML 标签
+    .trim();
+  navigator.clipboard.writeText(cleanText).then(
+    () => { /* success feedback handled by toolbar closing */ },
+    () => { /* fallback: do nothing on failure */ }
+  );
+}
 
 // 🛡️ 智能消息折叠：当消息超过阈值时折叠旧消息
 const MESSAGE_FOLD_THRESHOLD = 50; // 超过此数量时启用折叠
@@ -306,15 +341,34 @@ function isCurrentMatch(originalIndex) {
         @delete="$emit('delete-branch', $event)"
     />
 
-    <!-- 欢迎消息 / 开场白 -->
-    <div v-if="messages.length === 0 && currentRole.firstMessage" class="message-bubble flex items-start space-x-3">
-      <div v-if="currentRole.avatar" class="avatar">
-        <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover">
-      </div>
-      <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
-      <div class="max-w-[80%]">
-        <div class="glass bg-glass-message rounded-2xl rounded-tl-sm px-4 py-3 text-gray-100 text-shadow-light">
+    <!-- 🌟 欢迎屏：第一次打开时的沉浸式引导 -->
+    <div v-if="messages.length === 0" class="welcome-screen">
+      <div class="welcome-card">
+        <!-- 角色头像（大号 + 呼吸光环） -->
+        <div class="welcome-avatar-wrapper">
+          <div class="avatar-glow"></div>
+          <div v-if="currentRole.avatar" class="welcome-avatar">
+            <img :src="currentRole.avatar" alt="Role Avatar" class="w-full h-full rounded-full object-cover">
+          </div>
+          <div v-else class="welcome-avatar welcome-avatar-placeholder">🎭</div>
+        </div>
+
+        <!-- 角色名 + 标签 -->
+        <h2 class="welcome-name">{{ currentRole.name }}</h2>
+        <p v-if="currentRole.styleGuide" class="welcome-tagline">{{ currentRole.styleGuide.slice(0, 50) }}</p>
+
+        <!-- 开场白气泡 -->
+        <div v-if="currentRole.firstMessage" class="welcome-bubble">
           <div class="markdown-body message-content" v-html="renderMarkdown(currentRole.firstMessage)"></div>
+        </div>
+
+        <!-- 快捷对话建议 -->
+        <div class="welcome-suggestions">
+          <button v-for="(s, i) in quickSuggestions" :key="i"
+                  class="suggestion-btn"
+                  @click="$emit('send-suggestion', s)">
+            {{ s }}
+          </button>
         </div>
       </div>
     </div>
@@ -366,6 +420,9 @@ function isCurrentMatch(originalIndex) {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                       </svg>
                       删除
+                    </button>
+                    <button class="toolbar-btn" @click.stop="copyMessageText(msg); $emit('toggle-select', null)">
+                      📋 复制
                     </button>
                   </div>
                 </div>
@@ -448,6 +505,9 @@ function isCurrentMatch(originalIndex) {
                       <button class="more-menu-item" @click.stop="$emit('fork-at', getOriginalIndex(visibleIndex)); moreMenuIndex = null">
                         <span>🔀</span><span>分叉</span>
                       </button>
+                      <button class="more-menu-item" @click.stop="copyMessageText(msg); moreMenuIndex = null">
+                        <span>📋</span><span>复制</span>
+                      </button>
                       <div class="more-menu-divider"></div>
                       <button class="more-menu-item delete" @click.stop="$emit('delete-message', getOriginalIndex(visibleIndex)); moreMenuIndex = null">
                         <span>🗑️</span><span>删除</span>
@@ -477,10 +537,9 @@ function isCurrentMatch(originalIndex) {
       </div>
       <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
       <div class="glass bg-glass-message rounded-2xl rounded-tl-sm px-4 py-3">
-        <div class="typing-indicator">
-          <div class="dot"></div>
-          <div class="dot"></div>
-          <div class="dot"></div>
+        <div class="typing-named-indicator">
+          <span class="typing-name">{{ currentRole.name }} 正在思考</span>
+          <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
         </div>
       </div>
     </div>
@@ -492,10 +551,9 @@ function isCurrentMatch(originalIndex) {
       </div>
       <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
       <div class="glass bg-glass-message rounded-2xl rounded-tl-sm px-4 py-3">
-        <div class="flex space-x-1">
-          <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
-          <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
-          <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+        <div class="typing-named-indicator">
+          <span class="typing-name">{{ currentRole.name }} 正在输入</span>
+          <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
         </div>
       </div>
     </div>

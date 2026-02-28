@@ -128,7 +128,14 @@ export function useAppState() {
         }
     }
 
-    function showConfirmModal(options) {
+    function showConfirmModal(titleOrOptions, message, onConfirm) {
+        // 🛡️ 兼容两种调用方式：(options) 或 (title, message, callback)
+        let options;
+        if (typeof titleOrOptions === 'string') {
+            options = { title: titleOrOptions, message, onConfirm };
+        } else {
+            options = titleOrOptions;
+        }
         confirmModal.title = options.title || '确认';
         confirmModal.message = options.message || '';
         confirmModal.isDangerous = options.isDangerous || false;
@@ -148,7 +155,10 @@ export function useAppState() {
     }
 
     function saveData() {
-        saveToStorage(globalSettings, roleList.value, (msg) => showToast(msg, 'error'));
+        const success = saveToStorage(globalSettings, roleList.value, (msg) => showToast(msg, 'error'));
+        if (!success) {
+            showToast('⚠️ 数据保存失败！请导出备份后清理旧对话', 'error');
+        }
     }
 
     function loadData() {
@@ -201,6 +211,13 @@ export function useAppState() {
     }
 
     function switchRole(roleId) {
+        // 🛡️ 切换角色前中止正在进行的流式输出，防止消息写入错误角色
+        if (isStreaming.value && abortController.value) {
+            abortController.value.abort();
+            abortController.value = null;
+            isStreaming.value = false;
+            isThinking.value = false;
+        }
         currentRoleId.value = roleId;
         showSidebar.value = false;
         activeMessageIndex.value = null;
@@ -248,6 +265,11 @@ export function useAppState() {
     }
 
     function clearChat() {
+        // 🛡️ AI 正在回复时禁止清空，防止幽灵消息
+        if (isStreaming.value) {
+            showToast('请等待 AI 回复完成后再清空', 'error');
+            return;
+        }
         showConfirmModal({
             title: '清空聊天',
             message: '确定要清空当前角色的聊天记录吗？\n此操作无法撤销。',

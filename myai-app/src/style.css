@@ -313,7 +313,183 @@ body {
   }
 }
 
-/* ============== Thinking Panel ============== */
+/* ============== 🌟 欢迎屏 ============== */
+.welcome-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 2rem 1rem;
+}
+
+.welcome-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 420px;
+  animation: welcomeFadeIn 0.8s ease-out;
+}
+
+@keyframes welcomeFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 头像 + 呼吸光环 */
+.welcome-avatar-wrapper {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 1rem;
+}
+
+.avatar-glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.35), rgba(139, 92, 246, 0.15), transparent 70%);
+  animation: avatarPulse 3s ease-in-out infinite;
+}
+
+@keyframes avatarPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+
+.welcome-avatar {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+}
+
+.welcome-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+.welcome-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 0.25rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.welcome-tagline {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 1.25rem;
+  font-style: italic;
+}
+
+/* 开场白气泡 */
+.welcome-bubble {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 360px;
+  text-align: left;
+}
+
+/* 快捷对话建议 */
+.welcome-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.suggestion-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  color: #c4b5fd;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(4px);
+}
+
+.suggestion-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #e0d4ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+
+/* ============== 带名字的输入指示器 ============== */
+.typing-named-indicator {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.typing-name {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.typing-dots span {
+  animation: typingBlink 1.4s infinite;
+  color: #94a3b8;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingBlink {
+
+  0%,
+  80%,
+  100% {
+    opacity: 0.2;
+  }
+
+  40% {
+    opacity: 1;
+  }
+}
+
 .thinking-panel {
   background: rgba(60, 60, 80, 0.4);
   border-left: 3px solid #6b7280;
@@ -1438,6 +1614,33 @@ details.reasoning-block[open]>summary {
   }
 
   .logic-tag-wrapper:hover .logic-tag-tooltip {
+    transform: translateY(0);
+  }
+}
+
+/* ============== 📱 触屏设备适配（hover: none） ============== */
+@media (hover: none) {
+
+  /* 角色删除按钮：在触屏上始终可见（低透明度） */
+  .delete-btn {
+    opacity: 0.5 !important;
+  }
+
+  /* 逻辑标签 tooltip：点击/触摸触发（通过 focus-within） */
+  .logic-tag-wrapper {
+    cursor: pointer;
+  }
+
+  .logic-tag {
+    /* 让 tag 可聚焦以触发 focus-within */
+    outline: none;
+  }
+
+  .logic-tag-wrapper:focus-within .logic-tag-tooltip,
+  .logic-tag-wrapper:active .logic-tag-tooltip,
+  .logic-tag:active+.logic-tag-tooltip {
+    opacity: 1;
+    visibility: visible;
     transform: translateY(0);
   }
 }

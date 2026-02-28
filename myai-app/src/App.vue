@@ -113,6 +113,19 @@ function getCurrentDay(msgs) {
 
 function handleStartNewDay() {
     showMoonMenu.value = false;
+    showConfirmModal(
+      '开启新的一天',
+      '将插入日期分隔线并触发角色回复，此操作不可撤销。\n确认开启新的一天吗？',
+      () => { executeStartNewDay(); }
+    );
+}
+
+function executeStartNewDay() {
+    // 🛡️ 流式输出时禁止操作
+    if (isStreaming.value || groupChat.isGroupStreaming.value) {
+        showToast('请等待回复完成后再操作', 'error');
+        return;
+    }
     const isGroup = groupChat.isGroupMode.value;
     const msgs = isGroup ? groupChat.groupMessages.value : appState.messages.value;
     const currentDay = getCurrentDay(msgs);
@@ -373,6 +386,12 @@ function sendMessageWithSound() {
   sendMessage();
 }
 
+// 🌟 快捷建议按钮点击：填入内容并发送
+function handleSendSuggestion(text) {
+  userInput.value = text;
+  nextTick(() => sendMessageWithSound());
+}
+
 // --- Scroll Logic ---
 const SCROLL_THRESHOLD = 150; // 距离底部多少像素内视为 "在底部"
 
@@ -519,6 +538,34 @@ function handleImport() {
       throw new Error('无效的备份文件格式');
     }
 
+    // 🛡️ 防御：空 roleList 会导致后续崩溃
+    if (data.roleList.length === 0) {
+      showToast('备份文件中没有任何角色数据', 'error');
+      return;
+    }
+
+    // 📊 预览统计信息，让用户知道将要导入什么
+    const stats = [];
+    stats.push(`${data.roleList.length} 个角色`);
+    if (data.groups?.length) stats.push(`${data.groups.length} 个群聊`);
+    if (data.diaries?.length) stats.push(`${data.diaries.length} 篇日记`);
+    if (data.persona?.traits?.length) stats.push(`${data.persona.traits.length} 条画像`);
+
+    // ⚠️ 二次确认：明确告知会覆盖现有数据
+    showConfirmModal(
+      '确认导入',
+      `即将导入 ${stats.join('、')}。\n\n⚠️ 这将覆盖当前所有数据！\n建议先导出当前数据作为备份。`,
+      () => {
+        executeImport(data, stats);
+      }
+    );
+  } catch (e) {
+    showToast('导入失败: ' + e.message, 'error');
+  }
+}
+
+function executeImport(data, stats) {
+  try {
     // 恢复核心数据
     Object.assign(globalSettings, data.globalSettings);
     roleList.value = data.roleList;
@@ -544,14 +591,6 @@ function handleImport() {
 
     showImportModal.value = false;
     importJson.value = '';
-
-    // 统计恢复了多少数据
-    const stats = [];
-    stats.push(`${data.roleList.length} 个角色`);
-    if (data.groups?.length) stats.push(`${data.groups.length} 个群聊`);
-    if (data.diaries?.length) stats.push(`${data.diaries.length} 篇日记`);
-    if (data.persona?.traits?.length) stats.push(`${data.persona.traits.length} 条画像`);
-
     showToast(`✅ 数据恢复成功：${stats.join('、')}`);
   } catch (e) {
     showToast('导入失败: ' + e.message, 'error');
@@ -739,6 +778,7 @@ function handleAvatarError(type, roleId) {
         @switch-branch="branchFunctions.switchBranch"
         @rename-branch="branchFunctions.renameBranch"
         @delete-branch="branchFunctions.deleteBranch"
+        @send-suggestion="handleSendSuggestion"
       />
 
       <!-- 底部输入区域（单聊） -->
@@ -749,7 +789,7 @@ function handleAvatarError(type, roleId) {
                       @keydown.enter.exact.prevent="sendMessageWithSound"
                       @keydown.enter.shift.exact="handleShiftEnter"
                       :disabled="isStreaming"
-                      :placeholder="`与 ${currentRole.name || 'AI'} 对话...`"
+                      :placeholder="`你想对 ${currentRole.name || 'AI'} 说点什么…`"
                       rows="1"
                       class="w-full glass-light bg-glass-light text-gray-100 rounded-2xl px-4 py-3 resize-none input-focus outline-none border border-white/10 focus:border-primary transition max-h-32 overflow-y-auto text-shadow-light"
                       style="min-height: 48px;"></textarea>
@@ -757,8 +797,8 @@ function handleAvatarError(type, roleId) {
           <button type="submit" :disabled="!userInput.trim() || isStreaming"
                   class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed"
                   v-if="!isStreaming">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
             </svg>
           </button>
           <button type="button" @click="stopGeneration"

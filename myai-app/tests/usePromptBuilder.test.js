@@ -150,4 +150,37 @@ describe('usePromptBuilder - constructPrompt', () => {
         const hasOld = messages.some(m => m.content === 'msg1');
         expect(hasOld).toBe(false);
     });
+
+    it('应该过滤掉 day-separator 和非标准 role 消息', async () => {
+        const appState = createMockAppState({ memoryWindow: 10 });
+        appState.messages.value = [
+            { role: 'user', content: '你好' },
+            { role: 'assistant', content: '你好呀' },
+            { role: 'system', type: 'day-separator', content: '─── 第 2 天 ───' },
+            { role: 'user', content: '新的一天开始了' },
+            { role: 'director', content: '导演指令' },
+            { role: 'pass', content: '' },
+            { role: 'whisper', content: '悄悄话' },
+            { role: 'assistant', content: '早上好' },
+        ];
+
+        const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
+        const { constructPrompt } = usePromptBuilder(appState);
+
+        const messages = constructPrompt();
+
+        // day-separator 不应出现
+        const hasSeparator = messages.some(m => m.type === 'day-separator' || (m.content && m.content.includes('第 2 天')));
+        expect(hasSeparator).toBe(false);
+
+        // 非标准 role（director/pass/whisper）不应出现
+        const hasNonStandard = messages.some(m => ['director', 'pass', 'whisper'].includes(m.role));
+        expect(hasNonStandard).toBe(false);
+
+        // 标准的 user/assistant 消息应该存在
+        const hasUser = messages.some(m => m.content === '你好');
+        const hasAssistant = messages.some(m => m.content === '早上好');
+        expect(hasUser).toBe(true);
+        expect(hasAssistant).toBe(true);
+    });
 });

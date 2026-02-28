@@ -5,8 +5,9 @@ import { useUserPersona } from './useUserPersona';
 import { useTimeline } from './useTimeline';
 import { useMemory } from './useMemory';
 
-// 🛡️ 超时配置
-const FETCH_TIMEOUT_MS = 30000; // 30秒超时
+// 🛡️ 超时配置（根据模型类型动态调整）
+const FETCH_TIMEOUT_MS = 30000;          // 普通模型 30 秒
+const REASONER_TIMEOUT_MS = 120000;      // Reasoner 模型 120 秒（思考阶段需要更长时间）
 
 // 🛡️ 发送锁 - 防止快速点击重复发送
 let isSending = false;
@@ -176,8 +177,9 @@ Example format:
         // 创建 AbortController - 🛡️ 组合用户中止和超时信号
         abortController.value = new AbortController();
 
-        // 🛡️ 创建超时信号（30秒）
-        const timeoutSignal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+        // 🛡️ 创建超时信号（根据模型类型动态设置超时时间）
+        const timeoutMs = isReasoner ? REASONER_TIMEOUT_MS : FETCH_TIMEOUT_MS;
+        const timeoutSignal = AbortSignal.timeout(timeoutMs);
 
         // 🛡️ 组合信号：用户手动中止 或 超时自动中止
         const combinedSignal = AbortSignal.any([
@@ -359,6 +361,11 @@ Example format:
 
     // 重新生成消息
     function regenerateMessage(index) {
+        // 🛡️ 流式输出时禁止重写，防止双流冲突
+        if (isStreaming.value) {
+            showToast('请等待当前回复完成', 'error');
+            return;
+        }
         if (index < 0 || index >= messages.value.length) return;
 
         const msg = messages.value[index];
@@ -388,6 +395,11 @@ Example format:
 
     // 删除消息
     function deleteMessage(index) {
+        // 🛡️ 流式输出时禁止删除正在写入的最后一条消息
+        if (isStreaming.value && index === messages.value.length - 1) {
+            showToast('正在生成中，无法删除', 'error');
+            return;
+        }
         if (index >= 0 && index < messages.value.length) {
             messages.value.splice(index, 1);
             saveData();

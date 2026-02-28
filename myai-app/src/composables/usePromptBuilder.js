@@ -117,7 +117,7 @@ Remember: You are an actor playing a role. The USER is the co-author, not someon
         }
 
         // Step 4: Inject Manual Memories (capped at 20 to prevent token explosion)
-        const allMemories = role.manualMemories || [];
+        const allMemories = (role.manualMemories || []).filter(m => m.content && m.content.trim());
         const MAX_MEMORIES = 20;
         const manualMemories = allMemories.length > MAX_MEMORIES
             ? allMemories.slice(-MAX_MEMORIES)
@@ -146,6 +146,10 @@ Remember: You are an actor playing a role. The USER is the co-author, not someon
         const recentMessages = messages.value.slice(-windowSize);
 
         for (const msg of recentMessages) {
+            // 🛡️ 跳过系统分隔线等非对话消息
+            if (msg.type === 'day-separator') continue;
+            // 🛡️ 只保留 API 支持的标准 role（system/user/assistant）
+            if (!['user', 'assistant', 'system'].includes(msg.role)) continue;
             apiMessages.push({
                 role: msg.role,
                 content: msg.content,

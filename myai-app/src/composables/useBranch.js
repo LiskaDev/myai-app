@@ -105,9 +105,11 @@ export function useBranch(appState) {
 
         role.branches.splice(index, 1);
 
-        // 如果删除的是当前活跃分支，切换到主线
+        // 如果删除的是当前活跃分支，优先切到有内容的分支
         if (role.activeBranchId === branchId) {
-            role.activeBranchId = 'branch-main';
+            // 优先找有聊天记录的分支，否则回到主线
+            const branchWithContent = role.branches.find(b => b.chatHistory && b.chatHistory.length > 0);
+            role.activeBranchId = branchWithContent ? branchWithContent.id : 'branch-main';
         }
 
         saveData();

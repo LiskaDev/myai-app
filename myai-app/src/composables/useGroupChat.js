@@ -13,7 +13,8 @@ import {
 import { useUserPersona } from './useUserPersona';
 import { acquireBackgroundLock, releaseBackgroundLock, isBackgroundLocked, buildTimelinePrompt, parseTimelineEvents } from './useTimeline';
 
-const FETCH_TIMEOUT_MS = 60000; // 群聊超时 60s（多角色需要更长时间）
+const FETCH_TIMEOUT_MS = 60000;          // 群聊普通模型 60s
+const REASONER_TIMEOUT_MS = 120000;      // Reasoner 模型 120s
 
 // Callback for per-role completion (e.g. sound effects)
 let onRoleComplete = null;
@@ -71,7 +72,7 @@ export function useGroupChat(appState) {
             localStorage.setItem(STORAGE_KEYS.GROUPS, JSON.stringify(groupChats.value));
         } catch (e) {
             const msg = (e.name === 'QuotaExceededError' || e.code === 22)
-                ? '存储空间已满' : '保存群聊失败';
+                ? '⚠️ 存储空间已满！请导出备份后清理旧群聊' : '保存群聊失败';
             showToast(msg, 'error');
         }
     }
@@ -174,6 +175,12 @@ export function useGroupChat(appState) {
     function sendDirectorMessage(content) {
         if (!content.trim() || !currentGroup.value) return;
 
+        // 🛡️ 流式输出时禁止发送，防止并发写入
+        if (isGroupStreaming.value) {
+            showToast('请等待角色回复完成', 'error');
+            return;
+        }
+
         const trimmed = content.trim();
 
         groupMessages.value.push({
@@ -219,8 +226,11 @@ export function useGroupChat(appState) {
 
         const activeParticipants = [...participants.value];
         if (activeParticipants.length === 0) {
-            showToast('群聊中没有有效角色', 'error');
+            showToast('群聊中没有有效角色，请编辑群聊重新添加成员', 'error');
             return;
+        }
+        if (activeParticipants.length < 2) {
+            showToast('⚠️ 有效角色不足2人，部分角色可能已被删除，请编辑群聊', 'error');
         }
 
         // 洗牌：随机打乱发言顺序
@@ -235,7 +245,17 @@ export function useGroupChat(appState) {
             for (const role of activeParticipants) {
                 currentSpeakingRole.value = role.name;
 
-                await generateRoleResponse(role);
+                // 🛡️ 每个角色单独 try-catch，单个角色失败不中断整轮
+                try {
+                    await generateRoleResponse(role);
+                } catch (error) {
+                    if (error.name === 'AbortError') throw error; // 用户主动中止 → 停止整轮
+                    const errorMsg = error.name === 'TimeoutError'
+                        ? `${role.name} 请求超时，已跳过`
+                        : `${role.name} 回复失败，已跳过`;
+                    showToast(errorMsg, 'error');
+                    continue; // 跳过此角色，继续下一个
+                }
 
                 // Notify per-role completion (for sound effects, etc.)
                 if (onRoleComplete) onRoleComplete(role);
@@ -245,9 +265,7 @@ export function useGroupChat(appState) {
             }
         } catch (error) {
             if (error.name !== 'AbortError') {
-                const errorMsg = error.name === 'TimeoutError'
-                    ? '请求超时，请检查网络' : `错误: ${error.message}`;
-                showToast(errorMsg, 'error');
+                showToast(`错误: ${error.message}`, 'error');
             }
         } finally {
             isGroupStreaming.value = false;
@@ -314,7 +332,9 @@ export function useGroupChat(appState) {
 
         // 创建 AbortController
         groupAbortController.value = new AbortController();
-        const timeoutSignal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+        // 🛡️ 根据模型类型动态设置超时
+        const timeoutMs = isReasoner ? REASONER_TIMEOUT_MS : FETCH_TIMEOUT_MS;
+        const timeoutSignal = AbortSignal.timeout(timeoutMs);
         const combinedSignal = AbortSignal.any([
             groupAbortController.value.signal,
             timeoutSignal,
@@ -617,7 +637,7 @@ ${recentChat || '\uff08\u6682\u65e0\u5bf9\u8bdd\u8bb0\u5f55\uff09'}
 
     /**
      * 检查是否需要触发群聊自动摘要
-     * 当 chatHistory 长度超过 memoryWindow * 2 时触发
+     * v5.9.1: 使用 summarizedUpTo 索引模式（与单聊一致，不再删除消息）
      */
     function checkGroupSummary() {
         const group = currentGroup.value;
@@ -627,8 +647,10 @@ ${recentChat || '\uff08\u6682\u65e0\u5bf9\u8bdd\u8bb0\u5f55\uff09'}
         const firstRole = participants.value[0];
         const windowSize = firstRole?.memoryWindow || 15;
         const threshold = windowSize * 2;
+        const summarizedUpTo = group.summarizedUpTo || 0;
 
-        if (group.chatHistory.length >= threshold) {
+        // 未摘要的消息数 >= 阈值时触发
+        if (group.chatHistory.length - summarizedUpTo >= threshold) {
             generateGroupSummary().catch(err => {
                 console.warn('[GroupSummary] 自动摘要失败:', err.message);
             });
@@ -637,7 +659,7 @@ ${recentChat || '\uff08\u6682\u65e0\u5bf9\u8bdd\u8bb0\u5f55\uff09'}
 
     /**
      * 生成群聊自动摘要
-     * 将超出窗口的消息压缩成摘要，只保留最近 N 条
+     * v5.9.1: 不再删除旧消息，改为追踪 summarizedUpTo 索引（与单聊 useAutoSummary 一致）
      */
     async function generateGroupSummary() {
         if (isGroupSummarizing) return;
@@ -649,17 +671,16 @@ ${recentChat || '\uff08\u6682\u65e0\u5bf9\u8bdd\u8bb0\u5f55\uff09'}
 
             const firstRole = participants.value[0];
             const windowSize = firstRole?.memoryWindow || 15;
+            const summarizedUpTo = group.summarizedUpTo || 0;
 
-            if (group.chatHistory.length <= windowSize) return;
+            // 计算新的摘要范围：从上次摘要位置到保留窗口之前
+            const newSummarizedUpTo = group.chatHistory.length - windowSize;
+            if (newSummarizedUpTo <= summarizedUpTo) return;
 
-            // 分割：需要压缩的 vs 保留的
-            const splitIndex = group.chatHistory.length - windowSize;
-            const toSummarize = group.chatHistory.slice(0, splitIndex);
-            const toKeep = group.chatHistory.slice(splitIndex);
-
+            const toSummarize = group.chatHistory.slice(summarizedUpTo, newSummarizedUpTo);
             if (toSummarize.length === 0) return;
 
-            console.log(`[GroupSummary] 正在压缩 ${toSummarize.length} 条群聊消息...`);
+            console.log(`[GroupSummary] 正在压缩 ${toSummarize.length} 条群聊消息（索引 ${summarizedUpTo} → ${newSummarizedUpTo}）...`);
 
             // 构建摘要 prompt
             const dialogueText = toSummarize.map(msg => {
@@ -713,10 +734,11 @@ ${dialogueText}
 
             if (newSummary) {
                 group.autoSummary = newSummary;
-                group.chatHistory = toKeep;
+                // v5.9.1: 不删消息！只更新索引
+                group.summarizedUpTo = newSummarizedUpTo;
                 saveGroups();
 
-                console.log(`[GroupSummary] 摘要完成，保留 ${toKeep.length} 条消息`);
+                console.log(`[GroupSummary] 摘要完成，已压缩到索引 ${newSummarizedUpTo}，全部 ${group.chatHistory.length} 条消息保留`);
                 showToast('💾 群聊记忆已自动压缩', 'info');
             }
         } catch (error) {
@@ -737,6 +759,8 @@ ${dialogueText}
 
         // 获取所有参与角色的名字
         const allParticipants = participants.value;
+        // 🛡️ 防御性检查：部分角色可能已从角色列表中删除
+        if (allParticipants.length === 0) return apiMessages;
         const otherNames = allParticipants
             .filter(r => r.id !== targetRole.id)
             .map(r => r.name)
@@ -869,6 +893,9 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
 
         // 关键：映射消息角色
         for (const msg of recentMessages) {
+            // 🛡️ 跳过系统分隔线和弃权消息
+            if (msg.type === 'day-separator') continue;
+            if (msg.role === 'pass') continue;
             if (msg.role === 'director') {
                 // 导演消息 → user
                 apiMessages.push({
@@ -949,12 +976,25 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
     function clearGroupChat() {
         if (!currentGroup.value) return;
 
+        // 🛡️ AI 正在回复时禁止清空，防止幽灵消息
+        if (isGroupStreaming.value) {
+            showToast('请等待角色回复完成后再清空', 'error');
+            return;
+        }
+
         showConfirmModal({
             title: '清空群聊',
             message: `确定要清空 "${currentGroup.value.name}" 的所有聊天记录吗？\n此操作无法撤销。`,
             isDangerous: true,
             onConfirm: () => {
                 currentGroup.value.chatHistory = [];
+                // 🛡️ 重置摘要索引
+                if (currentGroup.value.summarizedUpTo) {
+                    currentGroup.value.summarizedUpTo = 0;
+                }
+                if (currentGroup.value.groupSummary) {
+                    currentGroup.value.groupSummary = '';
+                }
                 saveGroups();
                 showToast('群聊记录已清空');
             },
@@ -991,7 +1031,17 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
     function deleteGroupMessage(index) {
         if (!currentGroup.value) return;
         if (index >= 0 && index < groupMessages.value.length) {
+            // 🛡️ 流式输出时禁止删除正在写入的最后一条
+            if (isGroupStreaming.value && index === groupMessages.value.length - 1) {
+                showToast('正在生成中，无法删除', 'error');
+                return;
+            }
             groupMessages.value.splice(index, 1);
+            // 🛡️ 调整摘要索引，防止偏移
+            const group = currentGroup.value;
+            if (group.summarizedUpTo && index < group.summarizedUpTo) {
+                group.summarizedUpTo = Math.max(0, group.summarizedUpTo - 1);
+            }
             saveGroups();
             showToast('消息已删除');
         }

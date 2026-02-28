@@ -61,8 +61,8 @@ function handleSave() {
 
 <template>
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" @click.self="$emit('close')">
-        <div class="glass-strong bg-glass-dark rounded-2xl border border-white/15 shadow-2xl w-full max-w-md overflow-hidden">
-            <div class="p-6 space-y-4">
+        <div class="glass-strong bg-glass-dark rounded-2xl border border-white/15 shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
+            <div class="p-6 space-y-4 flex-1 overflow-y-auto">
                 <h2 class="text-lg font-bold">✏️ 编辑群聊</h2>
 
                 <div>

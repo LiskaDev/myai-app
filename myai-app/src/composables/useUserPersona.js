@@ -155,6 +155,8 @@ category 只能是以下五种之一：preference / personality / fact / style /
             persona.value.messageCountSinceLastAnalysis = 0;
             saveUserPersona(persona.value);
 
+            console.log(`[UserPersona] 🔍 后台分析完成，新增 ${toAdd.length} 条画像（当前共 ${persona.value.traits.length} 条）`);
+
             // v5.9: 检查是否需要精炼
             const MAX_TRAITS = 20;
             if (persona.value.traits.length > MAX_TRAITS) {
@@ -290,6 +292,11 @@ ${others.map((t, i) => `${i + 1}. [${t.category}] ${t.content}`).join('\n')}
         saveUserPersona(persona.value);
     }
 
+    // 🛡️ 从 localStorage 重新加载（用于跨标签页同步或导入后刷新）
+    function reloadFromStorage() {
+        persona.value = loadUserPersona();
+    }
+
     _instance = {
         persona,
         traits,
@@ -299,6 +306,7 @@ ${others.map((t, i) => `${i + 1}. [${t.category}] ${t.content}`).join('\n')}
         addTrait,
         removeTrait,
         clearAllTraits,
+        reloadFromStorage,
     };
 
     return _instance;

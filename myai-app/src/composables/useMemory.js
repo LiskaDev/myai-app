@@ -153,7 +153,13 @@ export function useMemory(appState) {
     }
 
     // AI 精简记忆
+    let isRefining = false;
     async function refineMemoryWithAI(index) {
+        // 🛡️ 防止重复点击
+        if (isRefining) {
+            showToast('正在精简中，请稍候', 'error');
+            return;
+        }
         const manualMemories = currentRole.value.manualMemories || [];
         if (index < 0 || index >= manualMemories.length) return;
 
@@ -167,6 +173,8 @@ export function useMemory(appState) {
             showToast('请先配置 API Key', 'error');
             return;
         }
+
+        isRefining = true;
 
         memoryEditState.refiningIndex = index;
 
@@ -245,6 +253,7 @@ ${rawContent}`;
             showToast(`精简失败: ${error.message}`, 'error');
         } finally {
             memoryEditState.refiningIndex = null;
+            isRefining = false;
         }
     }
 

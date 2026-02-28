@@ -82,7 +82,7 @@ export function loadFromStorage(onError) {
 // 导出数据为 JSON
 export function exportData(globalSettings, roleList) {
     const data = {
-        version: '4.5.1',
+        version: '5.9',
         exportDate: new Date().toISOString(),
         globalSettings,
         roleList,

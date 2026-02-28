@@ -314,3 +314,41 @@ describe('useGroupChat - v5.2 关系矩阵', () => {
         expect(group.relationshipMatrix['role-3→role-1']).toBe(0);
     });
 });
+
+describe('useGroupChat - 角色被删除后的防御性检查', () => {
+    it('participants 应该过滤掉已删除的角色', async () => {
+        const appState = createMockAppState();
+        const { useGroupChat } = await import('../src/composables/useGroupChat');
+        const groupChat = useGroupChat(appState);
+
+        // 创建群聊包含 role-1 和 role-2
+        const group = groupChat.createGroupChat('测试群', ['role-1', 'role-2']);
+        groupChat.switchToGroup(group.id);
+
+        // 从 roleList 中删除 role-2（模拟用户删除角色）
+        appState.roleList.value = appState.roleList.value.filter(r => r.id !== 'role-2');
+
+        // participants 应该只剩 role-1
+        expect(groupChat.participants.value.length).toBe(1);
+        expect(groupChat.participants.value[0].id).toBe('role-1');
+    });
+
+    it('所有角色被删除后 continueOneRound 不应崩溃', async () => {
+        const appState = createMockAppState();
+        const { useGroupChat } = await import('../src/composables/useGroupChat');
+        const groupChat = useGroupChat(appState);
+
+        const group = groupChat.createGroupChat('测试群', ['role-1', 'role-2']);
+        groupChat.switchToGroup(group.id);
+
+        // 删除所有角色
+        appState.roleList.value = [];
+
+        // 不应崩溃，应该 toast 提示
+        await groupChat.continueOneRound();
+        expect(appState.showToast).toHaveBeenCalledWith(
+            expect.stringContaining('没有有效角色'),
+            'error'
+        );
+    });
+});
