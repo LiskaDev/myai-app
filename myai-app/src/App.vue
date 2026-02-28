@@ -220,6 +220,20 @@ const latestExpression = computed(() => {
   return null;
 });
 
+// 🌟 关系里程碑
+const chatMilestone = computed(() => {
+  const hist = currentRole.value?.chatHistory || [];
+  if (hist.length === 0) return '在线';
+  const rounds = hist.filter(m => m.role === 'assistant').length;
+  const firstMsg = hist[0];
+  let dayText = '';
+  if (firstMsg?.timestamp) {
+    const days = Math.floor((Date.now() - firstMsg.timestamp) / 86400000) + 1;
+    dayText = ` · 第 ${days} 天`;
+  }
+  return `对话 ${rounds} 轮${dayText}`;
+});
+
 // Mobile Gestures
 useGestures({
   onSwipeRight: () => { showSidebar.value = true; },
@@ -650,7 +664,7 @@ function handleAvatarError(type, roleId) {
                :class="latestExpression ? 'expr-' + latestExpression : ''">🎭</div>
           <div class="text-shadow min-w-0">
             <h1 class="font-bold text-lg header-title truncate">{{ currentRole.name || 'MyAI-RolePlay' }}</h1>
-            <p class="text-xs text-gray-300 truncate">{{ isThinking ? '正在输入...' : (isStreaming ? '正在回复...' : '在线') }}</p>
+            <p class="text-xs text-gray-300 truncate">{{ isThinking ? `${currentRole.name} 正在思考...` : (isStreaming ? `${currentRole.name} 正在输入...` : chatMilestone) }}</p>
           </div>
         </template>
         <template v-else>
@@ -660,7 +674,7 @@ function handleAvatarError(type, roleId) {
             <p class="text-xs text-gray-300 truncate">
               {{ groupChat.isGroupStreaming.value
                   ? `${groupChat.currentSpeakingRole.value || '角色'} 正在输入...`
-                  : `${groupChat.participants.value.length} 位参与者` }}
+                  : `已聊 ${groupChat.currentGroup.value?.messages?.length || 0} 轮 · ${groupChat.participants.value.length} 位角色` }}
             </p>
           </div>
         </template>

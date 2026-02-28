@@ -449,6 +449,46 @@ body {
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
 }
 
+/* ============== 心情 Emoji Badge ============== */
+.mood-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  font-size: 12px;
+  line-height: 1;
+  background: rgba(17, 17, 27, 0.85);
+  border-radius: 50%;
+  padding: 1px;
+  border: 1.5px solid rgba(99, 102, 241, 0.3);
+}
+
+/* ============== 回访欢迎横幅 ============== */
+.return-banner {
+  text-align: center;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.06));
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 12px;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  animation: welcomeFadeIn 0.8s ease-out;
+}
+
+.return-banner .return-action {
+  display: inline-block;
+  margin-top: 0.25rem;
+  color: #c4b5fd;
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.return-banner .return-action:hover {
+  color: #e0d4ff;
+}
+
 /* ============== 带名字的输入指示器 ============== */
 .typing-named-indicator {
   display: flex;

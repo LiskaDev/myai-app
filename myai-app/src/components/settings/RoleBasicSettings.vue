@@ -150,6 +150,11 @@ defineExpose({ cancelGeneration });
                   placeholder="例如：你好，旅行者。在这个数字世界里，没有什么是我无法破解的..."
                   class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-secondary transition resize-none text-shadow-light"></textarea>
       </div>
+
+      <!-- 💡 新角色引导提示 -->
+      <div v-if="!currentRole.systemPrompt?.trim()" class="text-center py-2">
+        <p class="text-xs text-gray-500 italic">💡 不知道怎么填？试试最上方的 <span class="text-amber-400">✨ AI 一键生成</span></p>
+      </div>
     </div>
   </section>
 </template>

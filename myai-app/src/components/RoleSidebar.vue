@@ -1,4 +1,6 @@
 <script setup>
+import { extractExpression } from '../utils/textParser';
+
 defineProps({
   roleList: Array,
   currentRoleId: [String, Number],
@@ -7,6 +9,19 @@ defineProps({
   currentGroupId: { type: String, default: null },
   isGroupMode: { type: Boolean, default: false },
 });
+
+const EXPR_EMOJI = { joy: '😊', sadness: '😢', anger: '😠', surprise: '😲', fear: '😰', disgust: '😒', neutral: '😐', love: '🥰' };
+
+function getRoleMood(role) {
+  const hist = role.chatHistory || [];
+  for (let i = hist.length - 1; i >= 0; i--) {
+    if (hist[i].role === 'assistant') {
+      const { expression } = extractExpression(hist[i].rawContent || hist[i].content || '');
+      return EXPR_EMOJI[expression] || '😊';
+    }
+  }
+  return '💤';
+}
 
 defineEmits([
   'switch-role',
@@ -40,10 +55,13 @@ defineEmits([
              class="role-item p-3 rounded-lg cursor-pointer border border-white/10 relative"
              :class="{ 'active': !isGroupMode && role.id === currentRoleId }">
           <div class="flex items-center space-x-3">
-            <div v-if="role.avatar" class="avatar">
-              <img :src="role.avatar" alt="Role Avatar" class="w-full h-full rounded-full object-cover" @error="$emit('avatar-error', 'ai', role.id)">
+            <div class="relative flex-shrink-0">
+              <div v-if="role.avatar" class="avatar">
+                <img :src="role.avatar" alt="Role Avatar" class="w-full h-full rounded-full object-cover" @error="$emit('avatar-error', 'ai', role.id)">
+              </div>
+              <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
+              <span class="mood-badge">{{ getRoleMood(role) }}</span>
             </div>
-            <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
             <div class="flex-1 min-w-0">
               <h3 class="font-semibold text-sm truncate">{{ role.name }}</h3>
               <p class="text-xs text-gray-400 truncate italic">

@@ -70,6 +70,23 @@ const quickSuggestions = computed(() => {
   return [`你好 ${name}！`, '给我讲讲你自己吧', '我们来聊点有趣的'];
 });
 
+// 🌟 回访欢迎
+const returnMessage = computed(() => {
+  const lastVisit = parseInt(localStorage.getItem('myai_lastVisitTime') || '0');
+  if (!lastVisit) return null;
+  const hours = Math.floor((Date.now() - lastVisit) / 3600000);
+  if (hours < 2) return null;
+  const name = props.currentRole.name || 'AI';
+  if (hours < 24) return `🕐 已经过去 ${hours} 小时了，${name} 一直在等你`;
+  const days = Math.floor(hours / 24);
+  return `🕐 已经过去 ${days} 天了，${name} 一直在想你`;
+});
+
+// 记录访问时间
+if (typeof window !== 'undefined') {
+  localStorage.setItem('myai_lastVisitTime', Date.now().toString());
+}
+
 defineExpose({
   get scrollTop() {
     return containerRef.value?.scrollTop || 0;
@@ -369,6 +386,11 @@ function isCurrentMatch(originalIndex) {
                   @click="$emit('send-suggestion', s)">
             {{ s }}
           </button>
+        </div>
+
+        <!-- 🌟 回访欢迎横幅 -->
+        <div v-if="returnMessage" class="return-banner mt-4">
+          {{ returnMessage }}
         </div>
       </div>
     </div>
