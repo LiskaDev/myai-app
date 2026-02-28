@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>角色卡效果 Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Noto+Serif+SC:wght@300;400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    color: #fff;
+    font-family: 'Noto Serif SC', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 48px;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 4px;
+    color: #666;
+    text-transform: uppercase;
+  }
+
+  .demo-row {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .demo-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .demo-label {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #444;
+    text-transform: uppercase;
+  }
+
+  /* ========== 样式A：幻光卡牌 ========== */
+  .card-a {
+    width: 260px;
+    height: 380px;
+    position: relative;
+    cursor: pointer;
+    perspective: 1000px;
+  }
+
+  .card-a-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-a:hover .card-a-inner {
+    transform: rotateY(8deg) rotateX(-4deg);
+  }
+
+  .card-a-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1a1025 0%, #0d0d1a 50%, #1a0d25 100%);
+    border: 1px solid rgba(180, 130, 255, 0.2);
+  }
+
+  /* 全息光效 */
+  .card-a-face::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: conic-gradient(
+      from 0deg at 50% 50%,
+      transparent 0deg,
+      rgba(120, 80, 255, 0.15) 60deg,
+      rgba(80, 200, 255, 0.1) 120deg,
+      rgba(255, 100, 180, 0.1) 180deg,
+      transparent 240deg,
+      rgba(120, 80, 255, 0.08) 300deg,
+      transparent 360deg
+    );
+    animation: holoRotate 4s linear infinite;
+    border-radius: 16px;
+  }
+
+  @keyframes holoRotate {
+    from { transform: rotate(0deg) scale(1.5); }
+    to { transform: rotate(360deg) scale(1.5); }
+  }
+
+  /* 边框光 */
+  .card-a-face::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, rgba(180,130,255,0.6), rgba(80,200,255,0.3), rgba(255,100,180,0.4)) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: destination-out;
+    mask-composite: exclude;
+    animation: borderPulse 3s ease-in-out infinite;
+  }
+
+  @keyframes borderPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .card-a-avatar {
+    width: 100%;
+    height: 220px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card-a-avatar-bg {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(160deg, #2a1545 0%, #1a0d35 40%, #0d1a2a 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    position: relative;
+  }
+
+  .card-a-avatar-bg::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 80px;
+    background: linear-gradient(transparent, #0d0d1a);
+  }
+
+  /* 星尘粒子 */
+  .particles {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  .particle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: white;
+    animation: float var(--dur) ease-in-out infinite var(--delay);
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 0.5; }
+    100% { transform: translateY(-120px) translateX(var(--drift)); opacity: 0; }
+  }
+
+  .card-a-content {
+    padding: 16px 20px 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card-a-tag {
+    display: inline-block;
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: rgba(180,130,255,0.8);
+    border: 1px solid rgba(180,130,255,0.3);
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .card-a-name {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(180,130,255,0.5);
+    margin-bottom: 6px;
+  }
+
+  .card-a-desc {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+  }
+
+  .card-a-stats {
+    display: flex;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .stat {
+    flex: 1;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: 'Cinzel', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: rgba(180,130,255,0.9);
+  }
+
+  .stat-label {
+    font-size: 9px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  /* 角落装饰 */
+  .corner {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: rgba(180,130,255,0.5);
+    border-style: solid;
+  }
+  .corner-tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+  .corner-tr { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
+  .corner-bl { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
+  .corner-br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+
+  /* ========== 样式B：开卡包登场 ========== */
+  .card-b-wrapper {
+    position: relative;
+    width: 260px;
+    height: 380px;
+  }
+
+  .btn-open {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #1a2a1a, #0d1a0d);
+    border: 1px solid rgba(100,255,120,0.3);
+    border-radius: 12px;
+    color: rgba(100,255,120,0.8);
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.3s;
+    position: absolute;
+    bottom: -60px;
+  }
+
+  .btn-open:hover {
+    background: linear-gradient(135deg, #1a3a1a, #0d250d);
+    border-color: rgba(100,255,120,0.6);
+    box-shadow: 0 0 20px rgba(100,255,120,0.15);
+  }
+
+  .card-b-scene {
+    width: 260px;
+    height: 380px;
+    position: relative;
+    perspective: 800px;
+  }
+
+  /* 光爆效果 */
+  .flash {
+    position: absolute;
+    inset: -40px;
+    background: radial-gradient(circle, rgba(100,255,120,0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .card-b-scene.playing .flash {
+    animation: flashBurst 0.6s ease-out forwards;
+  }
+
+  @keyframes flashBurst {
+    0% { opacity: 0; transform: scale(0.5); }
+    20% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.5); }
+  }
+
+  /* 卡片碎片（开包动画） */
+  .shard {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .card-b-scene.playing .shard {
+    animation: shardFly 0.5s cubic-bezier(0.4, 0, 1, 1) forwards;
+  }
+
+  .shard-1 {
+    clip-path: polygon(0 0, 50% 0, 40% 100%, 0 100%);
+    background: linear-gradient(135deg, #2a1a3a, #1a0d2a);
+    --dx: -120px; --dy: -60px; --r: -30deg;
+    animation-delay: 0s !important;
+  }
+  .shard-2 {
+    clip-path: polygon(50% 0, 100% 0, 100% 40%, 60% 100%, 40% 100%);
+    background: linear-gradient(135deg, #1a2a3a, #0d1a2a);
+    --dx: 100px; --dy: -80px; --r: 25deg;
+    animation-delay: 0.05s !important;
+  }
+  .shard-3 {
+    clip-path: polygon(0 100%, 40% 100%, 60% 100%, 100% 40%, 100% 100%);
+    background: linear-gradient(135deg, #3a1a1a, #2a0d0d);
+    --dx: 20px; --dy: 100px; --r: 15deg;
+    animation-delay: 0.02s !important;
+  }
+
+  @keyframes shardFly {
+    0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--r)); }
+  }
+
+  /* 主卡牌B */
+  .card-b {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: linear-gradient(160deg, #0f1f15 0%, #0a150d 100%);
+    border: 1px solid rgba(100,255,120,0.15);
+    opacity: 0;
+    transform: scale(0.85) rotateY(15deg);
+    transform-origin: center center;
+  }
+
+  .card-b-scene.playing .card-b {
+    animation: cardReveal 0.7s cubic-bezier(0.2, 0, 0.2, 1) 0.3s forwards;
+  }
+
+  .card-b-scene.revealed .card-b {
+    opacity: 1;
+    transform: scale(1) rotateY(0deg);
+  }
+
+  @keyframes cardReveal {
+    0% { opacity: 0; transform: scale(0.75) rotateY(20deg); }
+    60% { opacity: 1; transform: scale(1.04) rotateY(-3deg); }
+    100% { opacity: 1; transform: scale(1) rotateY(0deg); }
+  }
+
+  /* 扫光 */
+  .card-b::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(100,255,120,0.12), transparent);
+    z-index: 5;
+  }
+
+  .card-b-scene.revealed .card-b::before {
+    animation: scanLight 2s ease-in-out 0.8s infinite;
+  }
+
+  @keyframes scanLight {
+    0% { left: -100%; }
+    100% { left: 200%; }
+  }
+
+  .card-b-avatar {
+    height: 220px;
+    background: linear-gradient(160deg, #152515 0%, #0a1a0d 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 绿色粒子 */
+  .card-b-avatar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(1px 1px at 20% 30%, rgba(100,255,120,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 20%, rgba(100,255,120,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 70%, rgba(100,255,120,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 80%, rgba(100,255,120,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 60%, rgba(100,255,120,0.4) 0%, transparent 100%);
+    animation: twinkle 2s ease-in-out infinite;
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .card-b-rarity {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 3px;
+  }
+
+  .star {
+    color: rgba(100,255,120,0.8);
+    font-size: 12px;
+    animation: starPop 0.3s ease-out both;
+  }
+  .star:nth-child(1) { animation-delay: 0.9s; }
+  .star:nth-child(2) { animation-delay: 1.0s; }
+  .star:nth-child(3) { animation-delay: 1.1s; }
+  .star:nth-child(4) { animation-delay: 1.2s; }
+  .star:nth-child(5) { animation-delay: 1.3s; }
+
+  @keyframes starPop {
+    0% { opacity: 0; transform: scale(0); }
+    70% { transform: scale(1.3); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .card-b-scene:not(.revealed) .star { opacity: 0; }
+
+  .card-b-content {
+    padding: 16px 20px 20px;
+    position: relative;
+  }
+
+  .card-b-tag {
+    display: inline-block;
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: rgba(100,255,120,0.7);
+    border: 1px solid rgba(100,255,120,0.25);
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .card-b-name {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(100,255,120,0.4);
+    margin-bottom: 6px;
+  }
+
+  .card-b-desc {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.6;
+  }
+
+  .card-b-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(100,255,120,0.1);
+  }
+
+  .card-b-id {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    color: rgba(100,255,120,0.3);
+    letter-spacing: 2px;
+  }
+
+  .export-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: rgba(100,255,120,0.7);
+    border: 1px solid rgba(100,255,120,0.3);
+    background: transparent;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  .export-btn:hover {
+    background: rgba(100,255,120,0.1);
+    color: rgba(100,255,120,1);
+  }
+
+  .corner-b {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-color: rgba(100,255,120,0.3);
+    border-style: solid;
+  }
+  .corner-b.tl { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
+  .corner-b.tr { top: 8px; right: 8px; border-width: 1px 1px 0 0; }
+  .corner-b.bl { bottom: 8px; left: 8px; border-width: 0 0 1px 1px; }
+  .corner-b.br { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+
+  /* 说明文字 */
+  .tip {
+    font-size: 11px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 1px;
+    text-align: center;
+    margin-top: 8px;
+  }
+
+</style>
+</head>
+<body>
+
+<h1>角色卡导出预览 · 效果对比</h1>
+
+<div class="demo-row">
+
+  <!-- 样式A：幻光悬停卡 -->
+  <div class="demo-block">
+    <div class="demo-label">Style A · 幻光卡牌</div>
+    <div class="card-a">
+      <div class="card-a-inner">
+        <div class="card-a-face">
+          <div class="corner corner-tl"></div>
+          <div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div>
+          <div class="corner corner-br"></div>
+
+          <div class="card-a-avatar">
+            <div class="card-a-avatar-bg">
+              🌙
+              <div class="particles" id="particles-a"></div>
+            </div>
+          </div>
+
+          <div class="card-a-content">
+            <div class="card-a-tag">★★★★ · 幻境</div>
+            <div class="card-a-name">夜羽</div>
+            <div class="card-a-desc">冷酷的月之守卫，内心深处藏着不为人知的柔情……</div>
+            <div class="card-a-stats">
+              <div class="stat">
+                <div class="stat-val">99</div>
+                <div class="stat-label">对话轮次</div>
+              </div>
+              <div class="stat">
+                <div class="stat-val">12</div>
+                <div class="stat-label">记忆锁定</div>
+              </div>
+              <div class="stat">
+                <div class="stat-val">∞</div>
+                <div class="stat-label">剧情深度</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tip">↑ 悬停看光效</div>
+  </div>
+
+  <!-- 样式B：开卡包登场 -->
+  <div class="demo-block">
+    <div class="demo-label">Style B · 开包登场</div>
+    <div class="card-b-scene" id="scene-b">
+      <div class="flash"></div>
+      <div class="shard shard-1"></div>
+      <div class="shard shard-2"></div>
+      <div class="shard shard-3"></div>
+
+      <div class="card-b">
+        <div class="corner-b tl"></div>
+        <div class="corner-b tr"></div>
+        <div class="corner-b bl"></div>
+        <div class="corner-b br"></div>
+
+        <div class="card-b-avatar">
+          🌿
+          <div class="card-b-rarity">
+            <span class="star">★</span>
+            <span class="star">★</span>
+            <span class="star">★</span>
+            <span class="star">★</span>
+            <span class="star">★</span>
+          </div>
+        </div>
+
+        <div class="card-b-content">
+          <div class="card-b-tag">SSR · 自然系</div>
+          <div class="card-b-name">叶清歌</div>
+          <div class="card-b-desc">来自森林深处的精灵诗人，每一句话都像风穿过树梢……</div>
+          <div class="card-b-bottom">
+            <div class="card-b-id">#CHAR-0042</div>
+            <button class="export-btn">导出角色卡</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-open" onclick="playReveal()">▶ 点击查看登场动画</button>
+    <div class="tip" style="margin-top:70px">↑ 点击按钮触发开包效果</div>
+  </div>
+
+</div>
+
+<script>
+  // 生成粒子 A
+  const container = document.getElementById('particles-a');
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `
+      left: ${Math.random() * 100}%;
+      top: ${Math.random() * 100}%;
+      --dur: ${2 + Math.random() * 3}s;
+      --delay: ${-Math.random() * 4}s;
+      --drift: ${(Math.random() - 0.5) * 40}px;
+      width: ${Math.random() > 0.7 ? 3 : 2}px;
+      height: ${Math.random() > 0.7 ? 3 : 2}px;
+      background: ${Math.random() > 0.5 ? 'rgba(180,130,255,0.8)' : 'rgba(80,200,255,0.6)'};
+    `;
+    container.appendChild(p);
+  }
+
+  // 开包动画
+  function playReveal() {
+    const scene = document.getElementById('scene-b');
+    scene.classList.remove('playing', 'revealed');
+    void scene.offsetWidth; // reflow
+    scene.classList.add('playing');
+    setTimeout(() => {
+      scene.classList.remove('playing');
+      scene.classList.add('revealed');
+    }, 1100);
+  }
+
+  // 默认先播放一次
+  setTimeout(playReveal, 500);
+</script>
+</body>
+</html>

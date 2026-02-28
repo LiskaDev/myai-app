@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色卡 · Antigravity Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Noto+Serif+SC:wght@300;400;600;700&family=Inter:wght@300;400;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #06060e;
+            color: #fff;
+            font-family: 'Inter', 'Noto Serif SC', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 50px 20px 80px;
+            overflow-x: hidden;
+        }
+
+        /* ===== 页面背景星空 ===== */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(1.5px 1.5px at 10% 20%, rgba(160, 140, 255, 0.4) 50%, transparent 50%),
+                radial-gradient(1px 1px at 30% 60%, rgba(100, 200, 255, 0.3) 50%, transparent 50%),
+                radial-gradient(1.2px 1.2px at 50% 10%, rgba(255, 120, 200, 0.3) 50%, transparent 50%),
+                radial-gradient(1px 1px at 70% 80%, rgba(100, 255, 180, 0.25) 50%, transparent 50%),
+                radial-gradient(1.5px 1.5px at 90% 40%, rgba(200, 160, 255, 0.35) 50%, transparent 50%),
+                radial-gradient(1px 1px at 15% 85%, rgba(80, 180, 255, 0.3) 50%, transparent 50%),
+                radial-gradient(1.3px 1.3px at 60% 45%, rgba(255, 180, 100, 0.25) 50%, transparent 50%),
+                radial-gradient(1px 1px at 85% 15%, rgba(180, 255, 160, 0.2) 50%, transparent 50%);
+            animation: starsTwinkle 6s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes starsTwinkle {
+            0% {
+                opacity: 0.6;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 60px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .page-header h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            letter-spacing: 8px;
+            color: rgba(180, 160, 255, 0.5);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .page-header p {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.2);
+            letter-spacing: 3px;
+        }
+
+        .demo-row {
+            display: flex;
+            gap: 80px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            position: relative;
+            z-index: 1;
+        }
+
+        .demo-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .demo-label {
+            font-family: 'Cinzel', serif;
+            font-size: 10px;
+            letter-spacing: 4px;
+            color: rgba(255, 255, 255, 0.25);
+            text-transform: uppercase;
+        }
+
+        .tip {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.15);
+            letter-spacing: 2px;
+        }
+
+        /* ============================================================
+     CARD 1: 幻境·星辰 — 3D Parallax Holographic Card
+     ============================================================ */
+        .card-holo {
+            width: 300px;
+            height: 440px;
+            position: relative;
+            cursor: pointer;
+            perspective: 1200px;
+        }
+
+        .card-holo-inner {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.15s ease-out;
+            will-change: transform;
+        }
+
+        .card-holo-face {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            overflow: hidden;
+            background: linear-gradient(160deg, #0c0820 0%, #0a0618 40%, #120828 70%, #0c0820 100%);
+            box-shadow:
+                0 25px 80px rgba(100, 60, 200, 0.25),
+                0 0 0 1px rgba(160, 120, 255, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            backface-visibility: hidden;
+        }
+
+        /* ---- Holographic Prismatic Overlay ---- */
+        .holo-prism {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            background: conic-gradient(from var(--holo-angle, 0deg) at 50% 50%,
+                    rgba(255, 60, 120, 0.12) 0deg,
+                    rgba(255, 200, 60, 0.08) 45deg,
+                    rgba(60, 255, 120, 0.1) 90deg,
+                    rgba(60, 180, 255, 0.12) 135deg,
+                    rgba(140, 60, 255, 0.15) 180deg,
+                    rgba(255, 60, 200, 0.1) 225deg,
+                    rgba(60, 255, 200, 0.08) 270deg,
+                    rgba(255, 120, 60, 0.1) 315deg,
+                    rgba(255, 60, 120, 0.12) 360deg);
+            mix-blend-mode: screen;
+            opacity: var(--holo-opacity, 0.3);
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .card-holo:hover .holo-prism {
+            --holo-opacity: 0.8;
+        }
+
+        /* ---- Shimmer / Light Streak ---- */
+        .holo-shimmer {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            background: linear-gradient(var(--shimmer-angle, 105deg),
+                    transparent 30%,
+                    rgba(255, 255, 255, 0.06) 45%,
+                    rgba(255, 255, 255, 0.15) 50%,
+                    rgba(255, 255, 255, 0.06) 55%,
+                    transparent 70%);
+            mix-blend-mode: overlay;
+            pointer-events: none;
+            z-index: 11;
+            opacity: var(--shimmer-opacity, 0);
+            transition: opacity 0.2s;
+        }
+
+        .card-holo:hover .holo-shimmer {
+            --shimmer-opacity: 1;
+        }
+
+        /* ---- Breathing Border Glow ---- */
+        .card-holo-face::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 21px;
+            background: linear-gradient(var(--border-angle, 135deg),
+                    rgba(160, 100, 255, 0.7),
+                    rgba(80, 200, 255, 0.4),
+                    rgba(255, 80, 180, 0.5),
+                    rgba(100, 255, 200, 0.3),
+                    rgba(160, 100, 255, 0.7));
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            padding: 1.5px;
+            animation: borderRotate 6s linear infinite;
+            z-index: 12;
+            pointer-events: none;
+        }
+
+        @keyframes borderRotate {
+            0% {
+                --border-angle: 0deg;
+            }
+
+            100% {
+                --border-angle: 360deg;
+            }
+        }
+
+        @property --border-angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        /* ---- Avatar Area ---- */
+        .holo-avatar {
+            width: 100%;
+            height: 260px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .holo-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top center;
+            filter: saturate(1.1) contrast(1.05);
+        }
+
+        /* Gradient mask for bottom blend */
+        .holo-avatar::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 120px;
+            background: linear-gradient(transparent, #0c0820);
+            pointer-events: none;
+        }
+
+        /* ---- Floating Particles ---- */
+        .holo-particles {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .holo-particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: particleRise var(--p-dur) ease-in-out infinite var(--p-delay);
+            opacity: 0;
+        }
+
+        @keyframes particleRise {
+            0% {
+                transform: translateY(0) translateX(0) scale(0.5);
+                opacity: 0;
+            }
+
+            15% {
+                opacity: 1;
+            }
+
+            85% {
+                opacity: 0.4;
+            }
+
+            100% {
+                transform: translateY(var(--p-dy)) translateX(var(--p-dx)) scale(1.2);
+                opacity: 0;
+            }
+        }
+
+        /* ---- Content ---- */
+        .holo-content {
+            padding: 0 24px 24px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .holo-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Cinzel', serif;
+            font-size: 8px;
+            letter-spacing: 2.5px;
+            color: rgba(180, 140, 255, 0.7);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .holo-tag-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(180, 140, 255, 0.6);
+            box-shadow: 0 0 6px rgba(180, 140, 255, 0.8);
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes dotPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 4px rgba(180, 140, 255, 0.5);
+            }
+
+            50% {
+                box-shadow: 0 0 12px rgba(180, 140, 255, 1);
+            }
+        }
+
+        .holo-name {
+            font-family: 'Cinzel', serif;
+            font-size: 26px;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 0 0 30px rgba(160, 120, 255, 0.5), 0 2px 10px rgba(0, 0, 0, 0.5);
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .holo-desc {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            line-height: 1.7;
+            letter-spacing: 0.5px;
+        }
+
+        .holo-stats {
+            display: flex;
+            gap: 0;
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(160, 120, 255, 0.1);
+        }
+
+        .holo-stat {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+
+        .holo-stat+.holo-stat::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 2px;
+            bottom: 2px;
+            width: 1px;
+            background: rgba(160, 120, 255, 0.12);
+        }
+
+        .holo-stat-val {
+            font-family: 'Cinzel', serif;
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(135deg, rgba(180, 140, 255, 1), rgba(100, 200, 255, 0.9));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .holo-stat-label {
+            font-size: 8px;
+            color: rgba(255, 255, 255, 0.25);
+            letter-spacing: 1.5px;
+            margin-top: 3px;
+            text-transform: uppercase;
+        }
+
+        /* ---- Corner Accents ---- */
+        .holo-corner {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            z-index: 13;
+            pointer-events: none;
+        }
+
+        .holo-corner::before,
+        .holo-corner::after {
+            content: '';
+            position: absolute;
+            background: rgba(160, 120, 255, 0.4);
+        }
+
+        .holo-corner.tl {
+            top: 10px;
+            left: 10px;
+        }
+
+        .holo-corner.tl::before {
+            width: 18px;
+            height: 1px;
+            top: 0;
+            left: 0;
+        }
+
+        .holo-corner.tl::after {
+            width: 1px;
+            height: 18px;
+            top: 0;
+            left: 0;
+        }
+
+        .holo-corner.tr {
+            top: 10px;
+            right: 10px;
+        }
+
+        .holo-corner.tr::before {
+            width: 18px;
+            height: 1px;
+            top: 0;
+            right: 0;
+        }
+
+        .holo-corner.tr::after {
+            width: 1px;
+            height: 18px;
+            top: 0;
+            right: 0;
+        }
+
+        .holo-corner.bl {
+            bottom: 10px;
+            left: 10px;
+        }
+
+        .holo-corner.bl::before {
+            width: 18px;
+            height: 1px;
+            bottom: 0;
+            left: 0;
+        }
+
+        .holo-corner.bl::after {
+            width: 1px;
+            height: 18px;
+            bottom: 0;
+            left: 0;
+        }
+
+        .holo-corner.br {
+            bottom: 10px;
+            right: 10px;
+        }
+
+        .holo-corner.br::before {
+            width: 18px;
+            height: 1px;
+            bottom: 0;
+            right: 0;
+        }
+
+        .holo-corner.br::after {
+            width: 1px;
+            height: 18px;
+            bottom: 0;
+            right: 0;
+        }
+
+
+        /* ============================================================
+     CARD 2: 幽夜·月落 — Mystic Reveal Card
+     ============================================================ */
+        .card-mystic-wrapper {
+            width: 300px;
+            height: 440px;
+            position: relative;
+            perspective: 1200px;
+        }
+
+        /* -- 封印面 (未揭示状态) -- */
+        .mystic-seal {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            background: linear-gradient(160deg, #080418 0%, #0d0828 50%, #080420 100%);
+            border: 1px solid rgba(120, 80, 200, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            cursor: pointer;
+            overflow: hidden;
+            transition: opacity 0.5s, transform 0.6s;
+            backface-visibility: hidden;
+            z-index: 3;
+        }
+
+        .mystic-seal.hidden {
+            opacity: 0;
+            transform: scale(0.8) rotateY(90deg);
+            pointer-events: none;
+        }
+
+        /* Seal magic circle */
+        .seal-circle {
+            width: 140px;
+            height: 140px;
+            border: 1px solid rgba(160, 120, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            animation: sealSpin 12s linear infinite;
+        }
+
+        .seal-circle::before {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            border: 1px dashed rgba(160, 120, 255, 0.2);
+            border-radius: 50%;
+            animation: sealSpin 8s linear infinite reverse;
+        }
+
+        .seal-circle::after {
+            content: '';
+            position: absolute;
+            inset: 20px;
+            border: 1px solid rgba(100, 200, 255, 0.15);
+            border-radius: 50%;
+            animation: sealSpin 15s linear infinite;
+        }
+
+        @keyframes sealSpin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .seal-icon {
+            font-size: 50px;
+            filter: drop-shadow(0 0 20px rgba(160, 120, 255, 0.5));
+            animation: sealFloat 3s ease-in-out infinite alternate;
+            /* Counter-rotate to stay upright */
+            animation: sealSpin 12s linear infinite reverse, sealFloat 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes sealFloat {
+            0% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 15px rgba(160, 120, 255, 0.4));
+            }
+
+            100% {
+                transform: scale(1.08);
+                filter: drop-shadow(0 0 30px rgba(160, 120, 255, 0.8));
+            }
+        }
+
+        .seal-text {
+            font-family: 'Cinzel', serif;
+            font-size: 10px;
+            letter-spacing: 5px;
+            color: rgba(160, 120, 255, 0.5);
+            text-transform: uppercase;
+        }
+
+        .seal-hint {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.15);
+            letter-spacing: 2px;
+            animation: hintPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes hintPulse {
+
+            0%,
+            100% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        /* Seal rune decorations */
+        .seal-rune {
+            position: absolute;
+            font-size: 16px;
+            color: rgba(160, 120, 255, 0.15);
+            animation: runeGlow 4s ease-in-out infinite var(--rune-delay);
+        }
+
+        @keyframes runeGlow {
+
+            0%,
+            100% {
+                opacity: 0.15;
+                text-shadow: none;
+            }
+
+            50% {
+                opacity: 0.6;
+                text-shadow: 0 0 10px rgba(160, 120, 255, 0.5);
+            }
+        }
+
+        /* -- 光爆 + 粒子爆发 -- */
+        .mystic-burst {
+            position: absolute;
+            inset: -60px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+        }
+
+        .mystic-burst.active {
+            animation: burstFlash 0.8s ease-out forwards;
+        }
+
+        @keyframes burstFlash {
+            0% {
+                opacity: 0;
+                background: radial-gradient(circle, rgba(160, 120, 255, 0.6) 0%, transparent 50%);
+                transform: scale(0.3);
+            }
+
+            30% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                background: radial-gradient(circle, rgba(160, 120, 255, 0) 0%, transparent 50%);
+                transform: scale(1.5);
+            }
+        }
+
+        /* -- 主卡片面 -- */
+        .mystic-card {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            overflow: hidden;
+            background: linear-gradient(160deg, #0a0420 0%, #0d0828 40%, #0c0620 100%);
+            border: 1px solid rgba(120, 80, 200, 0.2);
+            box-shadow: 0 25px 80px rgba(80, 40, 160, 0.3), 0 0 0 1px rgba(120, 80, 200, 0.15);
+            opacity: 0;
+            transform: scale(0.7) rotateY(-20deg);
+            transition: none;
+            z-index: 2;
+        }
+
+        .mystic-card.revealed {
+            animation: cardMysticReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes cardMysticReveal {
+            0% {
+                opacity: 0;
+                transform: scale(0.7) rotateY(-20deg);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.06) rotateY(5deg);
+            }
+
+            75% {
+                transform: scale(0.98) rotateY(-2deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1) rotateY(0deg);
+            }
+        }
+
+        /* Aurora overlay */
+        .mystic-aurora {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg,
+                    rgba(80, 40, 160, 0.15) 0%,
+                    rgba(40, 120, 200, 0.1) 30%,
+                    transparent 60%);
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .mystic-aurora::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg at 50% 50%,
+                    transparent 0deg,
+                    rgba(120, 60, 255, 0.08) 60deg,
+                    rgba(60, 200, 255, 0.05) 120deg,
+                    rgba(200, 60, 255, 0.06) 180deg,
+                    transparent 240deg);
+            animation: auroraRotate 10s linear infinite;
+        }
+
+        @keyframes auroraRotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Scan light */
+        .mystic-scan {
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(160, 120, 255, 0.08), rgba(255, 255, 255, 0.05), transparent);
+            pointer-events: none;
+            z-index: 4;
+        }
+
+        .mystic-card.revealed .mystic-scan {
+            animation: mysticScanPass 3s ease-in-out 0.8s infinite;
+        }
+
+        @keyframes mysticScanPass {
+            0% {
+                left: -100%;
+            }
+
+            100% {
+                left: 250%;
+            }
+        }
+
+        /* Avatar */
+        .mystic-avatar {
+            width: 100%;
+            height: 270px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mystic-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top center;
+            filter: saturate(1.15) contrast(1.05) brightness(0.95);
+        }
+
+        .mystic-avatar::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 140px;
+            background: linear-gradient(transparent, #0c0620);
+            pointer-events: none;
+        }
+
+        /* Moon deco */
+        .mystic-moon {
+            position: absolute;
+            top: 14px;
+            right: 18px;
+            font-size: 22px;
+            filter: drop-shadow(0 0 10px rgba(160, 140, 255, 0.6));
+            animation: moonGlow 4s ease-in-out infinite alternate;
+            z-index: 5;
+        }
+
+        @keyframes moonGlow {
+            0% {
+                filter: drop-shadow(0 0 8px rgba(160, 140, 255, 0.4));
+                transform: scale(1);
+            }
+
+            100% {
+                filter: drop-shadow(0 0 20px rgba(160, 140, 255, 0.8));
+                transform: scale(1.1);
+            }
+        }
+
+        /* Content */
+        .mystic-content {
+            padding: 0 24px 24px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .mystic-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Cinzel', serif;
+            font-size: 8px;
+            letter-spacing: 2.5px;
+            color: rgba(140, 120, 220, 0.7);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .mystic-name {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 4px;
+            text-shadow: 0 0 30px rgba(120, 80, 200, 0.5), 0 2px 10px rgba(0, 0, 0, 0.5);
+            margin-bottom: 8px;
+        }
+
+        .mystic-desc {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.35);
+            line-height: 1.8;
+            letter-spacing: 0.8px;
+            font-style: italic;
+        }
+
+        .mystic-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(120, 80, 200, 0.1);
+        }
+
+        .mystic-id {
+            font-family: 'Cinzel', serif;
+            font-size: 8px;
+            color: rgba(140, 120, 220, 0.3);
+            letter-spacing: 2px;
+        }
+
+        .mystic-export {
+            font-family: 'Cinzel', serif;
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: rgba(160, 120, 255, 0.6);
+            border: 1px solid rgba(160, 120, 255, 0.25);
+            background: rgba(160, 120, 255, 0.05);
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mystic-export::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(160, 120, 255, 0.15), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .mystic-export:hover {
+            color: rgba(200, 170, 255, 1);
+            border-color: rgba(160, 120, 255, 0.5);
+            box-shadow: 0 0 20px rgba(160, 120, 255, 0.15);
+        }
+
+        .mystic-export:hover::before {
+            opacity: 1;
+        }
+
+        /* Mystic floating particles */
+        .mystic-particles {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 4;
+            border-radius: 20px;
+        }
+
+        /* ---- Corner Accents ---- */
+        .mystic-corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .mystic-card.revealed .mystic-corner {
+            animation: cornerFadeIn 0.5s ease-out forwards;
+        }
+
+        .mystic-corner.tl {
+            top: 10px;
+            left: 10px;
+            border-top: 1px solid rgba(120, 80, 200, 0.4);
+            border-left: 1px solid rgba(120, 80, 200, 0.4);
+            animation-delay: 0.5s;
+        }
+
+        .mystic-corner.tr {
+            top: 10px;
+            right: 10px;
+            border-top: 1px solid rgba(120, 80, 200, 0.4);
+            border-right: 1px solid rgba(120, 80, 200, 0.4);
+            animation-delay: 0.6s;
+        }
+
+        .mystic-corner.bl {
+            bottom: 10px;
+            left: 10px;
+            border-bottom: 1px solid rgba(120, 80, 200, 0.4);
+            border-left: 1px solid rgba(120, 80, 200, 0.4);
+            animation-delay: 0.7s;
+        }
+
+        .mystic-corner.br {
+            bottom: 10px;
+            right: 10px;
+            border-bottom: 1px solid rgba(120, 80, 200, 0.4);
+            border-right: 1px solid rgba(120, 80, 200, 0.4);
+            animation-delay: 0.8s;
+        }
+
+        @keyframes cornerFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page-header">
+        <h1>Character Card · Antigravity Edition</h1>
+        <p>角色卡导出 · 两种惊艳风格</p>
+    </div>
+
+    <div class="demo-row">
+
+        <!-- ============ CARD 1: 幻境·星辰 ============ -->
+        <div class="demo-block">
+            <div class="demo-label">I · 幻境星辰</div>
+            <div class="card-holo" id="card-holo">
+                <div class="card-holo-inner" id="holo-inner">
+                    <div class="card-holo-face">
+                        <div class="holo-prism" id="holo-prism"></div>
+                        <div class="holo-shimmer" id="holo-shimmer"></div>
+                        <div class="holo-corner tl"></div>
+                        <div class="holo-corner tr"></div>
+                        <div class="holo-corner bl"></div>
+                        <div class="holo-corner br"></div>
+
+                        <div class="holo-avatar">
+                            <img src="/avatars/aira.png" alt="艾拉" />
+                            <div class="holo-particles" id="holo-particles"></div>
+                        </div>
+
+                        <div class="holo-content">
+                            <div class="holo-tag">
+                                <span class="holo-tag-dot"></span>
+                                ★★★★ · 异世界精灵
+                            </div>
+                            <div class="holo-name">艾拉 · Aira</div>
+                            <div class="holo-desc">银白长发的精灵剑士，300年的岁月不曾磨去她的热忱与守护之心……</div>
+                            <div class="holo-stats">
+                                <div class="holo-stat">
+                                    <div class="holo-stat-val">300</div>
+                                    <div class="holo-stat-label">年龄</div>
+                                </div>
+                                <div class="holo-stat">
+                                    <div class="holo-stat-val">S</div>
+                                    <div class="holo-stat-label">剑术</div>
+                                </div>
+                                <div class="holo-stat">
+                                    <div class="holo-stat-val">∞</div>
+                                    <div class="holo-stat-label">守护</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tip">↑ 移动鼠标感受 3D 全息光效</div>
+        </div>
+
+        <!-- ============ CARD 2: 幽夜·月落 ============ -->
+        <div class="demo-block">
+            <div class="demo-label">II · 幽夜月落</div>
+            <div class="card-mystic-wrapper" id="mystic-wrapper">
+
+                <!-- 封印面 -->
+                <div class="mystic-seal" id="mystic-seal" onclick="revealMysticCard()">
+                    <div class="seal-rune" style="top:30px; left:25px; --rune-delay:0s;">✦</div>
+                    <div class="seal-rune" style="top:50px; right:30px; --rune-delay:1s;">⟡</div>
+                    <div class="seal-rune" style="bottom:60px; left:35px; --rune-delay:2s;">◇</div>
+                    <div class="seal-rune" style="bottom:40px; right:25px; --rune-delay:0.5s;">✧</div>
+                    <div class="seal-rune" style="top:45%; left:15px; --rune-delay:1.5s;">☽</div>
+                    <div class="seal-rune" style="top:35%; right:15px; --rune-delay:2.5s;">☾</div>
+
+                    <div class="seal-circle">
+                        <div class="seal-icon">🔮</div>
+                    </div>
+                    <div class="seal-text">Sealed Character</div>
+                    <div class="seal-hint">— 点击揭示 —</div>
+                </div>
+
+                <!-- 光爆 -->
+                <div class="mystic-burst" id="mystic-burst"></div>
+
+                <!-- 主卡片 -->
+                <div class="mystic-card" id="mystic-card">
+                    <div class="mystic-aurora"></div>
+                    <div class="mystic-scan"></div>
+                    <div class="mystic-corner tl"></div>
+                    <div class="mystic-corner tr"></div>
+                    <div class="mystic-corner bl"></div>
+                    <div class="mystic-corner br"></div>
+                    <div class="mystic-particles" id="mystic-particles"></div>
+
+                    <div class="mystic-avatar">
+                        <img src="/avatars/sumian.png" alt="苏眠" />
+                        <div class="mystic-moon">🌙</div>
+                    </div>
+
+                    <div class="mystic-content">
+                        <div class="mystic-tag">☽ 占卜师 · 月灵 ☾</div>
+                        <div class="mystic-name">苏 眠</div>
+                        <div class="mystic-desc">深夜街角「月落」占卜店的主人，笑容永远带着三分谜意……</div>
+                        <div class="mystic-footer">
+                            <div class="mystic-id">CHAR · 月落 · 004</div>
+                            <button class="mystic-export">导出角色卡</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tip">↑ 点击封印揭示角色</div>
+        </div>
+
+    </div>
+
+    <script>
+        // ===== CARD 1: 3D Parallax Holographic Effect =====
+        const cardHolo = document.getElementById('card-holo');
+        const holoInner = document.getElementById('holo-inner');
+        const holoPrism = document.getElementById('holo-prism');
+        const holoShimmer = document.getElementById('holo-shimmer');
+
+        cardHolo.addEventListener('mousemove', (e) => {
+            const rect = cardHolo.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+
+            // 3D tilt
+            const rotateY = (x - 0.5) * 25;
+            const rotateX = (0.5 - y) * 15;
+            holoInner.style.transform = `rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
+
+            // Holographic angle follows mouse
+            const angle = Math.atan2(y - 0.5, x - 0.5) * (180 / Math.PI) + 180;
+            holoPrism.style.setProperty('--holo-angle', `${angle}deg`);
+
+            // Shimmer follows mouse position
+            const shimmerAngle = angle + 90;
+            holoShimmer.style.setProperty('--shimmer-angle', `${shimmerAngle}deg`);
+        });
+
+        cardHolo.addEventListener('mouseleave', () => {
+            holoInner.style.transform = 'rotateY(0deg) rotateX(0deg)';
+            holoInner.style.transition = 'transform 0.6s cubic-bezier(0.2, 0, 0.2, 1)';
+            setTimeout(() => { holoInner.style.transition = 'transform 0.15s ease-out'; }, 600);
+        });
+
+        // Generate holo particles
+        const holoParticles = document.getElementById('holo-particles');
+        for (let i = 0; i < 24; i++) {
+            const p = document.createElement('div');
+            p.className = 'holo-particle';
+            const size = 1.5 + Math.random() * 2.5;
+            const colors = [
+                'rgba(180,140,255,0.8)',
+                'rgba(100,200,255,0.7)',
+                'rgba(255,120,200,0.6)',
+                'rgba(160,255,200,0.5)',
+                'rgba(255,200,100,0.5)'
+            ];
+            p.style.cssText = `
+      left: ${Math.random() * 100}%;
+      top: ${30 + Math.random() * 70}%;
+      width: ${size}px;
+      height: ${size}px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      box-shadow: 0 0 ${size * 3}px ${colors[Math.floor(Math.random() * colors.length)]};
+      --p-dur: ${3 + Math.random() * 4}s;
+      --p-delay: ${-Math.random() * 6}s;
+      --p-dy: ${-80 - Math.random() * 120}px;
+      --p-dx: ${(Math.random() - 0.5) * 60}px;
+    `;
+            holoParticles.appendChild(p);
+        }
+
+        // ===== CARD 2: Mystic Reveal =====
+        function revealMysticCard() {
+            const seal = document.getElementById('mystic-seal');
+            const burst = document.getElementById('mystic-burst');
+            const card = document.getElementById('mystic-card');
+
+            // Hide seal
+            seal.classList.add('hidden');
+
+            // Fire burst
+            burst.classList.add('active');
+
+            // Reveal card after burst
+            setTimeout(() => {
+                card.classList.add('revealed');
+            }, 300);
+
+            // Clean up burst
+            setTimeout(() => {
+                burst.classList.remove('active');
+            }, 1000);
+        }
+
+        // Generate mystic particles
+        const mysticParticles = document.getElementById('mystic-particles');
+        for (let i = 0; i < 18; i++) {
+            const p = document.createElement('div');
+            p.className = 'holo-particle';
+            const size = 1 + Math.random() * 2;
+            p.style.cssText = `
+      left: ${Math.random() * 100}%;
+      top: ${40 + Math.random() * 60}%;
+      width: ${size}px;
+      height: ${size}px;
+      background: rgba(140,120,220,${0.3 + Math.random() * 0.5});
+      box-shadow: 0 0 ${size * 4}px rgba(140,120,220,0.4);
+      --p-dur: ${4 + Math.random() * 5}s;
+      --p-delay: ${-Math.random() * 8}s;
+      --p-dy: ${-60 - Math.random() * 100}px;
+      --p-dx: ${(Math.random() - 0.5) * 50}px;
+    `;
+            mysticParticles.appendChild(p);
+        }
+    </script>
+</body>
+
+</html>
