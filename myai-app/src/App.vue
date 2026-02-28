@@ -22,6 +22,7 @@ import CreateGroupModal from './components/CreateGroupModal.vue';
 import EditGroupModal from './components/EditGroupModal.vue';
 import DiaryModal from './components/DiaryModal.vue';
 import StoryExportModal from './components/StoryExportModal.vue';
+import OnboardingOverlay from './components/OnboardingOverlay.vue';
 
 // Initialize State
 const appState = useAppState();
@@ -33,6 +34,9 @@ const branchFunctions = useBranch(appState);
 // Sound effects — pass globalSettings directly for mute/volume sync
 const sfx = useSoundEffects(appState.globalSettings);
 const diary = useDiary(appState);
+
+// 🌟 新手引导（仅首次显示）
+const showOnboarding = ref(!localStorage.getItem('myai_onboarding_done'));
 
 const showCreateGroupModal = ref(false);
 const showEditGroupModal = ref(false);
@@ -966,6 +970,9 @@ function handleAvatarError(type, roleId) {
         </div>
       </div>
     </Transition>
+
+    <!-- 🌟 新手引导 -->
+    <OnboardingOverlay v-if="showOnboarding" @close="showOnboarding = false" />
 
     <!-- Toast 提示 -->
     <Transition name="toast">
