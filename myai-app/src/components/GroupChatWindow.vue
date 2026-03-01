@@ -20,6 +20,7 @@ const emit = defineEmits([
     'speak-as-role',
     'delete-message',
     'edit-message',
+    'regenerate',
     'inject-world-event',
     'send-whisper',
     'generate-director-event',
@@ -194,7 +195,20 @@ function safeRender(content) {
         }
 
         const parsed = parseDualLayerResponse(content);
-        return parsed.content || '';
+        let result = parsed.content || '';
+
+        // 🛡️ 安全兜底：确保 <think> / <inner> 标签永不泄露到显示层
+        if (result) {
+            result = result
+                .replace(/<think>[\s\S]*?<\/think>/gi, '')
+                .replace(/<think>[\s\S]*$/gi, '')
+                .replace(/<inner>[\s\S]*?<\/inner>/gi, '')
+                .replace(/<inner>[\s\S]*$/gi, '')
+                .replace(/<\/think>/gi, '')
+                .replace(/<\/inner>/gi, '')
+                .trim();
+        }
+        return result;
     } catch {
         return content;
     }
@@ -217,6 +231,42 @@ function getExpression(msg) {
     const source = msg.rawContent || msg.content || '';
     const result = extractExpression(source);
     return result.expression;
+}
+
+// v5.9.3: 提取推理内容
+function extractReasoning(content) {
+    try {
+        if (!content) return '';
+        const parsed = parseDualLayerResponse(content);
+        return (parsed.reasoning || '').trim();
+    } catch {
+        return '';
+    }
+}
+
+// v5.9.3: 推理状态图标
+function getReasoningStatus(msg) {
+    const raw = msg?.rawContent || msg?.content || '';
+    const hasThinkOpen = raw.includes('<think>');
+    const hasThinkClose = raw.includes('</think>');
+    const isThinking = hasThinkOpen && !hasThinkClose;
+    return {
+        isThinking,
+        icon: isThinking ? '✨' : '💡',
+    };
+}
+
+// v5.9.3: 复制消息文本
+function copyMessageText(msg) {
+    const raw = msg.rawContent || msg.content || '';
+    const cleanText = raw
+        .replace(/<think>[\s\S]*?<\/think>/g, '')
+        .replace(/<think>[\s\S]*$/g, '')
+        .replace(/<inner>[\s\S]*?<\/inner>/g, '')
+        .replace(/<inner>[\s\S]*$/g, '')
+        .replace(/<[^>]+>/g, '')
+        .trim();
+    navigator.clipboard.writeText(cleanText).catch(() => {});
 }
 
 // 点击消息切换选中状态
@@ -493,6 +543,15 @@ onMounted(() => {
                          :style="{ color: getRoleColor(item.msg.roleId) }">
                         {{ item.msg.roleName || '角色' }}
                     </div>
+                    <!-- v5.9.3: 推理折叠块 -->
+                    <details v-if="globalSettings?.showLogic && extractReasoning(item.msg.rawContent || item.msg.content)" class="reasoning-block">
+                      <summary>
+                        <span class="reasoning-icon" :class="{ 'streaming': getReasoningStatus(item.msg)?.isThinking }">
+                          {{ getReasoningStatus(item.msg)?.icon || '💡' }}
+                        </span>
+                      </summary>
+                      <div class="reasoning-content">{{ extractReasoning(item.msg.rawContent || item.msg.content) }}</div>
+                    </details>
                     <!-- v5.9: 内心独白思想气泡 -->
                     <div v-if="globalSettings?.showInner && extractInner(item.msg.rawContent || item.msg.content)"
                          class="thought-cloud">
@@ -520,16 +579,16 @@ onMounted(() => {
                     <div class="message-toolbar" :class="{ 'active': activeMessageIndex === item.index }">
                         <div class="toolbar-inner">
                             <button class="toolbar-btn" @click.stop="startEdit(item.index)">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                </svg>
-                                编辑
+                                ✈️ 编辑
+                            </button>
+                            <button class="toolbar-btn regenerate" @click.stop="$emit('regenerate', item.index)">
+                                🔄 重写
+                            </button>
+                            <button class="toolbar-btn" @click.stop="copyMessageText(item.msg)">
+                                📋 复制
                             </button>
                             <button class="toolbar-btn delete" @click.stop="$emit('delete-message', item.index)">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                                删除
+                                🗑️ 删除
                             </button>
                         </div>
                     </div>

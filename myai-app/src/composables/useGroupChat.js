@@ -251,9 +251,9 @@ export function useGroupChat(appState) {
                 } catch (error) {
                     if (error.name === 'AbortError') throw error; // 用户主动中止 → 停止整轮
                     const errorMsg = error.name === 'TimeoutError'
-                        ? `${role.name} 请求超时，已跳过`
-                        : `${role.name} 回复失败，已跳过`;
-                    showToast(errorMsg, 'error');
+                        ? `${role.name} 思考太久，先跳过啦~`
+                        : `${role.name} 走神了，先跳过~`;
+                    showToast(errorMsg);
                     continue; // 跳过此角色，继续下一个
                 }
 
@@ -325,10 +325,45 @@ export function useGroupChat(appState) {
         const model = group?.model || globalSettings.model || 'deepseek-reasoner';
         const isReasoner = model.includes('reasoner');
 
+        // v5.9.3: 模型特定提示注入 — 告诉 AI 使用 <inner>/<think> 标签
+        let modelSpecificPrompt = '';
+        if (isReasoner) {
+            modelSpecificPrompt = `\n\n[System Rule: DeepSeek-R1 Mode]
+1. Output logic traces in <think> tags.
+2. CRITICAL: Do NOT repeat/summarize the persona in <think>. Jump to drafting.
+3. IMPORTANT: Use <inner>character's internal monologue here</inner> for thoughts.
+4. Actions in *asterisks*, dialogue normally.
+Example: <think>brief strategy</think><inner>What I'm thinking...</inner>*action* "dialogue"`;
+        } else {
+            modelSpecificPrompt = `\n\n[System Rule: DeepSeek-V3 Mode]
+1. DO NOT use <think> tags. DO NOT simulate AI reasoning.
+2. IMPORTANT: Start with <inner>character's internal monologue</inner> for thoughts.
+3. Then write actions in *asterisks* and dialogue normally.
+Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
+        }
+
+        // 注入到最后一条消息
+        if (apiMessages.length > 0) {
+            const lastIdx = apiMessages.length - 1;
+            apiMessages[lastIdx].content += modelSpecificPrompt;
+        }
+
         // v5.9: 回复长度统一使用全局设置
         const lengthSetting = globalSettings.responseLength || 'normal';
         const LENGTH_TO_TOKENS = { short: 500, normal: 2000, long: 4000, auto: 2000 };
-        const maxTokens = LENGTH_TO_TOKENS[lengthSetting] || (role.maxTokens || 2000);
+        let maxTokens = LENGTH_TO_TOKENS[lengthSetting] || (role.maxTokens || 2000);
+
+        // v5.9.3: 长度参数调优 — 与单聊一致
+        let effectiveTemperature = role.temperature || 1.0;
+        let frequencyPenalty = 0;
+        if (lengthSetting === 'long') {
+            maxTokens = Math.max(maxTokens, 4000);
+            frequencyPenalty = 0.5;
+            effectiveTemperature = isReasoner ? 0.7 : 1.0;
+        } else if (lengthSetting === 'short') {
+            maxTokens = Math.min(maxTokens, 500);
+            effectiveTemperature = Math.min(effectiveTemperature, 0.9);
+        }
 
         // 创建 AbortController
         groupAbortController.value = new AbortController();
@@ -343,20 +378,25 @@ export function useGroupChat(appState) {
         const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
         const apiUrl = `${baseUrl}/chat/completions`;
 
+        const requestBody = {
+            model: model,
+            messages: apiMessages,
+            temperature: effectiveTemperature,
+            max_tokens: maxTokens,
+            stream: true,
+            stream_options: { include_usage: true },
+        };
+        if (frequencyPenalty > 0 && !isReasoner) {
+            requestBody.frequency_penalty = frequencyPenalty;
+        }
+
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${globalSettings.apiKey}`,
             },
-            body: JSON.stringify({
-                model: model,
-                messages: apiMessages,
-                temperature: role.temperature || 1.0,
-                max_tokens: maxTokens,
-                stream: true,
-                stream_options: { include_usage: true },
-            }),
+            body: JSON.stringify(requestBody),
             signal: combinedSignal,
         });
 
@@ -454,13 +494,12 @@ export function useGroupChat(appState) {
 
         groupMessages.value[msgIndex].rawContent = fullContent;
 
-        // [PASS] 弃权机制：如果角色回复了 [PASS]，删掉占位消息
-        const cleanContent = fullContent
+        // [PASS] 弃权机制 — 必须在 formatRoleplayText 之前检测，否则 [PASS] 会被转成 <span>
+        const cleanForPass = fullContent
             .replace(/<think>[\s\S]*?<\/think>/g, '')
             .replace(/<inner>[\s\S]*?<\/inner>/g, '')
             .trim();
-        if (cleanContent === '[PASS]' || cleanContent === 'PASS') {
-            // 转为 pass 类型消息（UI 会折叠显示）
+        if (/^\[?PASS\]?[。.，,\s]*$/i.test(cleanForPass)) {
             groupMessages.value[msgIndex] = {
                 role: 'pass',
                 roleId: role.id,
@@ -472,18 +511,23 @@ export function useGroupChat(appState) {
             return;
         }
 
-        // Fallback
-        if (!groupMessages.value[msgIndex].content && fullContent) {
+        // 🛡️ v5.9.3: 流式完成后最终清理
+        const finalParsed = parseDualLayerResponse(fullContent);
+        if (finalParsed.content) {
+            groupMessages.value[msgIndex].content = finalParsed.content;
+        } else if (fullContent) {
             let fallback = fullContent
                 .replace(/<think>[\s\S]*$/, '')
                 .replace(/<inner>[\s\S]*$/, '')
                 .replace(/<think>[\s\S]*?<\/think>/g, '')
                 .replace(/<inner>[\s\S]*?<\/inner>/g, '')
                 .trim();
-
             groupMessages.value[msgIndex].content = fallback
                 ? formatRoleplayText(fallback)
                 : '(内容生成中断，请重试)';
+        }
+        if (finalParsed.inner) {
+            groupMessages.value[msgIndex].inner = finalParsed.inner;
         }
 
         saveGroups();
@@ -1047,6 +1091,26 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
         }
     }
 
+    // v5.9.3: 重写群聊消息
+    async function regenerateGroupMessage(index) {
+        if (!currentGroup.value) return;
+        if (isGroupStreaming.value) {
+            showToast('请等待当前生成完成', 'error');
+            return;
+        }
+        const msg = groupMessages.value[index];
+        if (!msg || msg.role !== 'assistant') {
+            showToast('只能重写 AI 消息', 'error');
+            return;
+        }
+        const roleId = msg.roleId;
+        // 删除该消息
+        groupMessages.value.splice(index, 1);
+        saveGroups();
+        // 重新让该角色发言
+        await speakAsRole(roleId);
+    }
+
     // 编辑群聊消息
     function editGroupMessage(index, newContent) {
         if (!currentGroup.value) return;
@@ -1349,6 +1413,7 @@ ${chatText}
         clearGroupChat,
         updateGroupChat,
         deleteGroupMessage,
+        regenerateGroupMessage,
         editGroupMessage,
         injectWorldEvent,
         sendWhisper,

@@ -51,8 +51,34 @@ const diaryDisplayList = ref([]);
 // 🌙 结束今天 — 生成日记 + 自动开启新的一天
 async function handleEndDay() {
     if (groupChat.isGroupMode.value) {
-        // 群聊：弹出角色选择
-        showDiaryRolePicker.value = true;
+        // 群聊：为所有参与角色生成日记
+        diaryDisplayList.value = [];
+        showDiaryModal.value = true;
+        const msgs = groupChat.groupMessages.value;
+        const groupId = groupChat.currentGroupId.value;
+        const groupName = groupChat.currentGroup.value?.name || '群聊';
+        const participants = groupChat.participants.value;
+
+        for (const role of participants) {
+            try {
+                const entry = await diary.generateDiary(role, msgs, {
+                    isGroup: true,
+                    groupId,
+                    groupName,
+                });
+                if (entry) {
+                    diaryDisplayList.value = [...diaryDisplayList.value, entry];
+                }
+            } catch (e) {
+                console.warn(`${role.name} 日记生成失败:`, e);
+            }
+        }
+
+        if (diaryDisplayList.value.length > 0) {
+            executeStartNewDay();
+        } else {
+            showDiaryModal.value = false;
+        }
     } else {
         // 单聊：直接生成，先弹出加载界面
         diaryDisplayList.value = [];
@@ -851,6 +877,7 @@ function handleAvatarError(type, roleId) {
         @speak-as-role="groupChat.speakAsRole"
         @delete-message="groupChat.deleteGroupMessage"
         @edit-message="groupChat.editGroupMessage"
+        @regenerate="groupChat.regenerateGroupMessage"
         @inject-world-event="groupChat.injectWorldEvent"
         @send-whisper="groupChat.sendWhisper"
         @generate-director-event="() => { pendingDirectorEvent = true; groupChat.generateDirectorEvent(true); }"

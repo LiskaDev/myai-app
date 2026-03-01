@@ -163,7 +163,9 @@ export function formatRoleplayText(text) {
     html = html.replace(/<<DIALOGUE_START>>/g, '<span class="rp-dialogue">');
     html = html.replace(/<<DIALOGUE_END>>/g, '</span>');
 
-    // Step 6: Convert line breaks to <br> for proper display
+    // Step 6: Convert line breaks — normalize paragraph spacing
+    // 先把连续空行统一为段落间距，再处理单个换行
+    html = html.replace(/\n{2,}/g, '<br><br>');
     html = html.replace(/\n/g, '<br>');
 
     return html;
