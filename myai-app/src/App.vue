@@ -955,6 +955,7 @@ function handleAvatarError(type, roleId) {
         @generate-director-event="() => { pendingDirectorEvent = true; groupChat.generateDirectorEvent(true); }"
         @update-affinity="groupChat.updateAffinity"
         @skip-current-role="groupChat.skipCurrentRole"
+        @continue-multi-round="groupChat.continueMultiRound"
       />
     </template>
 

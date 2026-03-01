@@ -55,6 +55,7 @@ export function useChat(appState) {
         messages.value.push({
             role: 'user',
             content: input,
+            timestamp: Date.now(),
         });
         userInput.value = '';
 
@@ -247,6 +248,7 @@ Example format:
             content: '',
             thinking: '',
             thinkingComplete: false,
+            timestamp: Date.now(),
         };
         messages.value.push(assistantMessage);
         const msgIndex = messages.value.length - 1;

@@ -52,6 +52,18 @@ const emit = defineEmits([
 const containerRef = ref(null);
 const searchInputRef = ref(null);
 const moreMenuIndex = ref(null);
+const copyFeedbackIndex = ref(null);
+
+// ⏰ 格式化时间戳
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+function formatFullDate(ts) {
+  if (!ts) return '';
+  return new Date(ts).toLocaleString('zh-CN');
+}
 
 // 🌟 快捷对话建议（基于角色特征动态生成）
 const quickSuggestions = computed(() => {
@@ -114,7 +126,7 @@ const longPress = useLongPress((e, messageIndex) => {
 });
 
 // 📋 复制消息文本（移动端长按菜单代替了原生复制）
-function copyMessageText(msg) {
+function copyMessageText(msg, index) {
   // 从 rawContent 直接提取纯文本，保留换行格式
   const raw = msg.rawContent || msg.content || '';
   const cleanText = raw
@@ -125,7 +137,10 @@ function copyMessageText(msg) {
     .replace(/<[^>]+>/g, '')                     // 去除其他 HTML 标签
     .trim();
   navigator.clipboard.writeText(cleanText).then(
-    () => { /* success feedback handled by toolbar closing */ },
+    () => {
+      copyFeedbackIndex.value = index;
+      setTimeout(() => { copyFeedbackIndex.value = null; }, 1200);
+    },
     () => { /* fallback: do nothing on failure */ }
   );
 }
@@ -516,12 +531,18 @@ function isCurrentMatch(originalIndex) {
                   <div v-if="globalSettings.showTokens && msg.tokens" class="token-badge">
                     🪙 {{ msg.tokens.total }}
                   </div>
+                  <div v-if="msg.timestamp" class="msg-time" :title="formatFullDate(msg.timestamp)">
+                    {{ formatTime(msg.timestamp) }}
+                  </div>
                 </div>
 
                 <div class="message-toolbar" :class="{ 'active': activeMessageIndex === getOriginalIndex(visibleIndex) }">
                   <div class="toolbar-inner">
                     <button class="toolbar-btn" @click.stop="$emit('start-edit', getOriginalIndex(visibleIndex))">
                       ✏️ 编辑
+                    </button>
+                    <button class="toolbar-btn" @click.stop="copyMessageText(msg, getOriginalIndex(visibleIndex))">
+                      {{ copyFeedbackIndex === getOriginalIndex(visibleIndex) ? '✅' : '📋' }} 复制
                     </button>
                     <button class="toolbar-btn regenerate" @click.stop="$emit('regenerate', getOriginalIndex(visibleIndex))">
                       🔄 重写
@@ -540,9 +561,6 @@ function isCurrentMatch(originalIndex) {
                       </button>
                       <button class="more-menu-item" @click.stop="$emit('fork-at', getOriginalIndex(visibleIndex)); moreMenuIndex = null">
                         <span>🔀</span><span>分叉</span>
-                      </button>
-                      <button class="more-menu-item" @click.stop="copyMessageText(msg); moreMenuIndex = null">
-                        <span>📋</span><span>复制</span>
                       </button>
                       <div class="more-menu-divider"></div>
                       <button class="more-menu-item delete" @click.stop="$emit('delete-message', getOriginalIndex(visibleIndex)); moreMenuIndex = null">

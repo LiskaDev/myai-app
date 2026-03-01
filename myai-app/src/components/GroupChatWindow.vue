@@ -14,6 +14,13 @@ const props = defineProps({
     missingCount: { type: Number, default: 0 },
 });
 
+// ⏰ 时间格式化
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 const emit = defineEmits([
     'send-director',
     'continue-round',
@@ -27,6 +34,7 @@ const emit = defineEmits([
     'generate-director-event',
     'update-affinity',
     'skip-current-role',
+    'continue-multi-round',
 ]);
 
 const containerRef = ref(null);
@@ -36,6 +44,7 @@ const mentionFilter = ref('');
 const inputRef = ref(null);
 const activeMessageIndex = ref(-1);
 const expandedPassGroups = ref(new Set());
+const showRoundMenu = ref(false);
 
 // 世界事件面板
 const showEventPanel = ref(false);
@@ -581,6 +590,9 @@ onMounted(() => {
                         <div v-if="globalSettings?.showTokens && item.msg.tokens" class="token-badge">
                             🪙 {{ item.msg.tokens.total }}
                         </div>
+                        <div v-if="item.msg.timestamp" class="msg-time">
+                            {{ formatTime(item.msg.timestamp) }}
+                        </div>
                     </div>
                     <!-- 操作按钮 -->
                     <div class="message-toolbar" :class="{ 'active': activeMessageIndex === item.index }">
@@ -615,13 +627,20 @@ onMounted(() => {
         </div>
     </div>
 
-    <!-- ▁▁ 悟空按钮：▆️ 继续一轮 (FAB) -->
+    <!-- ▁▁ 惟空按钮：▆️ 继续一轮 (FAB) + 连续多轮菜单 -->
     <Transition name="fab">
-        <button v-if="messages.length > 0 && !isStreaming"
-                @click="$emit('continue-round')"
-                class="group-fab">
-            ▶️ 继续
-        </button>
+        <div v-if="messages.length > 0 && !isStreaming" class="group-fab-container">
+            <button @click="$emit('continue-round')"
+                    class="group-fab">
+                ▶️ 继续
+            </button>
+            <button @click="showRoundMenu = !showRoundMenu"
+                    class="group-fab-more" :title="'连续多轮'">▼</button>
+            <div v-if="showRoundMenu" class="round-menu">
+                <button @click="$emit('continue-multi-round', 3); showRoundMenu = false" class="round-menu-item">⏩ 连续 3 轮</button>
+                <button @click="$emit('continue-multi-round', 5); showRoundMenu = false" class="round-menu-item">⏩ 连续 5 轮</button>
+            </div>
+        </div>
     </Transition>
 
     <!-- 底部输入区 -->

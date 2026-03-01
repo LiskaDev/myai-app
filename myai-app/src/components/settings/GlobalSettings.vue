@@ -198,6 +198,13 @@ function resetCustomStyle() {
              @click="globalSettings.showInner = !globalSettings.showInner"></div>
       </div>
 
+      <!-- ⚙️ 高级设置（默认折叠） -->
+      <details class="pt-3 mt-3 border-t border-white/10">
+        <summary class="cursor-pointer text-sm text-gray-300 hover:text-gray-100 transition select-none py-1">
+          ⚙️ Advanced Settings (高级设置)
+        </summary>
+        <div class="mt-3 space-y-0">
+
       <!-- 沉浸模式 -->
       <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
         <div>
@@ -314,7 +321,9 @@ function resetCustomStyle() {
           🔄 重置为默认
         </button>
       </div>
-    </div>
+      </div><!-- end mt-3 space-y-0 -->
+      </details><!-- end advanced settings -->
+    </div><!-- end space-y-3 -->
   </section>
 </template>
 

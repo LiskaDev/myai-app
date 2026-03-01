@@ -1,7 +1,8 @@
 <script setup>
+import { ref, computed } from 'vue';
 import { extractExpression } from '../utils/textParser';
 
-defineProps({
+const props = defineProps({
   roleList: Array,
   currentRoleId: [String, Number],
   showSidebar: Boolean,
@@ -11,6 +12,19 @@ defineProps({
 });
 
 const EXPR_EMOJI = { joy: '😊', sadness: '😢', anger: '😠', surprise: '😲', fear: '😰', disgust: '😒', neutral: '😐', love: '🥰' };
+
+// 🔍 侧边栏搜索
+const sidebarSearch = ref('');
+const filteredRoles = computed(() => {
+  const q = sidebarSearch.value.trim().toLowerCase();
+  if (!q) return props.roleList;
+  return props.roleList.filter(r => r.name.toLowerCase().includes(q));
+});
+const filteredGroups = computed(() => {
+  const q = sidebarSearch.value.trim().toLowerCase();
+  if (!q) return props.groupChats;
+  return props.groupChats.filter(g => g.name.toLowerCase().includes(q));
+});
 
 function getRoleMood(role) {
   const hist = role.chatHistory || [];
@@ -49,9 +63,15 @@ defineEmits([
         </button>
       </div>
 
+      <!-- 🔍 搜索框 -->
+      <div class="mb-3">
+        <input v-model="sidebarSearch" type="text" placeholder="🔍 搜索角色或群聊..."
+               class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 text-sm outline-none border border-white/10 focus:border-primary transition" />
+      </div>
+
       <!-- 角色列表 -->
       <div class="space-y-3">
-        <div v-for="role in roleList" :key="role.id" @click="$emit('switch-role', role.id)"
+        <div v-for="role in filteredRoles" :key="role.id" @click="$emit('switch-role', role.id)"
              class="role-item p-3 rounded-lg cursor-pointer border border-white/10 relative"
              :class="{ 'active': !isGroupMode && role.id === currentRoleId }">
           <div class="flex items-center space-x-3">
@@ -99,7 +119,7 @@ defineEmits([
 
       <!-- 群聊列表 -->
       <div class="space-y-3">
-        <div v-for="group in groupChats" :key="group.id" @click="$emit('switch-group', group.id)"
+        <div v-for="group in filteredGroups" :key="group.id" @click="$emit('switch-group', group.id)"
              class="role-item p-3 rounded-lg cursor-pointer border border-white/10 relative"
              :class="{ 'active': isGroupMode && group.id === currentGroupId }">
           <div class="flex items-center space-x-3">

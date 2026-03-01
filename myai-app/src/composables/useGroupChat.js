@@ -308,6 +308,21 @@ export function useGroupChat(appState) {
         }
     }
 
+    // 🔄 连续多轮对话
+    async function continueMultiRound(rounds) {
+        for (let i = 0; i < rounds; i++) {
+            if (!currentGroup.value) break;
+            await continueOneRound();
+            // 用户中途停止 → 退出循环
+            if (isGroupStreaming.value) break;
+            if (i < rounds - 1) {
+                showToast(`✅ 第 ${i + 1}/${rounds} 轮完成`, 'info');
+                // 短暂间隔让用户有机会干预
+                await new Promise(r => setTimeout(r, 800));
+            }
+        }
+    }
+
     // 🛡️ 跳过当前角色（用户手动触发）
     function skipCurrentRole() {
         if (groupAbortController.value) {
@@ -1453,6 +1468,7 @@ ${chatText}
         exitGroupMode,
         sendDirectorMessage,
         continueOneRound,
+        continueMultiRound,
         speakAsRole,
         stopGroupGeneration,
         skipCurrentRole,
