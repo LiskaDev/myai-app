@@ -329,20 +329,24 @@ Example format:
             };
         }
 
-        // v5.4 FIX: Stream fallback - if content is empty but we have raw content
-        if (!messages.value[msgIndex].content && fullContent) {
+        // 🛡️ v5.9.3: 流式完成后最终清理 — 确保 content 永远没有 <think>/<inner> 残留
+        const finalParsed = parseDualLayerResponse(fullContent);
+        if (finalParsed.content) {
+            messages.value[msgIndex].content = finalParsed.content;
+        } else if (fullContent) {
+            // fallback: 手动清理
             let fallback = fullContent
-                .replace(/<think>[\s\S]*$/, '')  // Remove unclosed <think>
-                .replace(/<inner>[\s\S]*$/, '')  // Remove unclosed <inner>
-                .replace(/<think>[\s\S]*?<\/think>/g, '') // Remove complete <think>
-                .replace(/<inner>[\s\S]*?<\/inner>/g, '') // Remove complete <inner>
+                .replace(/<think>[\s\S]*$/, '')
+                .replace(/<inner>[\s\S]*$/, '')
+                .replace(/<think>[\s\S]*?<\/think>/g, '')
+                .replace(/<inner>[\s\S]*?<\/inner>/g, '')
                 .trim();
-
-            if (fallback) {
-                messages.value[msgIndex].content = formatRoleplayText(fallback);
-            } else {
-                messages.value[msgIndex].content = '(内容生成中断，请重试)';
-            }
+            messages.value[msgIndex].content = fallback
+                ? formatRoleplayText(fallback)
+                : '(内容生成中断，请重试)';
+        }
+        if (finalParsed.inner) {
+            messages.value[msgIndex].inner = finalParsed.inner;
         }
 
         saveData();

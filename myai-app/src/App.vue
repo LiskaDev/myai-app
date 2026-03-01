@@ -48,7 +48,7 @@ const showMoonMenu = ref(false);
 const showStoryExport = ref(false);
 const diaryDisplayList = ref([]);
 
-// 🌙 结束今天 — 生成日记
+// 🌙 结束今天 — 生成日记 + 自动开启新的一天
 async function handleEndDay() {
     if (groupChat.isGroupMode.value) {
         // 群聊：弹出角色选择
@@ -62,6 +62,8 @@ async function handleEndDay() {
         const entry = await diary.generateDiary(role, msgs);
         if (entry) {
             diaryDisplayList.value = [entry];
+            // ✨ 日记生成后自动开启新的一天
+            executeStartNewDay();
         } else {
             showDiaryModal.value = false;
         }
@@ -119,11 +121,7 @@ function getCurrentDay(msgs) {
 
 function handleStartNewDay() {
     showMoonMenu.value = false;
-    showConfirmModal(
-      '开启新的一天',
-      '将插入日期分隔线并触发角色回复，此操作不可撤销。\n确认开启新的一天吗？',
-      () => { executeStartNewDay(); }
-    );
+    executeStartNewDay();
 }
 
 function executeStartNewDay() {
@@ -157,14 +155,16 @@ function executeStartNewDay() {
         timestamp: new Date().toISOString(),
     };
 
-    // 构建系统提示（包含日记回忆）
+    // 构建系统提示（不可见，仅内部消耗）
     let hintContent = `[系统提示：时间已经过去了一晚，现在是新的一天（第${newDay}天）的早晨。请以新的一天的状态开始回应，可以提及昨天发生的事情。]`;
     if (lastDiary) {
         hintContent += `\n[昨晚${lastDiary.roleName}在日记中写道：「${lastDiary.content}」——请自然地延续日记中的情绪和想法，但不要直接提及"日记"这个词。]`;
     }
 
+    // 🛡️ 系统提示对玩家不可见，仅作为 AI 上下文
     const systemHint = {
-        role: isGroup ? 'director' : 'user',
+        role: 'system',
+        type: 'new-day-hint',
         content: hintContent,
     };
 
@@ -173,14 +173,11 @@ function executeStartNewDay() {
 
     if (isGroup) {
         groupChat.saveGroups();
-        // 自动触发群聊一轮回复
-        groupChat.continueOneRound();
     } else {
         appState.saveData();
-        // 自动触发单聊 AI 回复
-        chatFunctions.chat(hintContent).catch(() => {});
     }
     showToast(`☀️ 新的一天开始了！（第 ${newDay} 天）`);
+    nextTick(() => scrollToBottom(true));
 }
 
 // Token pressure indicator
@@ -726,10 +723,7 @@ function handleAvatarError(type, roleId) {
           <Transition name="dropdown">
             <div v-if="showMoonMenu" class="absolute right-0 top-full mt-2 w-48 glass bg-glass-dark rounded-xl border border-white/15 shadow-2xl overflow-hidden z-50">
               <button @click="showMoonMenu = false; handleEndDay()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200">
-                <span>📔</span><span>结束今天（生成日记）</span>
-              </button>
-              <button @click="handleStartNewDay()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200">
-                <span>🌅</span><span>开启新的一天</span>
+                <span>🌙</span><span>结束今天</span>
               </button>
               <div class="border-t border-white/10"></div>
               <button @click="showMoonMenu = false; openDiaryHistory()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200">
