@@ -194,7 +194,19 @@ function safeParseMessage(message) {
   
   // CRITICAL: Do NOT fallback to source! The parser returns empty content 
   // intentionally during streaming to prevent flash/leak
-  const bodyHtml = parsed.content;
+  let bodyHtml = parsed.content;
+
+  // 🛡️ 安全兜底：确保 <think> / <inner> 标签永远不会泄露到显示层
+  if (bodyHtml) {
+    bodyHtml = bodyHtml
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<think>[\s\S]*$/gi, '')
+      .replace(/<inner>[\s\S]*?<\/inner>/gi, '')
+      .replace(/<inner>[\s\S]*$/gi, '')
+      .replace(/<\/think>/gi, '')
+      .replace(/<\/inner>/gi, '')
+      .trim();
+  }
 
   return {
     thought,
@@ -477,6 +489,8 @@ function isCurrentMatch(originalIndex) {
                             getOriginalIndex(visibleIndex) === messages.length - 1 ? 'expr-latest' : '']">🎭</div>
 
               <div class="max-w-[80%] message-wrapper">
+                <!-- 🌟 主动消息标记 -->
+                <div v-if="msg.isActiveMessage" class="active-message-badge">✨ 主动找你</div>
                 <!-- Layer 0: R1 Reasoning (折叠图标: ✨ 思考中, 💡 思考完成) -->
                 <details v-if="globalSettings.showLogic && parsedMessages[visibleIndex]?.thought" class="reasoning-block">
                   <summary>

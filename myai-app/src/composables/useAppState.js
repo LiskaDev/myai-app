@@ -193,6 +193,33 @@ export function useAppState() {
                     }];
                     role.activeBranchId = 'branch-main';
                 }
+
+                // v5.9.2: 迁移旧消息 — 补全 rawContent 以恢复 inner thoughts 显示
+                const history = role.chatHistory || [];
+                for (const msg of history) {
+                    if (msg.role === 'assistant' && !msg.rawContent && msg.content) {
+                        // 如果有 inner 字段，重建 rawContent
+                        if (msg.inner) {
+                            msg.rawContent = `<inner>${msg.inner}</inner>\n${msg.content}`;
+                        } else {
+                            msg.rawContent = msg.content;
+                        }
+                    }
+                }
+                // 同样处理分支中的消息
+                if (role.branches) {
+                    for (const branch of role.branches) {
+                        for (const msg of (branch.chatHistory || [])) {
+                            if (msg.role === 'assistant' && !msg.rawContent && msg.content) {
+                                if (msg.inner) {
+                                    msg.rawContent = `<inner>${msg.inner}</inner>\n${msg.content}`;
+                                } else {
+                                    msg.rawContent = msg.content;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // 恢复上次活跃的角色

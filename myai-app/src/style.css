@@ -489,6 +489,19 @@ body {
   color: #e0d4ff;
 }
 
+/* ============== 主动消息标记 ============== */
+.active-message-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: #c4b5fd;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.08));
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+  padding: 2px 8px;
+  margin-bottom: 4px;
+  animation: welcomeFadeIn 0.6s ease-out;
+}
+
 /* ============== 带名字的输入指示器 ============== */
 .typing-named-indicator {
   display: flex;

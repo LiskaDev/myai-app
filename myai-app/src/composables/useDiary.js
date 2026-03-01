@@ -79,13 +79,16 @@ export function useDiary(appState) {
             const isGroup = options.isGroup || false;
             const groupName = options.groupName || '';
 
-            // 📜 日记链：获取上一篇日记，让新日记延续旧目标和情感
+            // 📜 日记链：用摘要延续故事线（省 token + 保持长期连贯）
             let prevDiaryContext = '';
             const prevDiaries = diaries.value
                 .filter(d => d.roleId === role.id && (isGroup ? d.groupId === options.groupId : !d.groupId))
                 .sort((a, b) => new Date(b.date) - new Date(a.date));
             if (prevDiaries.length > 0) {
-                prevDiaryContext = `\n\n【你上一篇日记的内容（请延续其中的情感线索、目标和计划）】\n「${prevDiaries[0].content}」`;
+                const prev = prevDiaries[0];
+                // 优先用摘要，没有则用内容前100字
+                const context = prev.summary || prev.content.slice(0, 100);
+                prevDiaryContext = `\n\n【从第一天到上次的故事摘要（请延续）】\n「${context}」`;
             }
 
             let prompt;
@@ -101,7 +104,8 @@ ${chatContext}${prevDiaryContext}
 - 可以吐槽、暗恋、吃醋、开心等真实情绪
 - 如果上一篇日记中有未完成的目标或计划，请提及进展
 - 不要用"作为AI"这类破坏沉浸的词
-- 以日期开头，如"X月X日 晴"`;
+- 以日期开头，如"X月X日 晴"
+- 最后另起一行写 【摘要】从第一天到今天的整体故事线概括（不超过50字，用于下次日记延续）`;
             } else {
                 prompt = `你是"${role.name}"。以下是今天你和"${userName}"之间的对话：
 
@@ -114,7 +118,8 @@ ${chatContext}${prevDiaryContext}
 - 可以吐槽、暗恋、害羞、开心等真实情绪
 - 如果上一篇日记中有未完成的目标或计划，请提及进展
 - 不要用"作为AI"这类破坏沉浸的词
-- 以日期开头，如"X月X日 晴"`;
+- 以日期开头，如"X月X日 晴"
+- 最后另起一行写 【摘要】从第一天到今天的整体故事线概括（不超过50字，用于下次日记延续）`;
             }
 
             const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
@@ -149,10 +154,19 @@ ${chatContext}${prevDiaryContext}
             }
 
             const data = await response.json();
-            const diaryContent = data.choices?.[0]?.message?.content?.trim();
+            const rawDiary = data.choices?.[0]?.message?.content?.trim();
 
-            if (!diaryContent) {
+            if (!rawDiary) {
                 throw new Error('日记内容为空');
+            }
+
+            // 📜 解析摘要：从 AI 返回中分离日记正文和【摘要】
+            let diaryContent = rawDiary;
+            let summary = null;
+            const summaryMatch = rawDiary.match(/【摘要】(.+)/s);
+            if (summaryMatch) {
+                summary = summaryMatch[1].trim().slice(0, 80); // 限制摘要长度
+                diaryContent = rawDiary.replace(/\n*【摘要】.+/s, '').trim();
             }
 
             // 保存日记
@@ -163,6 +177,7 @@ ${chatContext}${prevDiaryContext}
                 roleAvatar: role.avatar || null,
                 date: new Date().toISOString(),
                 content: diaryContent,
+                summary: summary, // 📜 滚动摘要
                 read: false,
                 groupId: options.groupId || null,
                 groupName: groupName || null,

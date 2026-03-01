@@ -9,6 +9,7 @@ import { useGroupChat } from './composables/useGroupChat';
 import { useBranch } from './composables/useBranch';
 import { useSoundEffects } from './composables/useSoundEffects';
 import { useDiary } from './composables/useDiary';
+import { useActiveMessage } from './composables/useActiveMessage';
 import { extractExpression } from './utils/textParser';
 
 // Import Components
@@ -34,6 +35,7 @@ const branchFunctions = useBranch(appState);
 // Sound effects — pass globalSettings directly for mute/volume sync
 const sfx = useSoundEffects(appState.globalSettings);
 const diary = useDiary(appState);
+const activeMessage = useActiveMessage(appState);
 
 // 🌟 新手引导（仅首次显示）
 const showOnboarding = ref(!localStorage.getItem('myai_onboarding_done'));
@@ -533,6 +535,15 @@ onMounted(() => {
   // 延迟确保 DOM 完全渲染后再强制滚动到底部
   setTimeout(() => scrollToBottom(true), 100);
   window.addEventListener('keydown', handleGlobalKeydown);
+
+  // 🌟 主动消息：回访检测
+  setTimeout(async () => {
+    const sent = await activeMessage.checkAndSend(diary);
+    if (sent) {
+      await nextTick();
+      scrollToBottom(true);
+    }
+  }, 500);
   // 自动弹出未读日记
   setTimeout(() => {
     const unread = diary.getUnreadDiaries();
