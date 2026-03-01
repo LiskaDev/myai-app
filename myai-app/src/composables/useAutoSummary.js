@@ -4,6 +4,7 @@ import {
     getMessageRanges,
 } from '../utils/summary';
 import { acquireBackgroundLock, releaseBackgroundLock, isBackgroundLocked } from './useTimeline';
+import { useBackgroundTasks } from './useBackgroundTasks';
 
 // 🧠 摘要也使用共享后台锁，防止与时间线分析并发
 
@@ -23,6 +24,9 @@ export function useAutoSummary(appState) {
      * 检查并触发自动摘要
      */
     function checkAndTriggerSummary() {
+        // 🛡️ 后台智能分析开关
+        if (!globalSettings.enableSmartAnalysis) return;
+
         const role = currentRole.value;
         const existingSummary = role.autoSummary || role.storySummary || '';
         const summarizedUpTo = role.summarizedUpTo || 0;
@@ -41,6 +45,7 @@ export function useAutoSummary(appState) {
      */
     async function generateAutoSummary() {
         if (!acquireBackgroundLock()) return;
+        const bgTask = useBackgroundTasks().trackTask('自动摘要');
 
         try {
             const role = currentRole.value;
@@ -96,6 +101,7 @@ export function useAutoSummary(appState) {
         } catch (error) {
             showToast('摘要生成失败，请稍后重试', 'error');
         } finally {
+            bgTask.done();
             releaseBackgroundLock();
         }
     }

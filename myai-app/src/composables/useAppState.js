@@ -4,7 +4,8 @@ import {
     STORAGE_KEYS,
     DEFAULT_GLOBAL_SETTINGS,
     saveToStorage,
-    loadFromStorage
+    loadFromStorage,
+    getStorageUsage,
 } from '../utils/storage';
 
 // 创建应用状态组合式函数
@@ -61,6 +62,14 @@ export function useAppState() {
     const abortController = ref(null);
     const isUserNearBottom = ref(true);
 
+    // 存储用量追踪
+    const storageUsage = reactive({ usedKB: 0, totalKB: 5120, percent: 0, breakdown: [] });
+
+    function refreshStorageUsage() {
+        const usage = getStorageUsage();
+        Object.assign(storageUsage, usage);
+    }
+
     // 记忆编辑状态
     const memoryEditState = reactive({
         editingIndex: null,
@@ -104,7 +113,7 @@ export function useAppState() {
     // 🛡️ Toast timer 追踪，防止内存泄漏
     let toastTimerId = null;
 
-    function showToast(message, type = 'info') {
+    function showToast(message, type = 'info', action = null) {
         // 清除之前的 timer
         if (toastTimerId) {
             clearTimeout(toastTimerId);
@@ -112,12 +121,14 @@ export function useAppState() {
 
         toast.message = message;
         toast.type = type;
+        toast.action = action; // { label: '去设置', callback: () => {} }
         toast.show = true;
 
         toastTimerId = setTimeout(() => {
             toast.show = false;
+            toast.action = null;
             toastTimerId = null;
-        }, 2000);
+        }, action ? 5000 : 2000); // 有 action 时显示更久
     }
 
     // 提供清理函数
@@ -158,6 +169,11 @@ export function useAppState() {
         const success = saveToStorage(globalSettings, roleList.value, (msg) => showToast(msg, 'error'));
         if (!success) {
             showToast('⚠️ 数据保存失败！请导出备份后清理旧对话', 'error');
+        }
+        // 保存后刷新用量，超过 80% 提醒
+        refreshStorageUsage();
+        if (storageUsage.percent >= 80) {
+            showToast(`⚠️ 存储空间已用 ${storageUsage.percent}%，建议导出备份后清理旧对话`, 'error');
         }
     }
 
@@ -244,6 +260,19 @@ export function useAppState() {
             abortController.value = null;
             isStreaming.value = false;
             isThinking.value = false;
+
+            // 🛡️ 清理孤立消息：中止流式时移除空的 assistant 占位 + 对应的 user 消息
+            const msgs = messages.value;
+            if (msgs.length > 0) {
+                const last = msgs[msgs.length - 1];
+                if (last.role === 'assistant' && (!last.content || last.content.trim() === '')) {
+                    msgs.pop(); // 移除空 assistant 占位
+                    // 移除对应的 user 消息（如果存在）
+                    if (msgs.length > 0 && msgs[msgs.length - 1].role === 'user') {
+                        msgs.pop();
+                    }
+                }
+            }
         }
         currentRoleId.value = roleId;
         showSidebar.value = false;
@@ -337,6 +366,11 @@ export function useAppState() {
         // 🛡️ 监听 storage 事件（只在其他标签页修改时触发）
         storageListener = (event) => {
             if (event.key === 'myai_roles_v1' || event.key === 'myai_global_v1') {
+                // 🛡️ 冲突保护：流式输出或正在编辑时不同步，避免覆盖
+                if (isStreaming.value || isThinking.value) {
+                    console.warn('[Sync] 检测到其他标签页修改，但当前正在流式输出，跳过同步');
+                    return;
+                }
                 console.log('[Sync] 检测到其他标签页修改，重新加载数据');
                 loadData();
                 showToast('数据已从其他标签页同步', 'info');
@@ -376,6 +410,7 @@ export function useAppState() {
         abortController,
         isUserNearBottom,
         memoryEditState,
+        storageUsage,
 
         // 方法
         showToast,
@@ -393,5 +428,6 @@ export function useAppState() {
         setupWatchers,
         cleanupTimers,
         cleanupStorageListener,
+        refreshStorageUsage,
     };
 }

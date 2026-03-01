@@ -1,8 +1,17 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useAppState } from '../../composables/useAppState';
 
 const props = defineProps({
   globalSettings: Object
+});
+
+const appState = useAppState();
+const storageUsage = computed(() => appState.storageUsage);
+const storageColor = computed(() => {
+  if (storageUsage.value.percent >= 80) return 'red';
+  if (storageUsage.value.percent >= 60) return 'yellow';
+  return 'green';
 });
 
 const userFileInputRef = ref(null);
@@ -82,6 +91,25 @@ function resetCustomStyle() {
     </h3>
 
     <div class="space-y-3">
+      <!-- 📊 存储用量 -->
+      <div class="mb-2">
+        <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
+          <span>💾 存储用量</span>
+          <span>{{ (storageUsage.usedKB / 1024).toFixed(1) }} MB / {{ (storageUsage.totalKB / 1024).toFixed(0) }} MB</span>
+        </div>
+        <div class="storage-bar-track">
+          <div class="storage-bar-fill" :class="storageColor" :style="{ width: Math.min(storageUsage.percent, 100) + '%' }"></div>
+        </div>
+        <details v-if="storageUsage.breakdown?.length" class="mt-1">
+          <summary class="text-[10px] text-gray-500 cursor-pointer hover:text-gray-400">各模块明细</summary>
+          <div class="mt-1 space-y-0.5">
+            <div v-for="item in storageUsage.breakdown" :key="item.key" class="flex justify-between text-[10px] text-gray-500">
+              <span>{{ item.label }}</span>
+              <span>{{ item.sizeKB }} KB</span>
+            </div>
+          </div>
+        </details>
+      </div>
       <div>
         <label class="block text-sm text-gray-300 mb-1">Base URL</label>
         <input v-model="globalSettings.baseUrl" type="text" placeholder="https://api.deepseek.com"
@@ -91,7 +119,9 @@ function resetCustomStyle() {
       <div>
         <label class="block text-sm text-gray-300 mb-1">API Key</label>
         <input v-model="globalSettings.apiKey" type="password" placeholder="sk-..."
-               class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light">
+               class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light"
+               :class="{ 'api-key-highlight': !globalSettings.apiKey }">
+        <p v-if="!globalSettings.apiKey" class="text-xs text-amber-400 mt-1">⚡ 填入 API Key 后即可开始对话</p>
       </div>
 
       <div>
@@ -203,6 +233,16 @@ function resetCustomStyle() {
         </div>
         <div class="toggle-switch" :class="{ 'active': globalSettings.showTokens }"
              @click="globalSettings.showTokens = !globalSettings.showTokens"></div>
+      </div>
+
+      <!-- 🧠 智能后台分析 -->
+      <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
+        <div>
+          <label class="block text-sm text-gray-300">🧠 Smart Analysis (智能后台分析)</label>
+          <p class="text-xs text-gray-400">自动生成摘要、分析关系、提取用户画像（额外消耗 token）</p>
+        </div>
+        <div class="toggle-switch" :class="{ 'active': globalSettings.enableSmartAnalysis !== false }"
+             @click="globalSettings.enableSmartAnalysis = !globalSettings.enableSmartAnalysis"></div>
       </div>
 
       <!-- 文字风格选择 -->

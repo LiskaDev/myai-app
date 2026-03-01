@@ -23,6 +23,8 @@ let audioUnlocked = false;
  * 预加载所有音效到内存
  */
 function preloadAll() {
+    // 🛡️ SSR 安全检查：服务端渲染环境无 Audio API
+    if (typeof window === 'undefined' || typeof Audio === 'undefined') return;
     for (const [key, src] of Object.entries(SOUNDS)) {
         try {
             const audio = new Audio(src);

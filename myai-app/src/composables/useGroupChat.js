@@ -12,9 +12,10 @@ import {
 } from './useRelationship';
 import { useUserPersona } from './useUserPersona';
 import { acquireBackgroundLock, releaseBackgroundLock, isBackgroundLocked, buildTimelinePrompt, parseTimelineEvents } from './useTimeline';
+import { useBackgroundTasks } from './useBackgroundTasks';
 
-const FETCH_TIMEOUT_MS = 60000;          // 群聊普通模型 60s
-const REASONER_TIMEOUT_MS = 120000;      // Reasoner 模型 120s
+const FETCH_TIMEOUT_MS = 25000;          // 群聊普通模型 25s
+const REASONER_TIMEOUT_MS = 50000;       // Reasoner 模型 50s
 
 // Callback for per-role completion (e.g. sound effects)
 let onRoleComplete = null;
@@ -64,6 +65,14 @@ export function useGroupChat(appState) {
         return currentGroup.value.participantIds
             .map(id => roleList.value.find(r => r.id === id))
             .filter(Boolean);
+    });
+
+    // 🛡️ 检测已删除的群成员
+    const missingMembers = computed(() => {
+        if (!currentGroup.value) return [];
+        return currentGroup.value.participantIds.filter(
+            id => !roleList.value.find(r => r.id === id)
+        );
     });
 
     // ============== 存储 ==============
@@ -216,7 +225,7 @@ export function useGroupChat(appState) {
         continueOneRound();
     }
 
-    // ============== 核心：继续一轮 ==============
+    // ============== 核心：继续一轮（半并行） ==============
     async function continueOneRound() {
         if (isGroupStreaming.value || !currentGroup.value) return;
         if (!globalSettings.apiKey) {
@@ -241,27 +250,44 @@ export function useGroupChat(appState) {
 
         isGroupStreaming.value = true;
 
-        try {
-            for (const role of activeParticipants) {
-                currentSpeakingRole.value = role.name;
+        // 🚀 半并行分批策略：
+        // 2-3 个角色 → 全部并行，1 批完成
+        // 4+ 个角色 → 分成 2 批，每批 Math.ceil(总数/2)
+        const total = activeParticipants.length;
+        const batchSize = total <= 3 ? total : Math.ceil(total / 2);
+        const batches = [];
+        for (let i = 0; i < total; i += batchSize) {
+            batches.push(activeParticipants.slice(i, i + batchSize));
+        }
 
-                // 🛡️ 每个角色单独 try-catch，单个角色失败不中断整轮
-                try {
-                    await generateRoleResponse(role);
-                } catch (error) {
-                    if (error.name === 'AbortError') throw error; // 用户主动中止 → 停止整轮
-                    const errorMsg = error.name === 'TimeoutError'
-                        ? `${role.name} 思考太久，先跳过啦~`
-                        : `${role.name} 走神了，先跳过~`;
-                    showToast(errorMsg);
-                    continue; // 跳过此角色，继续下一个
-                }
+        try {
+            for (const batch of batches) {
+                if (!isGroupStreaming.value) break;
+
+                // 显示当前批次所有角色名
+                currentSpeakingRole.value = batch.map(r => r.name).join('、');
+
+                // 并行请求当前批次内所有角色
+                const results = await Promise.allSettled(
+                    batch.map(role => {
+                        return generateRoleResponse(role).then(() => ({ role, ok: true }))
+                            .catch(error => {
+                                if (error.name === 'AbortError') throw error;
+                                const errorMsg = error.name === 'TimeoutError'
+                                    ? `${role.name} 思考太久，先跳过啦~`
+                                    : `${role.name} 走神了，先跳过~`;
+                                showToast(errorMsg);
+                                return { role, ok: false };
+                            });
+                    })
+                );
 
                 // Notify per-role completion (for sound effects, etc.)
-                if (onRoleComplete) onRoleComplete(role);
-
-                // 检查是否被中止
-                if (!isGroupStreaming.value) break;
+                for (const result of results) {
+                    if (result.status === 'fulfilled' && result.value?.ok && onRoleComplete) {
+                        onRoleComplete(result.value.role);
+                    }
+                }
             }
         } catch (error) {
             if (error.name !== 'AbortError') {
@@ -271,16 +297,22 @@ export function useGroupChat(appState) {
             isGroupStreaming.value = false;
             currentSpeakingRole.value = null;
             groupAbortController.value = null;
-            // 一轮结束后检查是否需要自动总结
-            checkGroupSummary();
-            // 检查是否所有角色都 PASS 了（剧情卡壳，触发影子导演）
-            checkAutoDirector();
-            // v5.2: 一轮结束后分析对话更新关系矩阵
-            analyzeRelationships();
-            // 🔗 跨场景记忆同步：将重要事件写入角色永久记忆
-            syncGroupEventsToMemory();
-            // 📅 群聊剧情时间线分析
-            checkGroupTimeline();
+            // 一轮结束后的后台分析（受 enableSmartAnalysis 控制）
+            if (globalSettings.enableSmartAnalysis) {
+                checkGroupSummary();
+                checkAutoDirector();
+                analyzeRelationships();
+                syncGroupEventsToMemory();
+                checkGroupTimeline();
+            }
+        }
+    }
+
+    // 🛡️ 跳过当前角色（用户手动触发）
+    function skipCurrentRole() {
+        if (groupAbortController.value) {
+            groupAbortController.value.abort();
+            showToast(`已跳过 ${currentSpeakingRole.value || '当前角色'}`);
         }
     }
 
@@ -370,10 +402,20 @@ Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
         // 🛡️ 根据模型类型动态设置超时
         const timeoutMs = isReasoner ? REASONER_TIMEOUT_MS : FETCH_TIMEOUT_MS;
         const timeoutSignal = AbortSignal.timeout(timeoutMs);
-        const combinedSignal = AbortSignal.any([
-            groupAbortController.value.signal,
-            timeoutSignal,
-        ]);
+        // 🛡️ AbortSignal.any 兼容性 fallback（iOS 16, Chrome <116）
+        let combinedSignal;
+        if (typeof AbortSignal.any === 'function') {
+            combinedSignal = AbortSignal.any([
+                groupAbortController.value.signal,
+                timeoutSignal,
+            ]);
+        } else {
+            const ctrl = groupAbortController.value;
+            combinedSignal = ctrl.signal;
+            timeoutSignal.addEventListener('abort', () => {
+                if (!ctrl.signal.aborted) ctrl.abort(timeoutSignal.reason);
+            });
+        }
 
         const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
         const apiUrl = `${baseUrl}/chat/completions`;
@@ -621,7 +663,9 @@ ${recentChat || '\uff08\u6682\u65e0\u5bf9\u8bdd\u8bb0\u5f55\uff09'}
             const model = group.model || globalSettings.model || 'deepseek-chat';
             const baseUrl = globalSettings.baseUrl || 'https://api.deepseek.com';
 
-            const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+            // 🛡️ 统一 API 路径（与 generateRoleResponse 一致，避免 /v1/v1 问题）
+            const normalizedUrl = baseUrl.replace(/\/$/, '');
+            const response = await fetch(`${normalizedUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1398,6 +1442,7 @@ ${chatText}
         currentGroup,
         groupMessages,
         participants,
+        missingMembers,
 
         // 方法
         loadGroups,
@@ -1410,6 +1455,7 @@ ${chatText}
         continueOneRound,
         speakAsRole,
         stopGroupGeneration,
+        skipCurrentRole,
         clearGroupChat,
         updateGroupChat,
         deleteGroupMessage,

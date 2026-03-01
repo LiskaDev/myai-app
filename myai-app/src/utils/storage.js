@@ -36,6 +36,8 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     soundVolume: 0.2,
     // v5.9: Token display
     showTokens: false,
+    // v6.0: 后台智能分析开关
+    enableSmartAnalysis: true,
 };
 
 // 保存数据到 localStorage
@@ -131,6 +133,51 @@ export function saveUserPersona(persona) {
         persona.traits = persona.traits.slice(-PERSONA_MAX_TRAITS);
     }
     localStorage.setItem(PERSONA_KEY, JSON.stringify(persona));
+}
+
+// ===== 存储用量检测 =====
+const STORAGE_TOTAL_KB = 5120; // 大多数浏览器 localStorage 限额 5MB
+
+/**
+ * 计算 localStorage 当前用量
+ * @returns {{ usedKB: number, totalKB: number, percent: number, breakdown: Array<{key: string, label: string, sizeKB: number}> }}
+ */
+export function getStorageUsage() {
+    const labels = {
+        [STORAGE_KEYS.ROLES]: '角色数据',
+        [STORAGE_KEYS.GLOBAL]: '全局设置',
+        [STORAGE_KEYS.GROUPS]: '群聊数据',
+        [STORAGE_KEYS.DIARIES]: '日记',
+        [PERSONA_KEY]: '用户画像',
+        [STORAGE_KEYS.SESSION]: '会话状态',
+    };
+
+    let totalBytes = 0;
+    const breakdown = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        const value = localStorage.getItem(key) || '';
+        const sizeBytes = (key.length + value.length) * 2; // UTF-16 每字符 2 字节
+        totalBytes += sizeBytes;
+
+        // 只展示已知 key 的明细
+        if (labels[key]) {
+            breakdown.push({
+                key,
+                label: labels[key],
+                sizeKB: Math.round(sizeBytes / 1024 * 10) / 10,
+            });
+        }
+    }
+
+    const usedKB = Math.round(totalBytes / 1024 * 10) / 10;
+    const percent = Math.round(usedKB / STORAGE_TOTAL_KB * 100);
+
+    // 按大小排序
+    breakdown.sort((a, b) => b.sizeKB - a.sizeKB);
+
+    return { usedKB, totalKB: STORAGE_TOTAL_KB, percent, breakdown };
 }
 
 function getDefaultPersona() {

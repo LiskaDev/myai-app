@@ -11,6 +11,7 @@ const props = defineProps({
     isStreaming: Boolean,
     currentSpeakingRole: String,
     globalSettings: Object,
+    missingCount: { type: Number, default: 0 },
 });
 
 const emit = defineEmits([
@@ -25,6 +26,7 @@ const emit = defineEmits([
     'send-whisper',
     'generate-director-event',
     'update-affinity',
+    'skip-current-role',
 ]);
 
 const containerRef = ref(null);
@@ -412,6 +414,11 @@ onMounted(() => {
             </div>
         </div>
 
+        <!-- 🛡️ 已删除成员警告 -->
+        <div v-if="missingCount > 0" class="mb-3 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+          ⚠️ {{ missingCount }} 个群聊角色已被删除，他们的历史消息保留但不会再发言。可在「编辑群聊」中添加新角色。
+        </div>
+
         <!-- 消息列表 -->
         <template v-for="(item, idx) in displayItems" :key="idx">
 
@@ -599,6 +606,12 @@ onMounted(() => {
         <!-- 正在输入状态 -->
         <div v-if="isStreaming && currentSpeakingRole && !(messages.length > 0 && !messages[messages.length - 1]?.content)"
              class="flex items-center space-x-2 text-gray-400 text-sm pl-13">
+            <span>{{ currentSpeakingRole }} 正在输入</span>
+            <span class="typing-dots-inline"><span>.</span><span>.</span><span>.</span></span>
+            <button @click="$emit('skip-current-role')"
+                    class="text-xs text-gray-500 hover:text-gray-300 transition ml-2 underline underline-offset-2">
+                跳过 ▸
+            </button>
         </div>
     </div>
 

@@ -43,7 +43,10 @@ export function useChat(appState) {
         isSending = true;
 
         if (!globalSettings.apiKey) {
-            showToast('请先在设置中配置 API Key', 'error');
+            showToast('请先在设置中配置 API Key', 'error', {
+                label: '去设置',
+                callback: () => { appState.showSettings.value = true; },
+            });
             isSending = false;
             return;
         }
@@ -61,6 +64,7 @@ export function useChat(appState) {
             apiKey: globalSettings.apiKey,
             baseUrl: globalSettings.baseUrl,
             model: globalSettings.model,
+            enableSmartAnalysis: globalSettings.enableSmartAnalysis,
         });
 
         isThinking.value = true;
@@ -182,10 +186,21 @@ Example format:
         const timeoutSignal = AbortSignal.timeout(timeoutMs);
 
         // 🛡️ 组合信号：用户手动中止 或 超时自动中止
-        const combinedSignal = AbortSignal.any([
-            abortController.value.signal,
-            timeoutSignal
-        ]);
+        // AbortSignal.any() 在旧浏览器(iOS 16, Chrome <116)不可用，需 fallback
+        let combinedSignal;
+        if (typeof AbortSignal.any === 'function') {
+            combinedSignal = AbortSignal.any([
+                abortController.value.signal,
+                timeoutSignal
+            ]);
+        } else {
+            // Fallback: 手动转发超时信号到 abortController
+            const ctrl = abortController.value;
+            combinedSignal = ctrl.signal;
+            timeoutSignal.addEventListener('abort', () => {
+                if (!ctrl.signal.aborted) ctrl.abort(timeoutSignal.reason);
+            });
+        }
 
         // 构建 API URL
         const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');

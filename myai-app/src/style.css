@@ -35,7 +35,26 @@ body {
   background-repeat: no-repeat;
   z-index: -1;
   background-color: #1a1a2e;
+  /* 🛡️ 渐变 fallback：无背景图时也不会纯黑 */
+  background-image: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
   transition: background-image 0.5s ease-in-out;
+}
+
+/* 📱 iOS 软键盘偏移量 */
+:root {
+  --keyboard-offset: 0px;
+}
+
+footer {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--keyboard-offset)) !important;
+  transition: padding-bottom 0.15s ease;
+}
+
+/* FAB 按钮也需要跟随键盘偏移 */
+.group-fab,
+.send-btn-container {
+  margin-bottom: var(--keyboard-offset);
+  transition: margin-bottom 0.15s ease;
 }
 
 .fullscreen-bg::before {
@@ -2303,5 +2322,111 @@ details.reasoning-block[open]>summary {
 
   footer textarea {
     font-size: 0.9rem !important;
+  }
+}
+
+/* ============== ⚡ 后台任务指示器 ============== */
+.bg-task-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+  animation: bgTaskPulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+}
+
+@keyframes bgTaskPulse {
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.bg-task-tooltip {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background: rgba(20, 20, 35, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.72rem;
+  color: #e2e8f0;
+  white-space: nowrap;
+  z-index: 50;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.group:hover .bg-task-tooltip {
+  display: block;
+}
+
+/* ============== 存储用量进度条 ============== */
+.storage-bar-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.storage-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease, background 0.5s ease;
+}
+
+.storage-bar-fill.green {
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.storage-bar-fill.yellow {
+  background: linear-gradient(90deg, #facc15, #eab308);
+}
+
+.storage-bar-fill.red {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+/* ============== 群聊内联打字点 ============== */
+.typing-dots-inline span {
+  animation: typingBlink 1.4s infinite;
+  color: #94a3b8;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.typing-dots-inline span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dots-inline span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* ============== API Key 引导高亮 ============== */
+.api-key-highlight {
+  animation: apiKeyGlow 2s ease-in-out 3;
+  border-color: rgba(99, 102, 241, 0.6) !important;
+}
+
+@keyframes apiKeyGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 12px 4px rgba(99, 102, 241, 0.3);
   }
 }

@@ -85,7 +85,8 @@ describe('useChat - 发送锁机制', () => {
 
         expect(appState.showToast).toHaveBeenCalledWith(
             expect.stringContaining('API Key'),
-            'error'
+            'error',
+            expect.anything()
         );
     });
 });

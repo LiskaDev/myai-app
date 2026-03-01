@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { loadUserPersona, saveUserPersona } from '../utils/storage.js';
+import { useBackgroundTasks } from './useBackgroundTasks';
 
 /**
  * 全局用户画像 composable（单例）
@@ -101,6 +102,7 @@ ${recentMessages.map(m => `${m.role === 'user' ? '用户' : 'AI'}：${(m.rawCont
 category 只能是以下五种之一：preference / personality / fact / style / boundary`;
 
         try {
+            const bgTask = useBackgroundTasks().trackTask('用户画像');
             const baseUrl = (apiConfig.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
 
             // 使用便宜的模型做分析
@@ -256,6 +258,9 @@ ${others.map((t, i) => `${i + 1}. [${t.category}] ${t.content}`).join('\n')}
     // ==================== 触发计数 ====================
 
     function onUserMessageSent(messages, apiConfig) {
+        // 🛡️ 后台智能分析开关
+        if (apiConfig.enableSmartAnalysis === false) return;
+
         persona.value.messageCountSinceLastAnalysis += 1;
         saveUserPersona(persona.value);
 

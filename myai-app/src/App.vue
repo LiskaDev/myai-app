@@ -10,6 +10,7 @@ import { useBranch } from './composables/useBranch';
 import { useSoundEffects } from './composables/useSoundEffects';
 import { useDiary } from './composables/useDiary';
 import { useActiveMessage } from './composables/useActiveMessage';
+import { useBackgroundTasks } from './composables/useBackgroundTasks';
 import { extractExpression } from './utils/textParser';
 
 // Import Components
@@ -36,6 +37,7 @@ const branchFunctions = useBranch(appState);
 const sfx = useSoundEffects(appState.globalSettings);
 const diary = useDiary(appState);
 const activeMessage = useActiveMessage(appState);
+const bgTasks = useBackgroundTasks();
 
 // 🌟 新手引导（仅首次显示）
 const showOnboarding = ref(!localStorage.getItem('myai_onboarding_done'));
@@ -92,6 +94,7 @@ async function handleEndDay() {
             executeStartNewDay();
         } else {
             showDiaryModal.value = false;
+            showToast('对话还不够丰富，再聊几句再来写日记吧 📝');
         }
     }
 }
@@ -350,7 +353,9 @@ const searchResults = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
   if (!query) return [];
   const results = [];
-  messages.value.forEach((msg, index) => {
+  // 🛡️ 群聊模式搜群聊消息，单聊搜单聊消息
+  const source = groupChat.isGroupMode.value ? groupChat.groupMessages.value : messages.value;
+  source.forEach((msg, index) => {
     const content = (msg.rawContent || msg.content || '').toLowerCase();
     if (content.includes(query)) {
       results.push(index);
@@ -481,6 +486,42 @@ onUnmounted(() => {
   cleanupStorageListener();
 });
 
+// 🛡️ 首次进入：无 API Key 时自动打开设置面板
+onMounted(() => {
+  if (!globalSettings.apiKey) {
+    // 延迟一下避免和新手引导冲突
+    setTimeout(() => {
+      if (!globalSettings.apiKey && !showOnboarding.value) {
+        showSettings.value = true;
+        showToast('⚡ 请先配置 API Key 才能开始对话', 'info');
+      }
+    }, 800);
+  }
+  // 初始化存储用量
+  appState.refreshStorageUsage();
+
+  // 📱 iOS 软键盘适配：使用 visualViewport 动态调整布局
+  if (window.visualViewport) {
+    const onViewportResize = () => {
+      const offset = window.innerHeight - window.visualViewport.height;
+      document.documentElement.style.setProperty('--keyboard-offset', `${offset}px`);
+    };
+    window.visualViewport.addEventListener('resize', onViewportResize);
+    window.visualViewport.addEventListener('scroll', onViewportResize);
+  }
+
+  // 🛡️ 刷新页面后流式中断消息标记
+  const msgs = messages.value;
+  if (msgs.length > 0) {
+    const lastMsg = msgs[msgs.length - 1];
+    if (lastMsg.role === 'assistant' && (!lastMsg.content || lastMsg.content.trim() === '')) {
+      lastMsg.content = '⚠️ 生成被中断（页面已刷新）';
+      lastMsg.interrupted = true;
+      saveData();
+    }
+  }
+});
+
 // ========================================
 // Toggle Thinking/Select are now emitted from ChatWindow
 function handleToggleSelect(index) {
@@ -506,8 +547,14 @@ function saveEditMessage() {
   if (editModal.index >= 0 && editModal.index < messages.value.length) {
     const content = editModal.originalContent.trim();
     if (content) {
-      messages.value[editModal.index].content = content;
-      messages.value[editModal.index].rawContent = content;
+      const msg = messages.value[editModal.index];
+      // 🛡️ 保留 inner/thinking 层：只更新 rawContent，由渲染器重新拆分
+      msg.rawContent = content;
+      // 重新解析 content（移除 inner/think 标签后的纯文本）
+      msg.content = content
+          .replace(/<inner>[\s\S]*?<\/inner>/g, '')
+          .replace(/<think>[\s\S]*?<\/think>/g, '')
+          .trim();
       saveData();
       showToast('消息已更新');
     }
@@ -618,8 +665,13 @@ function handleImport() {
 
 function executeImport(data, stats) {
   try {
-    // 恢复核心数据
-    Object.assign(globalSettings, data.globalSettings);
+    // 🛡️ 安全合并设置：用当前默认值填充旧备份中缺失的字段
+    const safeSettings = { ...globalSettings, ...data.globalSettings };
+    // 保护嵌套对象（如 customStyle）不被 undefined 覆盖
+    if (globalSettings.customStyle && !data.globalSettings.customStyle) {
+      safeSettings.customStyle = globalSettings.customStyle;
+    }
+    Object.assign(globalSettings, safeSettings);
     roleList.value = data.roleList;
     currentRoleId.value = data.currentRoleId || data.roleList[0]?.id;
     saveData();
@@ -656,6 +708,15 @@ function confirmClearAll() {
     isDangerous: true,
     onConfirm: () => {
       localStorage.clear();
+      // 🛡️ 清除 Service Worker 缓存
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(reg => reg.unregister());
+        });
+        if ('caches' in window) {
+          caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        }
+      }
       location.reload();
     }
   });
@@ -678,7 +739,9 @@ function handleAvatarError(type, roleId) {
 
 <template>
   <!-- 全屏背景层 -->
-  <div class="fullscreen-bg" :style="{ backgroundImage: `url(${currentRole.background})` }"></div>
+  <div class="fullscreen-bg" :style="currentRole.background ? { backgroundImage: `url(${currentRole.background})` } : {}">
+    <img v-if="currentRole.background" :src="currentRole.background" style="display:none" @error="currentRole.background = ''" />
+  </div>
 
   <div id="app" class="h-full flex flex-col relative">
 
@@ -718,6 +781,14 @@ function handleAvatarError(type, roleId) {
         </template>
       </div>
       <div class="flex items-center space-x-2 header-actions flex-shrink-0">
+        <!-- ⚡ 后台任务指示器 -->
+        <div v-if="bgTasks.isActive.value" class="relative group" title="后台分析中">
+          <span class="bg-task-dot"></span>
+          <div class="bg-task-tooltip">
+            ⚡ {{ bgTasks.taskNames.value }}
+            <span v-if="bgTasks.totalBgTokens.value > 0" class="ml-1 opacity-60">(🪙 {{ bgTasks.totalBgTokens.value }})</span>
+          </div>
+        </div>
         <!-- 搜索按钮 -->
         <button @click="toggleSearch" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" :class="{ 'bg-white/15': showSearch }" title="搜索消息 (Ctrl+F)">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -870,6 +941,7 @@ function handleAvatarError(type, roleId) {
         :is-streaming="groupChat.isGroupStreaming.value"
         :current-speaking-role="groupChat.currentSpeakingRole.value"
         :global-settings="globalSettings"
+        :missing-count="groupChat.missingMembers.value.length"
         :class="{ 'blur-background': showSettings }"
         @send-director="groupChat.sendDirectorMessage"
         @continue-round="groupChat.continueOneRound"
@@ -882,6 +954,7 @@ function handleAvatarError(type, roleId) {
         @send-whisper="groupChat.sendWhisper"
         @generate-director-event="() => { pendingDirectorEvent = true; groupChat.generateDirectorEvent(true); }"
         @update-affinity="groupChat.updateAffinity"
+        @skip-current-role="groupChat.skipCurrentRole"
       />
     </template>
 
@@ -1009,9 +1082,14 @@ function handleAvatarError(type, roleId) {
     <!-- Toast 提示 -->
     <Transition name="toast">
       <div v-if="toast.show"
-           class="fixed bottom-24 left-1/2 transform -translate-x-1/2 glass bg-glass-message text-gray-100 px-4 py-2 rounded-full shadow-lg border border-white/10 z-50 text-shadow-light"
+           class="fixed bottom-24 left-1/2 transform -translate-x-1/2 glass bg-glass-message text-gray-100 px-4 py-2 rounded-full shadow-lg border border-white/10 z-50 text-shadow-light flex items-center gap-2"
            :class="{ 'border-red-500 text-red-400': toast.type === 'error' }">
-        {{ toast.message }}
+        <span>{{ toast.message }}</span>
+        <button v-if="toast.action"
+                @click="toast.action.callback(); toast.show = false;"
+                class="text-xs font-medium px-2 py-0.5 rounded-full bg-white/15 hover:bg-white/25 transition whitespace-nowrap">
+          {{ toast.action.label }}
+        </button>
       </div>
     </Transition>
   </div>

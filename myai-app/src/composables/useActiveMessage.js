@@ -85,6 +85,11 @@ export function useActiveMessage(appState) {
         // 更新访问时间
         localStorage.setItem('myai_lastVisitTime', now.toString());
 
+        // 🛡️ 持久化：确保主动消息不会因刷新丢失
+        if (appState.saveData) {
+            appState.saveData();
+        }
+
         return true;
     }
 
