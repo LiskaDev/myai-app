@@ -92,6 +92,28 @@ export function useGroupChat(appState) {
             if (saved) {
                 groupChats.value = JSON.parse(saved);
             }
+            // 🛡️ 加载时清理所有群聊中的幽灵成员
+            let anyChanged = false;
+            for (const group of groupChats.value) {
+                const removed = group.participantIds.filter(id => !roleList.value.find(r => r.id === id));
+                if (removed.length > 0) {
+                    group.participantIds = group.participantIds.filter(id => roleList.value.find(r => r.id === id));
+                    if (group.relationshipMatrix) {
+                        group.relationshipMatrix = syncMatrix(group.relationshipMatrix, group.participantIds);
+                    }
+                    anyChanged = true;
+                }
+            }
+            // 删除成员不足 2 人的群聊
+            const beforeCount = groupChats.value.length;
+            groupChats.value = groupChats.value.filter(g => g.participantIds.length >= 2);
+            if (groupChats.value.length < beforeCount) {
+                anyChanged = true;
+            }
+            if (anyChanged) {
+                saveGroups();
+            }
+
             // 恢复群聊会话状态
             const session = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || '{}');
             if (session.isGroupMode && session.currentGroupId) {
@@ -99,6 +121,10 @@ export function useGroupChat(appState) {
                 if (groupExists) {
                     currentGroupId.value = session.currentGroupId;
                     isGroupMode.value = true;
+                } else {
+                    // 🛡️ 群聊已被清理，退出群聊模式
+                    isGroupMode.value = false;
+                    currentGroupId.value = null;
                 }
             }
         } catch (e) {
@@ -159,6 +185,8 @@ export function useGroupChat(appState) {
         currentGroupId.value = groupId;
         isGroupMode.value = true;
         showSidebar.value = false;
+        // 🛡️ 切换时清理已删除的成员
+        cleanupDeletedMembers(groupId);
         // 保存群聊会话状态
         try {
             const session = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || '{}');
@@ -178,6 +206,32 @@ export function useGroupChat(appState) {
             session.currentGroupId = null;
             localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
         } catch { /* ignore */ }
+    }
+
+    // 🛡️ 防御性清理：移除 participantIds 中已不存在于 roleList 的角色
+    function cleanupDeletedMembers(groupId) {
+        const group = groupChats.value.find(g => g.id === groupId);
+        if (!group) return;
+
+        const before = group.participantIds.length;
+        const removed = group.participantIds.filter(id => !roleList.value.find(r => r.id === id));
+        if (removed.length === 0) return;
+
+        group.participantIds = group.participantIds.filter(id => roleList.value.find(r => r.id === id));
+
+        // 同步关系矩阵
+        if (group.relationshipMatrix) {
+            group.relationshipMatrix = syncMatrix(group.relationshipMatrix, group.participantIds);
+        }
+
+        saveGroups();
+        const removedNames = removed.length;
+        showToast(`⚠️ 已自动移除 ${removedNames} 个已删除的群成员`, 'info');
+
+        // 成员不足 2 人时警告
+        if (group.participantIds.length < 2) {
+            showToast('⚠️ 群聊有效成员不足 2 人，请编辑群聊添加成员', 'error');
+        }
     }
 
     // ============== 发送消息 ==============

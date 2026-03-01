@@ -351,4 +351,97 @@ describe('useGroupChat - 角色被删除后的防御性检查', () => {
             'error'
         );
     });
+
+    it('switchToGroup 时应自动清理已删除的角色', async () => {
+        const appState = createMockAppState();
+        const { useGroupChat } = await import('../src/composables/useGroupChat');
+        const groupChat = useGroupChat(appState);
+
+        const group = groupChat.createGroupChat('测试群', ['role-1', 'role-2']);
+
+        // 从 roleList 中删除 role-2
+        appState.roleList.value = appState.roleList.value.filter(r => r.id !== 'role-2');
+
+        // 切换到群聊应触发清理
+        groupChat.switchToGroup(group.id);
+
+        // participantIds 应该只剩 role-1
+        expect(group.participantIds).toEqual(['role-1']);
+        // 应该有提示
+        expect(appState.showToast).toHaveBeenCalledWith(
+            expect.stringContaining('已自动移除'),
+            'info'
+        );
+    });
+
+    it('cleanupDeletedMembers 应同步关系矩阵', async () => {
+        const appState = createMockAppState();
+        appState.roleList.value.push({
+            id: 'role-3', name: '新角色', systemPrompt: '', temperature: 1.0,
+            maxTokens: 2000, memoryWindow: 15, avatar: '', styleGuide: '',
+            appearance: '', speakingStyle: '',
+        });
+
+        const { useGroupChat } = await import('../src/composables/useGroupChat');
+        const groupChat = useGroupChat(appState);
+
+        const group = groupChat.createGroupChat('测试群', ['role-1', 'role-2', 'role-3']);
+        // 先切换到群聊，使 currentGroup 生效（此时所有角色都在，不会触发清理）
+        groupChat.switchToGroup(group.id);
+        groupChat.updateAffinity('role-1', 'role-2', 50);
+
+        // 删除 role-3
+        appState.roleList.value = appState.roleList.value.filter(r => r.id !== 'role-3');
+        // 再次切换触发清理（也可以模拟重新进入群聊）
+        groupChat.switchToGroup(group.id);
+
+        // role-1→role-2 的好感度应保留
+        expect(group.relationshipMatrix['role-1→role-2']).toBe(50);
+        // role-3 相关的键应该不存在
+        expect(group.relationshipMatrix['role-1→role-3']).toBeUndefined();
+        expect(group.relationshipMatrix['role-3→role-1']).toBeUndefined();
+    });
+
+    it('loadGroups 应清理幽灵成员并删除无效群聊', async () => {
+        const appState = createMockAppState();
+        const { useGroupChat } = await import('../src/composables/useGroupChat');
+        const groupChat = useGroupChat(appState);
+
+        // 模拟 localStorage 中有一个包含不存在角色的群聊
+        const fakeGroup = {
+            id: 'group-ghost',
+            name: '幽灵群',
+            participantIds: ['role-1', 'role-deleted'],
+            chatHistory: [],
+            relationshipMatrix: {},
+        };
+        localStorage.setItem('myai_groups_v1', JSON.stringify([fakeGroup]));
+
+        groupChat.loadGroups();
+
+        // 群聊应该只剩 role-1（不足 2 人，应被删除）
+        expect(groupChat.groupChats.value.length).toBe(0);
+    });
+
+    it('loadGroups 应保留有足够成员的群聊', async () => {
+        const appState = createMockAppState();
+        const { useGroupChat } = await import('../src/composables/useGroupChat');
+        const groupChat = useGroupChat(appState);
+
+        // 模拟 localStorage 中有一个包含不存在角色的 3 人群聊
+        const fakeGroup = {
+            id: 'group-partial',
+            name: '部分幽灵群',
+            participantIds: ['role-1', 'role-2', 'role-deleted'],
+            chatHistory: [],
+            relationshipMatrix: {},
+        };
+        localStorage.setItem('myai_groups_v1', JSON.stringify([fakeGroup]));
+
+        groupChat.loadGroups();
+
+        // 群聊应该保留，但 participantIds 只剩 role-1 和 role-2
+        expect(groupChat.groupChats.value.length).toBe(1);
+        expect(groupChat.groupChats.value[0].participantIds).toEqual(['role-1', 'role-2']);
+    });
 });

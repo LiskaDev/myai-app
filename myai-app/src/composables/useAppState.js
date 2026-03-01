@@ -7,6 +7,7 @@ import {
     loadFromStorage,
     getStorageUsage,
 } from '../utils/storage';
+import { syncMatrix } from './useRelationship';
 
 // 创建应用状态组合式函数
 export function useAppState() {
@@ -304,6 +305,47 @@ export function useAppState() {
                 currentRoleId.value = roleList.value[0].id;
             }
             saveData();
+
+            // 🛡️ 同步清理群聊中的幽灵成员
+            try {
+                const savedGroups = localStorage.getItem(STORAGE_KEYS.GROUPS);
+                if (savedGroups) {
+                    const groups = JSON.parse(savedGroups);
+                    let groupsChanged = false;
+                    const removedGroupNames = [];
+
+                    for (let i = groups.length - 1; i >= 0; i--) {
+                        const group = groups[i];
+                        const hadRole = group.participantIds.includes(roleId);
+                        if (!hadRole) continue;
+
+                        // 移除被删角色
+                        group.participantIds = group.participantIds.filter(id => id !== roleId);
+                        groupsChanged = true;
+
+                        // 同步关系矩阵
+                        if (group.relationshipMatrix) {
+                            group.relationshipMatrix = syncMatrix(group.relationshipMatrix, group.participantIds);
+                        }
+
+                        // 成员不足 2 人 → 删除整个群聊
+                        if (group.participantIds.length < 2) {
+                            removedGroupNames.push(group.name);
+                            groups.splice(i, 1);
+                        }
+                    }
+
+                    if (groupsChanged) {
+                        localStorage.setItem(STORAGE_KEYS.GROUPS, JSON.stringify(groups));
+                    }
+                    if (removedGroupNames.length > 0) {
+                        showToast(`群聊「${removedGroupNames.join('、')}」因成员不足已自动删除`);
+                    }
+                }
+            } catch (e) {
+                console.warn('[deleteRole] 清理群聊失败:', e);
+            }
+
             showToast('角色已删除');
         }
     }
@@ -312,9 +354,29 @@ export function useAppState() {
         const role = roleList.value.find(r => r.id === roleId);
         if (!role) return;
 
+        // 🛡️ 检查该角色参与了哪些群聊，在确认弹框中提示
+        let groupWarning = '';
+        try {
+            const savedGroups = localStorage.getItem(STORAGE_KEYS.GROUPS);
+            if (savedGroups) {
+                const groups = JSON.parse(savedGroups);
+                const affectedGroups = groups.filter(g => g.participantIds.includes(roleId));
+                if (affectedGroups.length > 0) {
+                    const names = affectedGroups.map(g => `"${g.name}"`).join('、');
+                    const willDelete = affectedGroups.filter(
+                        g => g.participantIds.filter(id => id !== roleId).length < 2
+                    );
+                    groupWarning = `\n\n⚠️ 该角色参与了 ${affectedGroups.length} 个群聊：${names}。`;
+                    if (willDelete.length > 0) {
+                        groupWarning += `\n其中 ${willDelete.map(g => `"${g.name}"`).join('、')} 将因成员不足自动删除。`;
+                    }
+                }
+            }
+        } catch { /* ignore */ }
+
         showConfirmModal({
             title: '删除角色',
-            message: `确定要删除角色 "${role.name}" 吗？\n所有聊天记录将被清除。`,
+            message: `确定要删除角色 "${role.name}" 吗？\n所有聊天记录将被清除。${groupWarning}`,
             isDangerous: true,
             onConfirm: () => deleteRole(roleId),
         });
