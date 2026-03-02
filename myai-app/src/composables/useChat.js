@@ -105,7 +105,7 @@ export function useChat(appState) {
 
         // 模型配置
         const model = globalSettings.model || 'deepseek-reasoner';
-        const isReasoner = model.includes('reasoner');
+        const isReasoner = model.includes('reasoner') || model.includes('QwQ') || model.includes('DeepSeek-R1') || model.includes('Kimi');
 
         // 动态参数调整 & 安全锁 (Safety Locks)
         let effectiveTemperature = role.temperature || 1.0;
@@ -161,8 +161,10 @@ Example format:
                     lengthInstruction = "\n\n[严格执行：长文模式]\n你必须写出沉浸式长篇叙事，至少300中文字以上。包含：感官描写（视觉、听觉、嗅觉）、内心独白、环境氛围、详细动作。严格禁止写少于200字的回复。\n[CRITICAL LENGTH RULE] You MUST write an immersive, slow-burn narrative (300+ Chinese characters minimum). Include sensory details, inner monologue, environment. Responses under 200 characters are FORBIDDEN.";
                     effectiveMaxTokens = Math.max(effectiveMaxTokens, 4000);
                     frequencyPenalty = 0.3; // 防止长文重复
+                } else if (responseLength === 'auto') {
+                    // v6.1: 场景感知动态长度 — AI 根据剧情节奏自行判断
+                    lengthInstruction = "\n\n[回复长度规则：场景感知]\n根据当前场景类型动态调整回复长度：\n- 日常对话/闲聊：100字以内，简洁有力\n- 情绪转折/冲突：200字以内，动作带情绪\n- 高潮/关键场景：300字以内，句子变短，节奏加快\n你必须自行判断当前属于哪种场景，严格控制字数上限。\n[LENGTH RULE: Scene-Aware] Dynamically adjust length by scene type: casual talk ≤100 chars, emotional turns ≤200, climax ≤300. Judge the scene type yourself.";
                 }
-                // 'auto' 模式：不添加任何长度指令，让 AI 自己决定
 
                 apiMessages[lastMsgIndex].content += modelSpecificPrompt + lengthInstruction;
             }

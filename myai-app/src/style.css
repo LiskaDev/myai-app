@@ -3202,3 +3202,14 @@ details.reasoning-block[open]>summary {
   background: rgba(239, 68, 68, 0.3);
   color: rgba(239, 68, 68, 1);
 }
+
+/* ============== 聊天字体大小控制 ============== */
+:root {
+  --chat-font-size: 1;
+}
+
+.message-content,
+.inner-bubble,
+.reasoning-content {
+  font-size: calc(var(--chat-font-size, 1) * 1em) !important;
+}

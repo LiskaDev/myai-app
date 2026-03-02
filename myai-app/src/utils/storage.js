@@ -40,6 +40,8 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     showTokens: false,
     // v6.0: 后台智能分析开关
     enableSmartAnalysis: true,
+    // v6.1: 聊天字体大小
+    chatFontSize: 1.0,
 };
 
 // 保存数据到 localStorage

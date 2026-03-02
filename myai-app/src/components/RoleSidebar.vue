@@ -26,8 +26,17 @@ const filteredGroups = computed(() => {
   return props.groupChats.filter(g => g.name.toLowerCase().includes(q));
 });
 
+// 获取角色的活跃分支聊天记录
+function getActiveHistory(role) {
+  if (role.branches && role.branches.length > 0) {
+    const branch = role.branches.find(b => b.id === role.activeBranchId) || role.branches[0];
+    return branch.chatHistory || [];
+  }
+  return role.chatHistory || [];
+}
+
 function getRoleMood(role) {
-  const hist = role.chatHistory || [];
+  const hist = getActiveHistory(role);
   for (let i = hist.length - 1; i >= 0; i--) {
     if (hist[i].role === 'assistant') {
       const { expression } = extractExpression(hist[i].rawContent || hist[i].content || '');
@@ -38,22 +47,36 @@ function getRoleMood(role) {
 }
 
 function getRoleLastLine(role) {
-  const hist = role.chatHistory || [];
+  const hist = getActiveHistory(role);
   for (let i = hist.length - 1; i >= 0; i--) {
     if (hist[i].role === 'assistant') {
-      const raw = hist[i].rawContent || hist[i].content || '';
+      let raw = hist[i].rawContent || hist[i].content || '';
+      
+      // 如果think标签未闭合，说明还在流式输出，跳过这条
+      const thinkStart = raw.indexOf('<think>');
+      const thinkEnd = raw.indexOf('</think>');
+      if (thinkStart !== -1 && thinkEnd === -1) continue;
+      
+      // 处理 R1 省略 <think> 开头标签的情况：只有 </think> 没有 <think>
+      if (thinkStart === -1 && thinkEnd !== -1) {
+        raw = raw.substring(thinkEnd + 8);
+      }
+      
       const clean = raw
+        .replace(/<think>[\s\S]*?<\/think>/g, '')
         .replace(/<inner>[\s\S]*?<\/inner>/g, '')
         .replace(/<expr:[^>]+>/g, '')
         .replace(/<[^>]+>/g, '')
-        .replace(/\*[^*]+\*/g, '')
+        .replace(/\*[^*]+\*/g, '')  // 必须要有闭合的 *
         .trim();
+      
       const first = clean.split(/[。！？\n]/)[0].trim();
-      return first.slice(0, 30) || '';
+      if (first) return first.slice(0, 30);
     }
   }
   return '';
 }
+
 
 defineEmits([
   'switch-role',
@@ -102,8 +125,8 @@ defineEmits([
             </div>
             <div class="flex-1 min-w-0">
               <h3 class="font-semibold text-sm truncate">{{ role.name }}</h3>
-              <p class="text-xs truncate italic" :class="role.chatHistory?.length ? 'text-gray-300' : 'text-gray-500'">
-                {{ role.chatHistory?.length
+              <p class="text-xs truncate italic" :class="getActiveHistory(role).length ? 'text-gray-300' : 'text-gray-500'">
+                {{ getActiveHistory(role).length
                   ? getRoleLastLine(role)
                   : (role.firstMessage || '点击开始对话').replace(/<[^>]+>/g, '').slice(0, 28)
                 }}

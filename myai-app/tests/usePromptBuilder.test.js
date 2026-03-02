@@ -61,8 +61,8 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { constructPrompt } = usePromptBuilder(appState);
 
         const messages = constructPrompt();
-        // 只有 ROLEPLAY FRAMEWORK
-        expect(messages.length).toBe(1);
+        // ROLEPLAY FRAMEWORK + WRITING_STYLE_BASE
+        expect(messages.length).toBe(2);
     });
 
     it('应该注入 styleGuide', async () => {

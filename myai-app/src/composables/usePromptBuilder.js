@@ -1,7 +1,7 @@
 import { formatSummaryForPrompt } from '../utils/summary';
 import { useUserPersona } from './useUserPersona';
 import { useTimeline } from './useTimeline';
-import { WRITING_STYLE_PRESETS } from './presets';
+import { WRITING_STYLE_PRESETS, WRITING_STYLE_BASE } from './presets';
 
 /**
  * Prompt 构建器 - 负责组装发送给 API 的消息列表
@@ -84,6 +84,12 @@ Remember: You are an actor playing a role. The USER is the co-author, not someon
         apiMessages.push({
             role: 'system',
             content: roleplayFrame,
+        });
+
+        // Step 0.5: 写作质量基础指令（v6.1 — 所有风格共享）
+        apiMessages.push({
+            role: 'system',
+            content: WRITING_STYLE_BASE,
         });
 
         // Step 1: System Prompt (角色人设)

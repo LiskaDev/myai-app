@@ -40,6 +40,14 @@ const diary = useDiary(appState);
 const activeMessage = useActiveMessage(appState);
 const bgTasks = useBackgroundTasks();
 
+// 🔤 聊天字体大小 — 通过 CSS 变量应用到所有消息
+function applyChatFontSize() {
+    const size = appState.globalSettings.chatFontSize || 1.0;
+    document.documentElement.style.setProperty('--chat-font-size', size);
+}
+watch(() => appState.globalSettings.chatFontSize, applyChatFontSize);
+applyChatFontSize(); // 初始化时立即应用
+
 // 🌟 新手引导（仅首次显示）
 const showOnboarding = ref(!localStorage.getItem('myai_onboarding_done'));
 

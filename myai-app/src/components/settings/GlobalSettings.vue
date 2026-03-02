@@ -2,12 +2,57 @@
 import { ref, computed } from 'vue';
 import { useAppState } from '../../composables/useAppState';
 
+// 模型预设列表（按平台分组）
+const MODEL_PRESETS = [
+    { group: '🔥 DeepSeek 官方', models: [
+        { value: 'deepseek-reasoner', label: 'DeepSeek R1 (推理)', desc: '深度思考，适合复杂剧情' },
+        { value: 'deepseek-chat', label: 'DeepSeek V3 (对话)', desc: '快速轻量，日常聊天' },
+    ]},
+    { group: '🚀 硅基流动 · Qwen', models: [
+        { value: 'Qwen/QwQ-32B', label: 'QwQ-32B (推理)', desc: '阿里推理模型，深度思考' },
+        { value: 'Qwen/Qwen2.5-72B-Instruct', label: 'Qwen2.5-72B', desc: '大参数，高质量输出' },
+        { value: 'Qwen/Qwen2.5-32B-Instruct', label: 'Qwen2.5-32B', desc: '均衡性价比' },
+        { value: 'Qwen/Qwen2.5-7B-Instruct', label: 'Qwen2.5-7B', desc: '轻量快速，适合群聊' },
+    ]},
+    { group: '🚀 硅基流动 · DeepSeek', models: [
+        { value: 'deepseek-ai/DeepSeek-R1', label: 'DeepSeek R1', desc: '经硅基流动加速' },
+        { value: 'deepseek-ai/DeepSeek-V3', label: 'DeepSeek V3', desc: '经硅基流动加速' },
+        { value: 'deepseek-ai/DeepSeek-R1-0528', label: 'DeepSeek R1-0528', desc: '最新版推理模型' },
+    ]},
+    { group: '🌙 硅基流动 · Kimi', models: [
+        { value: 'Pro/moonshotai/Kimi-K2.5', label: 'Kimi K2.5 Pro (推理)', desc: '旗舰最强，深度思考' },
+        { value: 'moonshotai/Kimi-K2-Thinking', label: 'Kimi K2 Thinking', desc: '标准推理，速度均衡' },
+    ]},
+    { group: '🚀 硅基流动 · 其他', models: [
+        { value: 'Pro/zai-org/GLM-5', label: 'GLM-5', desc: '智谱最新旗舰' },
+        { value: 'THUDM/GLM-4-32B-0414', label: 'GLM-4-32B', desc: '智谱清言' },
+        { value: 'google/gemma-3-27b-it', label: 'Gemma 3 27B', desc: 'Google 开源' },
+        { value: 'meta-llama/Llama-3.3-70B-Instruct', label: 'Llama 3.3 70B', desc: 'Meta 开源' },
+    ]},
+];
+
 const props = defineProps({
   globalSettings: Object
 });
 
 const appState = useAppState();
 const storageUsage = computed(() => appState.storageUsage);
+
+// 模型选择：是否使用自定义输入
+const useCustomModel = ref(false);
+
+// 检查当前模型是否在预设列表中
+const isPresetModel = computed(() => {
+    return MODEL_PRESETS.some(g => g.models.some(m => m.value === props.globalSettings.model));
+});
+
+// 切换到自定义模式
+function toggleCustomModel() {
+    useCustomModel.value = !useCustomModel.value;
+    if (!useCustomModel.value && !isPresetModel.value) {
+        // 如果切回预设但当前值不在列表里，不做处理（保持原值）
+    }
+}
 const storageColor = computed(() => {
   if (storageUsage.value.percent >= 80) return 'red';
   if (storageUsage.value.percent >= 60) return 'yellow';
@@ -16,6 +61,7 @@ const storageColor = computed(() => {
 
 const userFileInputRef = ref(null);
 const isUserAvatarProcessing = ref(false);
+const useCustomBaseUrl = ref(false);
 
 function triggerUserFilePicker() {
   userFileInputRef.value?.click();
@@ -111,8 +157,20 @@ function resetCustomStyle() {
         </details>
       </div>
       <div>
-        <label class="block text-sm text-gray-300 mb-1">Base URL</label>
-        <input v-model="globalSettings.baseUrl" type="text" placeholder="https://api.deepseek.com"
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-sm text-gray-300">🔗 API 平台</label>
+          <button @click="useCustomBaseUrl = !useCustomBaseUrl" class="text-xs px-2 py-0.5 rounded-full transition"
+                  :class="useCustomBaseUrl ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-400 hover:text-gray-300'">
+            {{ useCustomBaseUrl ? '📋 选预设' : '✏️ 手动输入' }}
+          </button>
+        </div>
+        <select v-if="!useCustomBaseUrl" v-model="globalSettings.baseUrl"
+                class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition">
+          <option value="https://api.deepseek.com">🔥 DeepSeek 官方</option>
+          <option value="https://api.siliconflow.cn/v1">🚀 硅基流动 (SiliconFlow)</option>
+          <option value="https://openrouter.ai/api/v1">🌐 OpenRouter</option>
+        </select>
+        <input v-else v-model="globalSettings.baseUrl" type="text" placeholder="https://api.example.com/v1"
                class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light">
       </div>
 
@@ -125,9 +183,28 @@ function resetCustomStyle() {
       </div>
 
       <div>
-        <label class="block text-sm text-gray-300 mb-1">Model Name</label>
-        <input v-model="globalSettings.model" type="text" placeholder="deepseek-reasoner"
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-sm text-gray-300">🧠 模型选择</label>
+          <button @click="toggleCustomModel" class="text-xs px-2 py-0.5 rounded-full transition"
+                  :class="useCustomModel ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-400 hover:text-gray-300'">
+            {{ useCustomModel ? '📋 选预设' : '✏️ 手动输入' }}
+          </button>
+        </div>
+        <!-- 预设选择模式 -->
+        <select v-if="!useCustomModel" v-model="globalSettings.model"
+                class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition model-select">
+          <template v-for="group in MODEL_PRESETS" :key="group.group">
+            <optgroup :label="group.group">
+              <option v-for="m in group.models" :key="m.value" :value="m.value">
+                {{ m.label }} — {{ m.desc }}
+              </option>
+            </optgroup>
+          </template>
+        </select>
+        <!-- 自定义输入模式 -->
+        <input v-else v-model="globalSettings.model" type="text" placeholder="输入模型 ID，如 Qwen/Qwen2.5-72B-Instruct"
                class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light">
+        <p class="text-xs text-gray-500 mt-1">当前：{{ globalSettings.model || '未设置' }}</p>
       </div>
 
       <div>
@@ -176,6 +253,25 @@ function resetCustomStyle() {
           <option value="long">Novel Mode (沉浸小说 400+字)</option>
         </select>
         <p class="text-xs text-gray-400 mt-1">控制 AI 回复的详细程度和篇幅</p>
+      </div>
+
+      <!-- 聊天字体大小 -->
+      <div class="pt-3 mt-3 border-t border-white/10">
+        <div class="flex items-center justify-between mb-2">
+          <label class="block text-sm text-gray-300">🔤 聊天字体大小</label>
+          <span class="text-xs text-gray-400">{{ Math.round((globalSettings.chatFontSize || 1.0) * 100) }}%</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-500">A</span>
+          <input type="range" min="0.8" max="1.4" step="0.05"
+                 :value="globalSettings.chatFontSize || 1.0"
+                 @input="globalSettings.chatFontSize = parseFloat($event.target.value)"
+                 class="flex-1 accent-primary" />
+          <span class="text-sm text-gray-400 font-bold">A</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1" :style="{ fontSize: ((globalSettings.chatFontSize || 1.0) * 14) + 'px' }">
+          预览：这是一段示例文字，看看大小是否合适
+        </p>
       </div>
 
       <!-- 显示推理过程 -->

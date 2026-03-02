@@ -2,7 +2,7 @@ import { ref, computed } from 'vue';
 import { generateUUID } from '../utils/uuid';
 import { STORAGE_KEYS } from '../utils/storage';
 import { parseDualLayerResponse, formatRoleplayText, normalizeTags } from '../utils/textParser';
-import { WRITING_STYLE_PRESETS } from './presets';
+import { WRITING_STYLE_PRESETS, WRITING_STYLE_BASE } from './presets';
 import {
     initMatrix,
     syncMatrix,
@@ -433,7 +433,7 @@ export function useGroupChat(appState) {
 
         const group = currentGroup.value;
         const model = group?.model || globalSettings.model || 'deepseek-reasoner';
-        const isReasoner = model.includes('reasoner');
+        const isReasoner = model.includes('reasoner') || model.includes('QwQ') || model.includes('DeepSeek-R1') || model.includes('Kimi');
 
         // v5.9.3: 模型特定提示注入 — 告诉 AI 使用 <inner>/<think> 标签
         let modelSpecificPrompt = '';
@@ -960,8 +960,9 @@ ${dialogueText}
             lengthGuidance = '【严格执行：简洁回复】保持简短有力，每次回复不超过100字，1-2句话即可，群聊节奏要快';
             frameworkLengthHint = '\n[CRITICAL LENGTH RULE] Keep responses EXTREMELY SHORT (under 100 Chinese characters). 1-2 sentences maximum. Fast-paced group chat rhythm.';
         } else {
-            // auto: 不添加长度约束
-            lengthGuidance = '根据剧情需要自然回复';
+            // v6.1: auto 场景感知动态长度
+            lengthGuidance = '根据场景类型动态调整回复长度：日常闲聊100字以内，情绪转折/冲突200字以内，高潮场景300字以内。自行判断当前场景类型';
+            frameworkLengthHint = '\n[LENGTH RULE: Scene-Aware] Dynamically adjust length: casual talk ≤100 chars, emotional turns ≤200, climax ≤300. Judge the scene type yourself.';
         }
 
         // 从角色设定中提取性格关键词用于强化提醒
@@ -994,6 +995,12 @@ Never break character. Use *asterisks* for actions, "quotes" for dialogue.${fram
 Your personality and speaking style MUST be consistent with your character settings. Do NOT become generic or polite if your character is not.
 Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/surprise/scared/smirk/neutral)
 [/ROLEPLAY FRAMEWORK]`,
+        });
+
+        // v6.1: 写作质量基础指令（所有风格共享）
+        apiMessages.push({
+            role: 'system',
+            content: WRITING_STYLE_BASE,
         });
 
         // 角色本身的 system prompt

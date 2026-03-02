@@ -78,6 +78,17 @@ export const STYLE_QUICK_TAGS = [
     { label: '🎭 更有张力', directive: '增加情感张力和戏剧冲突，制造悬念和期待感，在关键时刻留白和欲言又止' },
 ];
 
+// ============== 写作质量基础指令（所有风格共享） ==============
+export const WRITING_STYLE_BASE = `[WRITING QUALITY — BASE RULES]
+以下规则适用于所有回复，无论选择了什么风格模板：
+1. 永远不要直接解释角色的情绪（不说"她很难过"），用动作和细节传递（"她别开了脸，指尖在袖口反复搓捻"）
+2. 动作描写必须带情绪色彩：不写"她走过来"，写"她一步步挪过来，脚步比平时慢了半拍"
+3. 任何情况下不做总结、不升华、不发表感想。角色不会在对话中突然总结全局
+4. 结尾永远留钩子——一句未完的话、一个意味深长的眼神、一个新的疑问。永远不要写出"收尾感"
+5. 禁止使用套话（"空气突然安静""时间仿佛停止"等）。每一句描写都要具体、独特
+[CRITICAL] Show emotions through actions, never explain them. Never summarize or wrap up. Always end with a hook — an unfinished thought, a lingering glance, a new question. Every line must earn its place.
+[/WRITING QUALITY]`;
+
 
 // 预设角色列表
 export const PRESET_ROLES = [
