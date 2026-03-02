@@ -1,5 +1,5 @@
 import { ref, reactive, computed, watch } from 'vue';
-import { PRESET_ROLES, createNewRoleData } from './presets';
+import { PRESET_ROLES, createNewRoleData, migrateRoleMemoryFields } from './presets';
 import {
     STORAGE_KEYS,
     DEFAULT_GLOBAL_SETTINGS,
@@ -192,6 +192,14 @@ export function useAppState() {
 
         if (savedGlobal) {
             Object.assign(globalSettings, savedGlobal);
+            const validDensities = new Set(['compact', 'standard', 'cozy']);
+            if (!validDensities.has(globalSettings.readingDensity)) {
+                globalSettings.readingDensity = 'standard';
+            }
+            const validMotionLevels = new Set(['off', 'soft', 'expressive']);
+            if (!validMotionLevels.has(globalSettings.motionLevel)) {
+                globalSettings.motionLevel = 'soft';
+            }
         }
 
         if (savedRoles && savedRoles.length > 0) {
@@ -237,6 +245,9 @@ export function useAppState() {
                         }
                     }
                 }
+
+                // v6.0: 迁移记忆系统字段（memoryCard + chapterSummaries）
+                migrateRoleMemoryFields(role);
             }
 
             // 恢复上次活跃的角色
@@ -394,6 +405,17 @@ export function useAppState() {
             isDangerous: true,
             onConfirm: () => {
                 messages.value = [];
+                // v6.0: 清空聊天时重置记忆系统
+                const role = currentRole.value;
+                if (role) {
+                    role.chapterSummaries = [];
+                    role.memoryCard = {
+                        updatedAt: 0, userProfile: '', keyEvents: [],
+                        relationshipStage: '', emotionalState: '', taboos: [], lastTone: '',
+                    };
+                    role.autoSummary = '';
+                    role.summarizedUpTo = 0;
+                }
                 showToast('聊天记录已清空');
             }
         });

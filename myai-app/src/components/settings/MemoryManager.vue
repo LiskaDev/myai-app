@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue';
 defineProps({
   currentRole: Object,
   memoryEditState: Object
@@ -11,8 +12,19 @@ defineEmits([
   'save-edit-memory',
   'cancel-edit-memory',
   'toggle-memory-expand',
-  'refine-memory'
+  'refine-memory',
+  'save-data',
 ]);
+
+const showMemoryCard = ref(false);
+const showChapters = ref(false);
+const editingCard = ref(false);
+
+function formatTime(ts) {
+  if (!ts) return '未更新';
+  const d = new Date(ts);
+  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
 </script>
 
 <template>
@@ -36,6 +48,128 @@ defineEmits([
           <span>5轮</span>
           <span>15轮</span>
           <span>30轮</span>
+        </div>
+      </div>
+
+      <!-- ===== v6.0: 认知卡 ===== -->
+      <div class="pt-3 border-t border-white/10">
+        <div class="flex justify-between items-center cursor-pointer" @click="showMemoryCard = !showMemoryCard">
+          <label class="text-sm text-gray-300 flex items-center gap-1.5 cursor-pointer">
+            🧠 认知卡
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400">AI 自动维护</span>
+          </label>
+          <span class="text-xs text-gray-500 transition-transform" :class="{ 'rotate-180': showMemoryCard }">▼</span>
+        </div>
+
+        <div v-if="showMemoryCard" class="mt-3 space-y-2">
+          <template v-if="currentRole.memoryCard && (currentRole.memoryCard.userProfile || (currentRole.memoryCard.keyEvents || []).length > 0)">
+            <!-- 上次更新时间 -->
+            <div class="text-[10px] text-gray-500 mb-2">
+              上次更新：{{ formatTime(currentRole.memoryCard.updatedAt) }}
+            </div>
+
+            <div v-if="!editingCard" class="space-y-1.5">
+              <div v-if="currentRole.memoryCard.userProfile" class="card-field">
+                <span class="card-label">👤 用户画像</span>
+                <span class="card-value">{{ currentRole.memoryCard.userProfile }}</span>
+              </div>
+              <div v-if="currentRole.memoryCard.relationshipStage" class="card-field">
+                <span class="card-label">💕 关系阶段</span>
+                <span class="card-value">{{ currentRole.memoryCard.relationshipStage }}</span>
+              </div>
+              <div v-if="currentRole.memoryCard.emotionalState" class="card-field">
+                <span class="card-label">😊 情绪状态</span>
+                <span class="card-value">{{ currentRole.memoryCard.emotionalState }}</span>
+              </div>
+              <div v-if="(currentRole.memoryCard.keyEvents || []).length > 0" class="card-field">
+                <span class="card-label">⚡ 重大事件</span>
+                <ul class="card-events">
+                  <li v-for="(evt, i) in currentRole.memoryCard.keyEvents" :key="i">{{ evt }}</li>
+                </ul>
+              </div>
+              <div v-if="(currentRole.memoryCard.taboos || []).length > 0" class="card-field">
+                <span class="card-label">🚫 禁忌话题</span>
+                <span class="card-value text-red-400">{{ currentRole.memoryCard.taboos.join('、') }}</span>
+              </div>
+              <div v-if="currentRole.memoryCard.lastTone" class="card-field">
+                <span class="card-label">🎵 近期基调</span>
+                <span class="card-value">{{ currentRole.memoryCard.lastTone }}</span>
+              </div>
+
+              <button @click="editingCard = true" class="memory-action-btn edit mt-2 text-xs">
+                ✏️ 手动编辑
+              </button>
+            </div>
+
+            <!-- 编辑模式 -->
+            <div v-else class="space-y-2">
+              <div class="card-edit-field">
+                <label>用户画像</label>
+                <input v-model="currentRole.memoryCard.userProfile" class="card-edit-input" placeholder="用户的基本信息">
+              </div>
+              <div class="card-edit-field">
+                <label>关系阶段</label>
+                <input v-model="currentRole.memoryCard.relationshipStage" class="card-edit-input" placeholder="当前关系">
+              </div>
+              <div class="card-edit-field">
+                <label>情绪状态</label>
+                <input v-model="currentRole.memoryCard.emotionalState" class="card-edit-input" placeholder="用户情绪">
+              </div>
+              <div class="card-edit-field">
+                <label>近期基调</label>
+                <input v-model="currentRole.memoryCard.lastTone" class="card-edit-input" placeholder="对话基调">
+              </div>
+              <div class="flex gap-2">
+                <button @click="editingCard = false; $emit('save-data')" class="memory-action-btn save">✅ 保存</button>
+                <button @click="editingCard = false" class="memory-action-btn cancel">❌ 取消</button>
+              </div>
+            </div>
+          </template>
+
+          <!-- Empty State -->
+          <div v-else class="text-center py-4 bg-white/5 rounded-lg">
+            <p class="text-gray-500 text-xs">🧠 AI 会在对话过程中自动建立认知</p>
+            <p class="text-gray-600 text-[10px] mt-1">通常需要 15 轮以上对话后开始生成</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== v6.0: 章节摘要 ===== -->
+      <div class="pt-3 border-t border-white/10">
+        <div class="flex justify-between items-center cursor-pointer" @click="showChapters = !showChapters">
+          <label class="text-sm text-gray-300 flex items-center gap-1.5 cursor-pointer">
+            📖 剧情章节
+            <span v-if="(currentRole.chapterSummaries || []).length > 0"
+                  class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+              {{ (currentRole.chapterSummaries || []).length }} 章
+            </span>
+          </label>
+          <span class="text-xs text-gray-500 transition-transform" :class="{ 'rotate-180': showChapters }">▼</span>
+        </div>
+
+        <div v-if="showChapters" class="mt-3">
+          <template v-if="(currentRole.chapterSummaries || []).length > 0">
+            <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
+              <div v-for="(ch, i) in currentRole.chapterSummaries" :key="i"
+                   class="chapter-item rounded-lg bg-white/5 p-2.5">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-[10px] font-semibold"
+                        :class="ch.isCondensed ? 'text-purple-400' : 'text-emerald-400'">
+                    {{ ch.isCondensed ? '🏛️ 远古回忆' : `📖 第${ch.chapterIndex}章` }}
+                  </span>
+                  <span class="text-[10px] text-gray-600 ml-auto">
+                    {{ formatTime(ch.createdAt) }} · {{ ch.messageCount }}条
+                  </span>
+                </div>
+                <p class="text-gray-400 text-xs leading-relaxed">{{ ch.summary }}</p>
+              </div>
+            </div>
+          </template>
+
+          <div v-else class="text-center py-4 bg-white/5 rounded-lg">
+            <p class="text-gray-500 text-xs">📖 对话足够长后会自动归档为章节</p>
+            <p class="text-gray-600 text-[10px] mt-1">每 15 条窗口外消息生成一章</p>
+          </div>
         </div>
       </div>
 
@@ -264,5 +398,85 @@ defineEmits([
 
 .memory-item:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* v6.0: 认知卡样式 */
+.card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  border-left: 2px solid rgba(99, 102, 241, 0.4);
+}
+
+.card-label {
+  font-size: 0.65rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.card-value {
+  font-size: 0.75rem;
+  color: #d1d5db;
+  line-height: 1.5;
+}
+
+.card-events {
+  list-style: none;
+  padding: 0;
+  margin: 2px 0 0 0;
+}
+
+.card-events li {
+  font-size: 0.7rem;
+  color: #d1d5db;
+  padding: 1px 0;
+  line-height: 1.4;
+}
+
+.card-events li::before {
+  content: '· ';
+  color: #6366f1;
+}
+
+.card-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.card-edit-field label {
+  font-size: 0.65rem;
+  color: #9ca3af;
+}
+
+.card-edit-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: #e0e0e0;
+  font-size: 0.75rem;
+  transition: border-color 0.2s;
+}
+
+.card-edit-input:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.7);
+}
+
+/* v6.0: 章节摘要样式 */
+.chapter-item {
+  transition: all 0.2s ease;
+}
+
+.chapter-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
 }
 </style>

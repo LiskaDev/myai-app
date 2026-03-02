@@ -1,0 +1,49 @@
+.chat-style-clear {
+  --style-body-font-family: var(--font-sans-sc);
+  --style-body-color: rgba(245, 248, 255, 0.8);
+  --style-dialogue-color: rgba(255, 255, 255, 0.9);
+  --style-action-color: rgba(240, 244, 255, 0.4);
+  --style-thought-color: rgba(228, 235, 250, 0.74);
+  --style-status-color: rgba(214, 224, 242, 0.5);
+  --style-quote-color: rgba(220, 120, 160, 0.6);
+}
+
+.chat-style-misty {
+  --style-body-font-family: var(--font-serif-sc);
+  --style-body-color: rgba(235, 215, 185, 0.72);
+  --style-dialogue-color: rgba(250, 235, 210, 0.88);
+  --style-action-color: rgba(200, 168, 120, 0.54);
+  --style-thought-color: rgba(235, 215, 185, 0.72);
+  --style-status-color: rgba(214, 191, 156, 0.5);
+  --style-quote-color: rgba(200, 168, 120, 0.5);
+}
+
+.chat-style-day {
+  --style-body-font-family: var(--font-serif-sc);
+  --style-body-color: rgba(58, 43, 30, 0.82);
+  --style-dialogue-color: rgba(42, 31, 22, 0.88);
+  --style-action-color: rgba(139, 115, 85, 0.78);
+  --style-thought-color: rgba(77, 58, 38, 0.7);
+  --style-status-color: rgba(110, 88, 64, 0.72);
+  --style-quote-color: rgba(200, 168, 120, 0.5);
+}
+
+.chat-style-loveDark {
+  --style-body-font-family: var(--font-sans-sc);
+  --style-body-color: rgba(255, 234, 245, 0.84);
+  --style-dialogue-color: rgba(255, 241, 248, 0.92);
+  --style-action-color: rgba(255, 140, 180, 0.52);
+  --style-thought-color: rgba(255, 224, 238, 0.78);
+  --style-status-color: rgba(255, 190, 216, 0.52);
+  --style-quote-color: rgba(220, 120, 160, 0.6);
+}
+
+.chat-style-loveLight {
+  --style-body-font-family: var(--font-serif-sc);
+  --style-body-color: rgba(70, 38, 54, 0.8);
+  --style-dialogue-color: rgba(56, 30, 43, 0.88);
+  --style-action-color: rgba(142, 76, 108, 0.82);
+  --style-thought-color: rgba(86, 47, 66, 0.7);
+  --style-status-color: rgba(120, 72, 95, 0.76);
+  --style-quote-color: rgba(220, 120, 160, 0.6);
+}

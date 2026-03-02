@@ -121,5 +121,47 @@ export function createNewRoleData() {
         relationship: '',    // 当前关系
         appearance: '',      // 外貌特征
         worldLogic: '',      // 世界观
+        // v6.0: 三层记忆系统
+        memoryCard: {
+            updatedAt: 0,          // 上次更新时的时间戳
+            userProfile: '',       // 用户基本信息
+            keyEvents: [],         // 重大事件列表
+            relationshipStage: '', // 关系阶段
+            emotionalState: '',    // 用户当前情绪
+            taboos: [],            // 禁忌/敏感话题
+            lastTone: '',          // 最近对话基调
+        },
+        chapterSummaries: [],      // 章节摘要数组
     };
+}
+
+/**
+ * 迁移旧角色数据，补全 v6.0 记忆系统字段
+ */
+export function migrateRoleMemoryFields(role) {
+    if (!role.memoryCard) {
+        role.memoryCard = {
+            updatedAt: 0,
+            userProfile: '',
+            keyEvents: [],
+            relationshipStage: '',
+            emotionalState: '',
+            taboos: [],
+            lastTone: '',
+        };
+    }
+    if (!role.chapterSummaries) {
+        role.chapterSummaries = [];
+    }
+    // 确保 memoryCard 字段完整（防止部分升级）
+    const defaults = {
+        updatedAt: 0, userProfile: '', keyEvents: [],
+        relationshipStage: '', emotionalState: '', taboos: [], lastTone: '',
+    };
+    for (const [key, val] of Object.entries(defaults)) {
+        if (role.memoryCard[key] === undefined) {
+            role.memoryCard[key] = val;
+        }
+    }
+    return role;
 }

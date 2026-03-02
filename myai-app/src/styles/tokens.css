@@ -1,0 +1,51 @@
+:root {
+  --read-column-max: 1040px;
+  --read-ai-bubble-max: 72%;
+  --read-user-bubble-max: 46%;
+  --read-font-size: 15.6px;
+  --read-line-height: 1.92;
+  --read-paragraph-gap: 0.76em;
+  --read-message-gap: 20px;
+  --read-letter-spacing: 0.18px;
+  --read-bubble-radius: 13px;
+  --read-bubble-padding-y: 12px;
+  --read-bubble-padding-x: 15px;
+  --read-bubble-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  --decor-heart-opacity: 0.16;
+  --decor-heart-soft-opacity: 0.08;
+  --motion-fast: 0.16s;
+  --motion-medium: 0.24s;
+  --interactive-hover-lift: -0.5px;
+  --interactive-hover-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  --interactive-selected-outline: rgba(255, 255, 255, 0.26);
+  --interactive-latest-glow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --meta-opacity-idle: 0.42;
+  --meta-opacity-active: 0.88;
+}
+
+.density-compact {
+  --read-font-size: 15px;
+  --read-line-height: 1.82;
+  --read-paragraph-gap: 0.64em;
+  --read-message-gap: 14px;
+  --read-bubble-padding-y: 10px;
+  --read-bubble-padding-x: 13px;
+}
+
+.density-standard {
+  --read-font-size: 15.6px;
+  --read-line-height: 1.92;
+  --read-paragraph-gap: 0.76em;
+  --read-message-gap: 20px;
+  --read-bubble-padding-y: 12px;
+  --read-bubble-padding-x: 15px;
+}
+
+.density-cozy {
+  --read-font-size: 16px;
+  --read-line-height: 2.02;
+  --read-paragraph-gap: 0.88em;
+  --read-message-gap: 24px;
+  --read-bubble-padding-y: 13px;
+  --read-bubble-padding-x: 16px;
+}

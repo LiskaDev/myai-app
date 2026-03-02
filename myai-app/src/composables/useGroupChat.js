@@ -13,6 +13,8 @@ import {
 import { useUserPersona } from './useUserPersona';
 import { acquireBackgroundLock, releaseBackgroundLock, isBackgroundLocked, buildTimelinePrompt, parseTimelineEvents } from './useTimeline';
 import { useBackgroundTasks } from './useBackgroundTasks';
+import { migrateRoleMemoryFields } from './presets';
+import { useMemory } from './useMemory';
 
 const FETCH_TIMEOUT_MS = 25000;          // 群聊普通模型 25s
 const REASONER_TIMEOUT_MS = 50000;       // Reasoner 模型 50s
@@ -358,6 +360,12 @@ export function useGroupChat(appState) {
                 analyzeRelationships();
                 syncGroupEventsToMemory();
                 checkGroupTimeline();
+                // v6.0: 每个角色独立触发认知卡/章节摘要更新
+                const { checkAndTriggerMemorySystems } = useMemory(appState);
+                for (const role of activeParticipants) {
+                    migrateRoleMemoryFields(role); // 确保字段存在
+                    checkAndTriggerMemorySystems(role, currentGroup.value?.chatHistory || []);
+                }
             }
         }
     }
@@ -1020,6 +1028,30 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
 
         if (targetRole.speakingStyle) {
             apiMessages.push({ role: 'system', content: `[Style] ${targetRole.speakingStyle}` });
+        }
+
+        // v6.0: 注入角色独立的认知卡（群聊视角隔离 — 每个角色各自的记忆）
+        const card = targetRole.memoryCard;
+        if (card && (card.userProfile || (card.keyEvents || []).length > 0 || card.relationshipStage)) {
+            let cardText = `\n\n【你（${targetRole.name}）对用户的了解】\n`;
+            if (card.userProfile) cardText += `关于用户：${card.userProfile}\n`;
+            if (card.relationshipStage) cardText += `我们的关系：${card.relationshipStage}\n`;
+            if (card.emotionalState) cardText += `用户当前状态：${card.emotionalState}\n`;
+            if ((card.keyEvents || []).length > 0) cardText += `重要经历：${card.keyEvents.join('；')}\n`;
+            if ((card.taboos || []).length > 0) cardText += `⚠️ 注意事项：${card.taboos.join('；')}\n`;
+            apiMessages.push({ role: 'system', content: cardText });
+        }
+
+        // v6.0: 注入角色的章节摘要（如果有）
+        const chapters = targetRole.chapterSummaries;
+        if (chapters && chapters.length > 0) {
+            const recentChapters = chapters.slice(-3); // 群聊只取 3 章，节省 token
+            let chapText = '\n\n【剧情回顾】\n';
+            recentChapters.forEach(c => {
+                const prefix = c.isCondensed ? '远古回忆' : `第${c.chapterIndex}章`;
+                chapText += `${prefix}：${c.summary}\n`;
+            });
+            apiMessages.push({ role: 'system', content: chapText });
         }
 
         // 注入群聊摘要（如果有）

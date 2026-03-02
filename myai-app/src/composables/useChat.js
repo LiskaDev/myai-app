@@ -30,7 +30,7 @@ export function useChat(appState) {
     const { constructPrompt } = usePromptBuilder(appState);
     const { checkAndTriggerSummary } = useAutoSummary(appState);
     const { checkAndTriggerTimeline } = useTimeline(appState);
-    const { checkAndCompressMemories } = useMemory(appState);
+    const { checkAndCompressMemories, checkAndTriggerMemorySystems } = useMemory(appState);
 
     // 发送消息
     async function sendMessage() {
@@ -78,6 +78,8 @@ export function useChat(appState) {
             checkAndTriggerTimeline();
             // 🗄️ 检查是否需要压缩旧记忆
             checkAndCompressMemories();
+            // 🧠 v6.0: 检查是否需要触发章节摘要 / 认知卡更新
+            checkAndTriggerMemorySystems(currentRole.value, messages.value);
         } catch (error) {
             if (error.name !== 'AbortError') {
                 // 🛡️ 友好的错误提示

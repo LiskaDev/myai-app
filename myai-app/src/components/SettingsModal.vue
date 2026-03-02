@@ -124,6 +124,7 @@ function removeTimelineItem(idx) {
           @cancel-edit-memory="$emit('cancel-edit-memory')"
           @toggle-memory-expand="$emit('toggle-memory-expand', $event)"
           @refine-memory="$emit('refine-memory', $event)"
+          @save-data="$emit('save-data')"
         />
       </template>
 

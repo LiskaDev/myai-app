@@ -19,6 +19,8 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     responseLength: 'normal',
     immersiveMode: false,
     rpTextStyle: 'clear',
+    readingDensity: 'standard',
+    motionLevel: 'soft',
     // v5.0: Custom style settings
     customStyle: {
         actionColor: '#a1a1aa',

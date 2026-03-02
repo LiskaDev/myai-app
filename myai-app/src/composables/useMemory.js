@@ -1,3 +1,11 @@
+import { acquireBackgroundLock, releaseBackgroundLock, isBackgroundLocked } from './useTimeline';
+import { useBackgroundTasks } from './useBackgroundTasks';
+
+// 章节摘要配置
+const CHAPTER_TRIGGER_COUNT = 15;   // 每积累 15 条未归档消息触发
+const MAX_CHAPTERS = 8;             // 最多保留 8 章，超出时最早的合并为远古摘要
+const MEMORY_CARD_INTERVAL = 15;    // 每 15 条消息更新一次认知卡
+
 // 记忆系统组合式函数
 export function useMemory(appState) {
     const {
@@ -341,6 +349,279 @@ ${rawContent}`;
         }
     }
 
+    // ================================================================
+    // v6.0 三层记忆系统 — 章节摘要 + 认知卡
+    // ================================================================
+
+    let isUpdatingCard = false;
+    let isGeneratingChapter = false;
+
+    /**
+     * 🗂️ 章节摘要：将窗口外的旧消息归档为章节摘要
+     */
+    async function triggerChapterSummary(role, messagesToSummarize) {
+        if (isGeneratingChapter || !messagesToSummarize || messagesToSummarize.length < 5) return;
+        if (!globalSettings.apiKey) return;
+        if (!acquireBackgroundLock()) {
+            console.log('[ChapterSummary] 后台繁忙，跳过');
+            return;
+        }
+
+        isGeneratingChapter = true;
+        const bgTask = useBackgroundTasks().trackTask('章节归档');
+
+        try {
+            // 格式化对话文本
+            const dialogueText = messagesToSummarize
+                .filter(m => m.role === 'user' || m.role === 'assistant')
+                .map(m => {
+                    const name = m.role === 'user' ? '用户' : (role.name || '角色');
+                    const content = (m.rawContent || m.content || '').slice(0, 500);
+                    return `${name}: ${content}`;
+                })
+                .join('\n');
+
+            if (!dialogueText.trim()) return;
+
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const model = globalSettings.model?.includes('reasoner')
+                ? 'deepseek-chat' : (globalSettings.model || 'deepseek-chat');
+
+            const response = await fetch(`${baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model,
+                    max_tokens: 400,
+                    temperature: 0.3,
+                    messages: [{
+                        role: 'user',
+                        content: `请将以下对话压缩成一段200字以内的剧情摘要。
+要求：保留关键情节、情感转折、重要约定、角色间关系变化，去掉闲聊细节。
+用第三人称叙述，语气中立。
+只返回摘要文本，不要任何额外说明。
+
+对话内容：
+${dialogueText}`,
+                    }],
+                }),
+                signal: AbortSignal.timeout(30000),
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const data = await response.json();
+            const summary = data.choices?.[0]?.message?.content?.trim();
+            if (!summary) return;
+
+            // 追加新章节
+            if (!role.chapterSummaries) role.chapterSummaries = [];
+            role.chapterSummaries.push({
+                chapterIndex: role.chapterSummaries.length + 1,
+                createdAt: Date.now(),
+                messageCount: messagesToSummarize.length,
+                summary,
+            });
+
+            // 超过 MAX_CHAPTERS 章时，把最早的几章合并为「远古摘要」
+            if (role.chapterSummaries.length > MAX_CHAPTERS) {
+                const overflow = role.chapterSummaries.length - MAX_CHAPTERS;
+                const oldChapters = role.chapterSummaries.slice(0, overflow + 1);
+                const condensed = oldChapters.map(c => c.summary).join(' ');
+                // 替换为一条合并摘要
+                role.chapterSummaries = [
+                    {
+                        chapterIndex: 0,
+                        createdAt: Date.now(),
+                        messageCount: oldChapters.reduce((s, c) => s + c.messageCount, 0),
+                        summary: `[远古回忆] ${condensed.slice(0, 300)}`,
+                        isCondensed: true,
+                    },
+                    ...role.chapterSummaries.slice(overflow + 1),
+                ];
+                // 重新编号
+                role.chapterSummaries.forEach((c, i) => c.chapterIndex = i + 1);
+            }
+
+            saveData();
+            console.log(`[ChapterSummary] ✅ 已归档 ${messagesToSummarize.length} 条消息为第 ${role.chapterSummaries.length} 章`);
+        } catch (err) {
+            console.warn('[ChapterSummary] 归档失败:', err.message);
+        } finally {
+            bgTask.done();
+            isGeneratingChapter = false;
+            releaseBackgroundLock();
+        }
+    }
+
+    /**
+     * 🧠 认知卡更新：AI 自动维护角色对用户的结构化认知
+     */
+    async function triggerMemoryCardUpdate(role, recentMessages) {
+        if (isUpdatingCard) return;
+        if (!globalSettings.apiKey) return;
+        if (!acquireBackgroundLock()) {
+            console.log('[MemoryCard] 后台繁忙，10秒后重试...');
+            setTimeout(() => {
+                triggerMemoryCardUpdate(role, recentMessages).catch(() => { });
+            }, 10000);
+            return;
+        }
+
+        isUpdatingCard = true;
+        const bgTask = useBackgroundTasks().trackTask('认知卡更新');
+
+        try {
+            // 格式化对话文本
+            const dialogueText = recentMessages
+                .filter(m => m.role === 'user' || m.role === 'assistant')
+                .map(m => {
+                    const name = m.role === 'user' ? '用户' : (role.name || '角色');
+                    const content = (m.rawContent || m.content || '').slice(0, 300);
+                    return `${name}: ${content}`;
+                })
+                .join('\n');
+
+            if (!dialogueText.trim()) return;
+
+            // 当前认知卡 JSON
+            const currentCard = role.memoryCard || {};
+            const hasCard = currentCard.userProfile || (currentCard.keyEvents || []).length > 0;
+            const currentCardJSON = hasCard ? JSON.stringify(currentCard, null, 2) : '暂无';
+
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const model = globalSettings.model?.includes('reasoner')
+                ? 'deepseek-chat' : (globalSettings.model || 'deepseek-chat');
+
+            const response = await fetch(`${baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model,
+                    max_tokens: 500,
+                    temperature: 0.3,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: '你是一个记忆管理系统。你的任务是维护角色对用户的认知卡。必须严格返回合法JSON，不得包含任何JSON以外的文字、注释或markdown代码块。',
+                        },
+                        {
+                            role: 'user',
+                            content: `角色名称：${role.name || '角色'}
+角色人设简述：${(role.systemPrompt || '').slice(0, 200)}
+
+当前认知卡（可能为空）：
+${currentCardJSON}
+
+最近对话记录：
+${dialogueText}
+
+请根据以上信息，返回更新后的完整认知卡JSON：
+{
+  "userProfile": "用户的基本信息，包括名字、性格、职业等已知信息",
+  "keyEvents": ["按时间顺序列出重大事件，每项不超过30字，最多保留10条"],
+  "relationshipStage": "当前关系阶段的一句话描述",
+  "emotionalState": "用户当前的情绪状态",
+  "taboos": ["敏感话题或禁忌列表"],
+  "lastTone": "最近几轮对话的情感基调"
+}`,
+                        },
+                    ],
+                }),
+                signal: AbortSignal.timeout(30000),
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const data = await response.json();
+            const aiResponse = (data.choices?.[0]?.message?.content || '').trim();
+
+            // 安全的 JSON 解析
+            const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                try {
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    // 校验基本字段存在
+                    if (typeof parsed === 'object' && parsed !== null) {
+                        role.memoryCard = {
+                            userProfile: parsed.userProfile || '',
+                            keyEvents: Array.isArray(parsed.keyEvents) ? parsed.keyEvents.slice(0, 10) : [],
+                            relationshipStage: parsed.relationshipStage || '',
+                            emotionalState: parsed.emotionalState || '',
+                            taboos: Array.isArray(parsed.taboos) ? parsed.taboos : [],
+                            lastTone: parsed.lastTone || '',
+                            updatedAt: Date.now(),
+                        };
+                        saveData();
+                        console.log('[MemoryCard] ✅ 认知卡已更新');
+                    }
+                } catch (parseErr) {
+                    console.warn('[MemoryCard] JSON 解析失败:', parseErr.message);
+                }
+            } else {
+                console.warn('[MemoryCard] AI 返回无法提取 JSON:', aiResponse.slice(0, 100));
+            }
+        } catch (err) {
+            console.warn('[MemoryCard] 更新失败:', err.message);
+        } finally {
+            bgTask.done();
+            isUpdatingCard = false;
+            releaseBackgroundLock();
+        }
+    }
+
+    /**
+     * 📡 主入口：AI 回复完成后调用，自动判断是否触发章节摘要 / 认知卡更新
+     * @param {Object} role - 当前角色对象
+     * @param {Array} allMessages - 完整消息列表
+     */
+    function checkAndTriggerMemorySystems(role, allMessages) {
+        if (!role || !allMessages || allMessages.length < 5) return;
+        if (!globalSettings.enableSmartAnalysis) return;
+
+        const totalMessages = allMessages.length;
+        const windowSize = role.memoryWindow || 15;
+
+        // ---- 判断 1：是否需要生成章节摘要 ----
+        // 窗口外的消息中，已归档的消息数
+        const archivedCount = (role.chapterSummaries || [])
+            .reduce((sum, c) => sum + c.messageCount, 0);
+        // 窗口外的总消息数
+        const outsideWindow = Math.max(0, totalMessages - windowSize);
+        // 未归档的消息数
+        const unarchived = outsideWindow - archivedCount;
+
+        if (unarchived >= CHAPTER_TRIGGER_COUNT && !isBackgroundLocked()) {
+            const start = archivedCount;
+            const end = start + CHAPTER_TRIGGER_COUNT;
+            const messagesToArchive = allMessages.slice(start, end);
+            triggerChapterSummary(role, messagesToArchive).catch(() => { });
+        }
+
+        // ---- 判断 2：是否需要更新认知卡 ----
+        const lastCardUpdate = role.memoryCard?.updatedAt || 0;
+        const timeSinceUpdate = Date.now() - lastCardUpdate;
+        // 每 15 条消息 或 距上次更新超过 30 分钟 时触发
+        const messagesSinceUpdate = totalMessages - (role._lastCardMessageCount || 0);
+
+        if (messagesSinceUpdate >= MEMORY_CARD_INTERVAL || (timeSinceUpdate > 30 * 60 * 1000 && totalMessages > 5)) {
+            role._lastCardMessageCount = totalMessages;
+            // 延迟 2 秒执行，避免和章节摘要抢锁
+            setTimeout(() => {
+                if (!isBackgroundLocked()) {
+                    const recent = allMessages.slice(-30);
+                    triggerMemoryCardUpdate(role, recent).catch(() => { });
+                }
+            }, 2000);
+        }
+    }
+
     return {
         isMessagePinned,
         toggleMessagePin,
@@ -352,5 +633,9 @@ ${rawContent}`;
         toggleMemoryExpand,
         refineMemoryWithAI,
         checkAndCompressMemories,
+        // v6.0 三层记忆
+        triggerChapterSummary,
+        triggerMemoryCardUpdate,
+        checkAndTriggerMemorySystems,
     };
 }

@@ -1,0 +1,246 @@
+:root {
+  --decor-quote-color: rgba(220, 120, 160, 0.6);
+  --decor-role-label-color: rgba(255, 255, 255, 0.4);
+  --decor-role-label-size: 11px;
+  --decor-role-label-spacing: 1.8px;
+  --decor-time-color: rgba(255, 255, 255, 0.22);
+  --decor-time-hover-color: rgba(255, 255, 255, 0.44);
+  --decor-divider-gradient: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.4) 30%, rgba(251, 191, 36, 0.4) 70%, transparent);
+  --decor-divider-label-color: rgba(251, 191, 36, 0.9);
+  --decor-divider-label-shadow: 0 0 10px rgba(251, 191, 36, 0.24);
+
+  --decor-assistant-border: 1px solid rgba(255, 255, 255, 0.08);
+  --decor-assistant-shadow: none;
+  --decor-assistant-bottom-line: none;
+  --decor-assistant-glow: rgba(255, 110, 160, 0.06);
+
+  --decor-user-border: 1px solid rgba(255, 255, 255, 0.12);
+  --decor-user-shadow: none;
+  --decor-user-right-line: none;
+  --decor-user-bottom-line: none;
+
+  --decor-inner-bg: rgba(255, 255, 255, 0.05);
+  --decor-inner-border: rgba(255, 255, 255, 0.12);
+  --decor-inner-line: rgba(255, 255, 255, 0.22);
+  --decor-inner-text-color: rgba(255, 255, 255, 0.6);
+  --decor-inner-icon-opacity: 0.55;
+  --decor-inner-tail-bg: rgba(255, 255, 255, 0.06);
+  --interactive-hover-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  --interactive-selected-outline: rgba(255, 255, 255, 0.26);
+  --interactive-latest-glow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --chrome-header-bg: linear-gradient(135deg, rgba(20, 28, 50, 0.92), rgba(14, 22, 42, 0.96));
+  --chrome-header-border: rgba(255, 255, 255, 0.12);
+  --chrome-header-text: rgba(245, 248, 255, 0.94);
+  --chrome-header-subtext: rgba(210, 220, 242, 0.68);
+  --chrome-header-btn-hover-bg: rgba(255, 255, 255, 0.1);
+  --chrome-footer-bg: linear-gradient(135deg, rgba(20, 28, 50, 0.9), rgba(14, 22, 42, 0.94));
+  --chrome-footer-border: rgba(255, 255, 255, 0.12);
+  --chrome-input-bg: rgba(24, 30, 48, 0.75);
+  --chrome-input-border: rgba(255, 255, 255, 0.12);
+  --chrome-input-focus-border: rgba(129, 159, 232, 0.46);
+  --chrome-input-text: rgba(245, 248, 255, 0.9);
+  --chrome-input-placeholder: rgba(192, 204, 230, 0.5);
+}
+
+.chat-style-clear,
+.chrome-style-clear {
+  --decor-role-label-color: rgba(107, 159, 255, 0.4);
+  --decor-role-label-size: 10px;
+  --decor-role-label-spacing: 1.8px;
+  --decor-time-color: rgba(170, 188, 236, 0.3);
+  --decor-time-hover-color: rgba(190, 208, 248, 0.5);
+  --decor-divider-gradient: linear-gradient(90deg, transparent, rgba(107, 159, 255, 0.38) 30%, rgba(107, 159, 255, 0.38) 70%, transparent);
+  --decor-divider-label-color: rgba(130, 176, 255, 0.84);
+  --decor-divider-label-shadow: 0 0 8px rgba(107, 159, 255, 0.2);
+
+  --decor-assistant-border: 1px solid rgba(255, 255, 255, 0.07);
+  --decor-assistant-shadow: none;
+
+  --decor-user-border: 1px solid rgba(107, 159, 255, 0.18);
+  --decor-user-shadow: none;
+
+  --decor-inner-bg: rgba(100, 130, 220, 0.07);
+  --decor-inner-border: rgba(100, 130, 220, 0.14);
+  --decor-inner-text-color: rgba(140, 170, 255, 0.58);
+  --decor-inner-icon-opacity: 0.6;
+  --decor-inner-tail-bg: rgba(100, 130, 220, 0.07);
+  --interactive-hover-shadow: 0 6px 18px rgba(50, 90, 180, 0.16);
+  --interactive-selected-outline: rgba(125, 170, 255, 0.38);
+  --interactive-latest-glow: 0 0 0 1px rgba(107, 159, 255, 0.24);
+  --chrome-header-bg: linear-gradient(135deg, rgba(18, 30, 58, 0.92), rgba(12, 22, 44, 0.96));
+  --chrome-header-border: rgba(107, 159, 255, 0.26);
+  --chrome-header-text: rgba(234, 242, 255, 0.95);
+  --chrome-header-subtext: rgba(180, 204, 245, 0.7);
+  --chrome-header-btn-hover-bg: rgba(107, 159, 255, 0.16);
+  --chrome-footer-bg: linear-gradient(135deg, rgba(18, 30, 58, 0.9), rgba(12, 22, 44, 0.94));
+  --chrome-footer-border: rgba(107, 159, 255, 0.24);
+  --chrome-input-bg: rgba(20, 34, 64, 0.74);
+  --chrome-input-border: rgba(107, 159, 255, 0.24);
+  --chrome-input-focus-border: rgba(129, 176, 255, 0.52);
+  --chrome-input-text: rgba(236, 244, 255, 0.92);
+  --chrome-input-placeholder: rgba(174, 198, 242, 0.56);
+}
+
+.chat-style-misty,
+.chrome-style-misty {
+  --decor-quote-color: rgba(200, 168, 120, 0.5);
+  --decor-role-label-color: rgba(200, 168, 120, 0.36);
+  --decor-role-label-size: 11px;
+  --decor-role-label-spacing: 2.6px;
+  --decor-time-color: rgba(200, 168, 120, 0.24);
+  --decor-time-hover-color: rgba(220, 190, 145, 0.44);
+  --decor-divider-gradient: linear-gradient(90deg, transparent, rgba(200, 168, 120, 0.38) 30%, rgba(200, 168, 120, 0.38) 70%, transparent);
+  --decor-divider-label-color: rgba(218, 188, 140, 0.84);
+  --decor-divider-label-shadow: 0 0 8px rgba(200, 168, 120, 0.2);
+
+  --decor-assistant-border: none;
+  --decor-assistant-bottom-line: 1px solid rgba(200, 168, 120, 0.07);
+  --decor-assistant-shadow: none;
+
+  --decor-user-border: none;
+  --decor-user-right-line: 1px solid rgba(200, 168, 120, 0.1);
+  --decor-user-bottom-line: 1px solid rgba(200, 168, 120, 0.05);
+  --decor-user-shadow: none;
+
+  --decor-inner-bg: none;
+  --decor-inner-border: transparent;
+  --decor-inner-line: rgba(200, 168, 120, 0.22);
+  --decor-inner-text-color: rgba(200, 168, 120, 0.42);
+  --decor-inner-icon-opacity: 0.5;
+  --interactive-hover-shadow: 0 6px 18px rgba(120, 92, 45, 0.16);
+  --interactive-selected-outline: rgba(205, 176, 130, 0.36);
+  --interactive-latest-glow: 0 0 0 1px rgba(200, 168, 120, 0.22);
+  --chrome-header-bg: linear-gradient(135deg, rgba(18, 14, 10, 0.93), rgba(12, 9, 6, 0.96));
+  --chrome-header-border: rgba(200, 168, 120, 0.24);
+  --chrome-header-text: rgba(246, 232, 206, 0.92);
+  --chrome-header-subtext: rgba(214, 191, 156, 0.68);
+  --chrome-header-btn-hover-bg: rgba(200, 168, 120, 0.14);
+  --chrome-footer-bg: linear-gradient(135deg, rgba(18, 14, 10, 0.9), rgba(12, 9, 6, 0.94));
+  --chrome-footer-border: rgba(200, 168, 120, 0.22);
+  --chrome-input-bg: rgba(22, 17, 12, 0.76);
+  --chrome-input-border: rgba(200, 168, 120, 0.24);
+  --chrome-input-focus-border: rgba(214, 191, 156, 0.46);
+  --chrome-input-text: rgba(245, 230, 202, 0.9);
+  --chrome-input-placeholder: rgba(200, 168, 120, 0.5);
+}
+
+.chat-style-day,
+.chrome-style-day {
+  --decor-quote-color: rgba(200, 168, 120, 0.5);
+  --decor-role-label-color: rgba(139, 115, 85, 0.44);
+  --decor-role-label-size: 11px;
+  --decor-role-label-spacing: 1.8px;
+  --decor-time-color: rgba(0, 0, 0, 0.17);
+  --decor-time-hover-color: rgba(0, 0, 0, 0.34);
+  --decor-divider-gradient: linear-gradient(90deg, transparent, rgba(139, 115, 85, 0.34) 30%, rgba(139, 115, 85, 0.34) 70%, transparent);
+  --decor-divider-label-color: rgba(139, 115, 85, 0.86);
+  --decor-divider-label-shadow: none;
+
+  --decor-assistant-border: 1px solid rgba(0, 0, 0, 0.07);
+  --decor-assistant-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+
+  --decor-user-border: 1px solid rgba(139, 115, 85, 0.14);
+  --decor-user-shadow: none;
+
+  --decor-inner-bg: rgba(139, 115, 85, 0.05);
+  --decor-inner-border: rgba(139, 115, 85, 0.13);
+  --decor-inner-text-color: rgba(100, 80, 50, 0.48);
+  --decor-inner-icon-opacity: 0.45;
+  --decor-inner-tail-bg: rgba(139, 115, 85, 0.05);
+  --interactive-hover-shadow: 0 6px 14px rgba(70, 56, 37, 0.12);
+  --interactive-selected-outline: rgba(139, 115, 85, 0.32);
+  --interactive-latest-glow: 0 0 0 1px rgba(139, 115, 85, 0.16);
+  --chrome-header-bg: linear-gradient(135deg, rgba(243, 238, 229, 0.96), rgba(239, 232, 220, 0.98));
+  --chrome-header-border: rgba(139, 115, 85, 0.24);
+  --chrome-header-text: rgba(70, 54, 36, 0.9);
+  --chrome-header-subtext: rgba(108, 86, 62, 0.72);
+  --chrome-header-btn-hover-bg: rgba(139, 115, 85, 0.12);
+  --chrome-footer-bg: linear-gradient(135deg, rgba(243, 238, 229, 0.94), rgba(239, 232, 220, 0.96));
+  --chrome-footer-border: rgba(139, 115, 85, 0.22);
+  --chrome-input-bg: rgba(255, 255, 255, 0.84);
+  --chrome-input-border: rgba(139, 115, 85, 0.22);
+  --chrome-input-focus-border: rgba(139, 115, 85, 0.42);
+  --chrome-input-text: rgba(66, 50, 33, 0.88);
+  --chrome-input-placeholder: rgba(124, 102, 76, 0.54);
+}
+
+.chat-style-loveDark,
+.chrome-style-loveDark {
+  --decor-quote-color: rgba(220, 120, 160, 0.6);
+  --decor-role-label-color: rgba(255, 110, 160, 0.36);
+  --decor-role-label-size: 10px;
+  --decor-role-label-spacing: 1.8px;
+  --decor-time-color: rgba(255, 140, 180, 0.26);
+  --decor-time-hover-color: rgba(255, 170, 205, 0.44);
+  --decor-divider-gradient: linear-gradient(90deg, transparent, rgba(255, 110, 160, 0.34) 30%, rgba(255, 110, 160, 0.34) 70%, transparent);
+  --decor-divider-label-color: rgba(255, 148, 188, 0.84);
+  --decor-divider-label-shadow: 0 0 8px rgba(255, 110, 160, 0.2);
+
+  --decor-assistant-border: 1px solid rgba(255, 110, 160, 0.13);
+  --decor-assistant-shadow: none;
+  --decor-assistant-glow: rgba(255, 110, 160, 0.06);
+
+  --decor-user-border: 1px solid rgba(255, 255, 255, 0.08);
+  --decor-user-shadow: none;
+
+  --decor-inner-bg: rgba(255, 110, 160, 0.06);
+  --decor-inner-border: rgba(255, 110, 160, 0.13);
+  --decor-inner-text-color: rgba(255, 160, 200, 0.52);
+  --decor-inner-icon-opacity: 0.55;
+  --decor-inner-tail-bg: rgba(255, 110, 160, 0.06);
+  --interactive-hover-shadow: 0 7px 18px rgba(100, 30, 70, 0.2);
+  --interactive-selected-outline: rgba(255, 140, 190, 0.38);
+  --interactive-latest-glow: 0 0 0 1px rgba(255, 110, 160, 0.22);
+  --chrome-header-bg: linear-gradient(135deg, rgba(19, 13, 20, 0.96), rgba(16, 10, 18, 0.98));
+  --chrome-header-border: rgba(255, 110, 160, 0.2);
+  --chrome-header-text: rgba(255, 231, 243, 0.9);
+  --chrome-header-subtext: rgba(255, 185, 214, 0.64);
+  --chrome-header-btn-hover-bg: rgba(255, 110, 160, 0.13);
+  --chrome-footer-bg: linear-gradient(135deg, rgba(19, 13, 20, 0.94), rgba(16, 10, 18, 0.96));
+  --chrome-footer-border: rgba(255, 110, 160, 0.2);
+  --chrome-input-bg: rgba(34, 18, 30, 0.76);
+  --chrome-input-border: rgba(255, 110, 160, 0.22);
+  --chrome-input-focus-border: rgba(255, 140, 190, 0.46);
+  --chrome-input-text: rgba(255, 228, 241, 0.88);
+  --chrome-input-placeholder: rgba(255, 174, 207, 0.5);
+}
+
+.chat-style-loveLight,
+.chrome-style-loveLight {
+  --decor-quote-color: rgba(220, 120, 160, 0.6);
+  --decor-role-label-color: rgba(232, 105, 154, 0.4);
+  --decor-role-label-size: 11px;
+  --decor-role-label-spacing: 1.8px;
+  --decor-time-color: rgba(232, 105, 154, 0.22);
+  --decor-time-hover-color: rgba(232, 105, 154, 0.38);
+  --decor-divider-gradient: linear-gradient(90deg, transparent, rgba(232, 105, 154, 0.34) 30%, rgba(232, 105, 154, 0.34) 70%, transparent);
+  --decor-divider-label-color: rgba(196, 108, 146, 0.84);
+  --decor-divider-label-shadow: none;
+
+  --decor-assistant-border: 1px solid rgba(255, 110, 160, 0.12);
+  --decor-assistant-shadow: 0 2px 10px rgba(255, 110, 160, 0.06);
+
+  --decor-user-border: 1px solid rgba(255, 110, 160, 0.13);
+  --decor-user-shadow: none;
+
+  --decor-inner-bg: rgba(255, 110, 160, 0.05);
+  --decor-inner-border: rgba(255, 110, 160, 0.12);
+  --decor-inner-text-color: rgba(220, 100, 150, 0.48);
+  --decor-inner-icon-opacity: 0.55;
+  --decor-inner-tail-bg: rgba(255, 110, 160, 0.05);
+  --interactive-hover-shadow: 0 6px 16px rgba(170, 95, 130, 0.14);
+  --interactive-selected-outline: rgba(232, 105, 154, 0.34);
+  --interactive-latest-glow: 0 0 0 1px rgba(232, 105, 154, 0.2);
+  --chrome-header-bg: linear-gradient(135deg, rgba(249, 244, 246, 0.96), rgba(246, 238, 242, 0.98));
+  --chrome-header-border: rgba(232, 105, 154, 0.2);
+  --chrome-header-text: rgba(102, 56, 77, 0.88);
+  --chrome-header-subtext: rgba(134, 84, 108, 0.68);
+  --chrome-header-btn-hover-bg: rgba(232, 105, 154, 0.11);
+  --chrome-footer-bg: linear-gradient(135deg, rgba(249, 244, 246, 0.94), rgba(246, 238, 242, 0.96));
+  --chrome-footer-border: rgba(232, 105, 154, 0.18);
+  --chrome-input-bg: rgba(255, 255, 255, 0.86);
+  --chrome-input-border: rgba(232, 105, 154, 0.2);
+  --chrome-input-focus-border: rgba(232, 105, 154, 0.4);
+  --chrome-input-text: rgba(90, 50, 68, 0.86);
+  --chrome-input-placeholder: rgba(156, 102, 129, 0.52);
+}
