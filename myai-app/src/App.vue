@@ -12,6 +12,7 @@ import { useDiary } from './composables/useDiary';
 import { useActiveMessage } from './composables/useActiveMessage';
 import { useBackgroundTasks } from './composables/useBackgroundTasks';
 import { extractExpression, parseDualLayerResponse } from './utils/textParser';
+import { STYLE_QUICK_TAGS, WRITING_STYLE_PRESETS } from './composables/presets';
 
 // Import Components
 import ChatWindow from './components/ChatWindow.vue';
@@ -348,6 +349,33 @@ const currentMatchIndex = ref(0);
 
 // v5.9: 跟踪 AI 生成角色的待定状态，关闭设置时清理空角色
 const pendingAiRoleId = ref(null);
+
+// v6.1: 风格调整面板状态
+const showStylePanel = ref(false);
+const customDirective = ref('');
+
+function addStyleDirective(directive) {
+  if (!currentRole.value) return;
+  if (!currentRole.value.styleDirectives) currentRole.value.styleDirectives = [];
+  // 避免重复添加
+  if (!currentRole.value.styleDirectives.includes(directive)) {
+    currentRole.value.styleDirectives.push(directive);
+    saveData();
+  }
+}
+
+function removeStyleDirective(index) {
+  if (!currentRole.value?.styleDirectives) return;
+  currentRole.value.styleDirectives.splice(index, 1);
+  saveData();
+}
+
+function addCustomStyleDirective() {
+  const text = customDirective.value.trim();
+  if (!text) return;
+  addStyleDirective(text);
+  customDirective.value = '';
+}
 
 const searchResults = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
@@ -908,7 +936,67 @@ function handleAvatarError(type, roleId) {
       <!-- 底部输入区域（单聊） -->
       <footer class="glass-strong bg-glass-dark border-t border-white/10 p-3 flex-shrink-0"
               :class="'chrome-style-' + (globalSettings.rpTextStyle || 'clear')">
+
+        <!-- 🎨 风格调整面板（向上弹出） -->
+        <div class="relative">
+          <Transition name="cmd-pop">
+            <div v-if="showStylePanel" class="style-adjust-panel">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-200">🎨 风格调整</span>
+                <button @click="showStylePanel = false" class="text-gray-400 hover:text-white transition text-xs">✖</button>
+              </div>
+              <!-- 当前角色风格模板提示 -->
+              <div v-if="currentRole.writingStyle" class="style-template-hint">
+                <span>🎨</span>
+                <span>当前模板：{{ WRITING_STYLE_PRESETS.find(s => s.id === currentRole.writingStyle)?.label || '未知' }}</span>
+              </div>
+              <!-- 快捷标签 -->
+              <div class="text-xs text-gray-500 mb-1.5">快捷调整</div>
+              <div class="flex flex-wrap gap-1.5 mb-3">
+                <button v-for="tag in STYLE_QUICK_TAGS" :key="tag.label"
+                        @click="addStyleDirective(tag.directive)"
+                        class="style-tag-btn"
+                        :class="{ active: currentRole.styleDirectives?.includes(tag.directive) }">
+                  {{ tag.label }}
+                </button>
+              </div>
+              <!-- 自定义指令 -->
+              <div class="text-xs text-gray-500 mb-1.5">自定义指令</div>
+              <div class="flex space-x-2 mb-3">
+                <input v-model="customDirective"
+                       @keydown.enter.prevent="addCustomStyleDirective"
+                       placeholder="例如：多用短句，不要铺垫"
+                       class="flex-1 glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 text-sm outline-none border border-white/10 focus:border-primary transition" />
+                <button @click="addCustomStyleDirective"
+                        :disabled="!customDirective.trim()"
+                        class="px-3 py-2 rounded-lg bg-primary hover:bg-indigo-600 transition text-sm text-white disabled:opacity-40">
+                  添加
+                </button>
+              </div>
+              <!-- 已激活的指令列表 -->
+              <div v-if="currentRole.styleDirectives?.length > 0">
+                <div class="text-xs text-gray-500 mb-1.5">已激活 ({{ currentRole.styleDirectives.length }})</div>
+                <div class="style-directives-list">
+                  <div v-for="(d, i) in currentRole.styleDirectives" :key="i" class="style-directive-item">
+                    <span class="style-directive-text">{{ d }}</span>
+                    <button @click="removeStyleDirective(i)" class="style-directive-remove">✖</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Transition>
+          <!-- 点击外部关闭 -->
+          <div v-if="showStylePanel" class="fixed inset-0 z-30" @click="showStylePanel = false"></div>
+        </div>
+
         <form @submit.prevent="sendMessageWithSound" class="flex items-end space-x-2">
+          <!-- 🎨 风格调整按钮 -->
+          <button type="button" @click="showStylePanel = !showStylePanel"
+                  class="style-adjust-btn flex-shrink-0"
+                  :class="{ active: showStylePanel || (currentRole.styleDirectives?.length > 0) }"
+                  title="风格调整">
+            🎨
+          </button>
           <div class="flex-1 relative">
             <textarea ref="inputArea" v-model="userInput"
                       @keydown.enter.exact.prevent="sendMessageWithSound"
@@ -961,6 +1049,7 @@ function handleAvatarError(type, roleId) {
         @update-affinity="groupChat.updateAffinity"
         @skip-current-role="groupChat.skipCurrentRole"
         @continue-multi-round="groupChat.continueMultiRound"
+        @update-group-style-directives="(dirs) => { if (groupChat.currentGroup.value) { groupChat.currentGroup.value.styleDirectives = dirs; groupChat.saveGroups(); } }"
       />
     </template>
 

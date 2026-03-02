@@ -260,7 +260,16 @@ export function parseDualLayerResponse(rawText) {
             content = content.substring(0, thinkStart) + content.substring(thinkEnd + 8);
             content = content.trim();
         }
+    } else if (thinkEnd !== -1) {
+        // 🛡️ v6.1 FIX: 没有 <think> 但有 </think> — R1 模型有时省略开头标签
+        // 将 </think> 之前的所有内容视为 reasoning，之后的才是正文
+        reasoning = content.substring(0, thinkEnd).trim();
+        content = content.substring(thinkEnd + 8).trim();
     }
+
+    // 🛡️ 清理可能残留的孤立 </think> 标签
+    content = content.replace(/<\/think>/gi, '').trim();
+
 
     // === 第零道关卡：表情标签提取（只从 think 之外的正文提取，更准确）===
     const exprResult = extractExpression(content);

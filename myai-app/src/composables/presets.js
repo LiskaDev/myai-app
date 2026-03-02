@@ -1,5 +1,84 @@
 import { generateUUID } from '../utils/uuid';
 
+// ============== 写作风格模板 ==============
+export const WRITING_STYLE_PRESETS = [
+    {
+        id: 'adventure',
+        icon: '🗡️',
+        label: '热血冒险',
+        description: '短句、快节奏、强感官刺激',
+        prompt: `[WRITING STYLE DIRECTIVE — ACTION/ADVENTURE]
+写作必须遵循以下风格规则：
+1. 大量使用短句和碎句，营造紧迫感和速度感。句子节奏快，像心跳一样密集
+2. 动作描写要有冲击力：用强烈的动词、具体的身体感受（疼痛、肾上腺素、风声）
+3. 环境描写侧重危险感知：气味、温度骤变、地面震动、远处的爆炸声
+4. 对话精炼有力，角色在紧张时不会说长句子。可以有断句、省略、喘息
+5. 每段结尾制造悬念或紧迫感，让读者想继续往下看
+6. 内心活动用直觉式的闪念，不要长篇分析
+[CRITICAL] Use punchy, visceral prose. Short sentences. Strong verbs. Sensory overload. Every paragraph should feel like forward momentum.
+[/WRITING STYLE DIRECTIVE]`,
+    },
+    {
+        id: 'emotion',
+        icon: '💕',
+        label: '细腻情感',
+        description: '通过细节暗示情绪，克制而有张力',
+        prompt: `[WRITING STYLE DIRECTIVE — EMOTIONAL/ROMANTIC]
+写作必须遵循以下风格规则：
+1. 不直接写"他很伤心"，而是通过细节暗示：攥紧的衣角、移开的视线、突然变轻的声音
+2. 关键情感转折要留白——在最该说出口的时候沉默，用省略号和动作代替台词
+3. 注意微表情和小动作：眼神的闪烁、不自然的笑、指尖的颤抖、刻意的距离感
+4. 节奏慢下来，一个眼神交汇可以写一整段。时间在情感浓烈时变慢
+5. 环境映射情绪：下雨暗示忧伤、黄昏暗示离别、花开暗示心动
+6. 对话要有潜台词，角色说的和想的经常不一样
+[CRITICAL] Show emotions through subtle details, not declarations. Restraint creates tension. Let silences speak louder than words. Every gesture carries meaning.
+[/WRITING STYLE DIRECTIVE]`,
+    },
+    {
+        id: 'healing',
+        icon: '🌙',
+        label: '治愈日常',
+        description: '温柔、慢节奏、生活气息',
+        prompt: `[WRITING STYLE DIRECTIVE — HEALING/SLICE-OF-LIFE]
+写作必须遵循以下风格规则：
+1. 节奏舒缓温柔，像午后的阳光一样不急不躁。多用长句和并列句
+2. 注重生活细节的描写：茶杯上的水汽、窗台上晒太阳的猫、远处传来的钢琴声
+3. 角色互动要自然温暖：不经意的照顾、小小的默契、共享的沉默
+4. 食物和季节是重要元素：早餐的味道、换季时的感慨、节日的小仪式
+5. 制造小确幸的瞬间：偶然的巧合、意外的惊喜、平凡中的美好
+6. 避免激烈冲突，即使有矛盾也用温和的方式化解
+[CRITICAL] Write with warmth and gentleness. Focus on small, beautiful moments in everyday life. Pace should feel like a warm breeze — unhurried, comforting, present.
+[/WRITING STYLE DIRECTIVE]`,
+    },
+    {
+        id: 'suspense',
+        icon: '🔪',
+        label: '悬疑暗黑',
+        description: '信息不对称、氛围压抑、留白多',
+        prompt: `[WRITING STYLE DIRECTIVE — SUSPENSE/DARK]
+写作必须遵循以下风格规则：
+1. 永远比读者多知道一点，但永远不揭晓全部。用暗示代替直述
+2. 环境描写侧重阴暗面：昏暗的灯光、过长的走廊、不合时宜的安静
+3. 角色的言行要有"违和感"——微笑时眼睛没有笑、热情的话语配上冰冷的语调
+4. 节奏时快时慢：长段的铺垫后突然一句话的转折。制造"什么不对劲"的感觉
+5. 大量使用留白和省略，让读者自己脑补恐惧。暗示比直接描述更可怕
+6. 信息碎片化呈现，不断制造新疑问，每回答一个问题就产生两个新问题
+[CRITICAL] Create unease through implication, not exposition. Information asymmetry is your weapon. Every scene should feel slightly wrong. Let silence be the loudest sound.
+[/WRITING STYLE DIRECTIVE]`,
+    },
+];
+
+// ============== 快捷风格调整标签 ==============
+export const STYLE_QUICK_TAGS = [
+    { label: '🔥 更刺激', directive: '提高戏剧冲突和紧张感，动作描写更激烈，节奏更紧凑，对话更有力量' },
+    { label: '🌸 更细腻', directive: '增加细节描写，放慢节奏，通过微表情和小动作暗示情绪，不要直接说出感受' },
+    { label: '⚡ 节奏快些', directive: '缩短段落，使用短句，减少铺垫和环境描写，直接推进剧情和对话' },
+    { label: '📝 多些细节', directive: '增加环境描写、动作细节、感官描写和人物心理活动，让场景更具画面感' },
+    { label: '💬 多些对话', directive: '增加角色间的对话交流和互动，减少叙述性描写，让角色通过对话推动剧情' },
+    { label: '🎭 更有张力', directive: '增加情感张力和戏剧冲突，制造悬念和期待感，在关键时刻留白和欲言又止' },
+];
+
+
 // 预设角色列表
 export const PRESET_ROLES = [
     {
@@ -121,6 +200,9 @@ export function createNewRoleData() {
         relationship: '',    // 当前关系
         appearance: '',      // 外貌特征
         worldLogic: '',      // 世界观
+        // v6.1: 写作风格系统
+        writingStyle: '',        // 写作风格模板 ID（adventure/emotion/healing/suspense）
+        styleDirectives: [],     // 动态风格指令数组（用户在聊天中添加的）
         // v6.0: 三层记忆系统
         memoryCard: {
             updatedAt: 0,          // 上次更新时的时间戳

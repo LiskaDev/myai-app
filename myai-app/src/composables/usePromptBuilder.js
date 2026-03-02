@@ -1,6 +1,7 @@
 import { formatSummaryForPrompt } from '../utils/summary';
 import { useUserPersona } from './useUserPersona';
 import { useTimeline } from './useTimeline';
+import { WRITING_STYLE_PRESETS } from './presets';
 
 /**
  * Prompt 构建器 - 负责组装发送给 API 的消息列表
@@ -100,6 +101,17 @@ Remember: You are an actor playing a role. The USER is the co-author, not someon
                 content: `[风格指导] ${role.styleGuide}`,
             });
         }
+
+        // Step 2.5: 写作风格模板（v6.1）
+        if (role.writingStyle) {
+            const stylePreset = WRITING_STYLE_PRESETS.find(s => s.id === role.writingStyle);
+            if (stylePreset) {
+                apiMessages.push({
+                    role: 'system',
+                    content: stylePreset.prompt,
+                });
+            }
+        }
         if (role.worldLogic) {
             apiMessages.push({ role: 'system', content: `[WorldSetting] ${role.worldLogic}` });
         }
@@ -181,6 +193,15 @@ Remember: You are an actor playing a role. The USER is the co-author, not someon
             apiMessages.push({
                 role: 'system',
                 content: `[重要记忆 - 请始终记住以下内容]\n${memoryText}${omittedNote}`,
+            });
+        }
+
+        // Step 6.5: 动态风格指令（v6.1 — 用户在聊天中实时添加的写作偏好）
+        const directives = (role.styleDirectives || []).filter(d => d && d.trim());
+        if (directives.length > 0) {
+            apiMessages.push({
+                role: 'system',
+                content: `[用户写作风格偏好 — 从下一条回复开始严格遵循]\n${directives.map((d, i) => `${i + 1}. ${d}`).join('\n')}`,
             });
         }
 

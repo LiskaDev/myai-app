@@ -2,6 +2,7 @@ import { ref, computed } from 'vue';
 import { generateUUID } from '../utils/uuid';
 import { STORAGE_KEYS } from '../utils/storage';
 import { parseDualLayerResponse, formatRoleplayText, normalizeTags } from '../utils/textParser';
+import { WRITING_STYLE_PRESETS } from './presets';
 import {
     initMatrix,
     syncMatrix,
@@ -1035,6 +1036,17 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
             apiMessages.push({ role: 'system', content: `[Style] ${targetRole.speakingStyle}` });
         }
 
+        // v6.1: 注入写作风格模板（角色级别）
+        if (targetRole.writingStyle) {
+            const stylePreset = WRITING_STYLE_PRESETS.find(s => s.id === targetRole.writingStyle);
+            if (stylePreset) {
+                apiMessages.push({
+                    role: 'system',
+                    content: stylePreset.prompt,
+                });
+            }
+        }
+
         // v6.0: 注入角色独立的认知卡（群聊视角隔离 — 每个角色各自的记忆）
         const card = targetRole.memoryCard;
         if (card && (card.userProfile || (card.keyEvents || []).length > 0 || card.relationshipStage)) {
@@ -1153,6 +1165,15 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
             apiMessages.push({
                 role: 'system',
                 content: `[最终指令 - 简洁回复] 保持简短，不超过100中文字。1-2句话即可。`,
+            });
+        }
+
+        // v6.1: 注入群聊动态风格指令（存储在群聊对象上，所有角色共享）
+        const groupDirectives = (group.styleDirectives || []).filter(d => d && d.trim());
+        if (groupDirectives.length > 0) {
+            apiMessages.push({
+                role: 'system',
+                content: `[用户写作风格偏好 — 从下一条回复开始严格遵循]\n${groupDirectives.map((d, i) => `${i + 1}. ${d}`).join('\n')}`,
             });
         }
 

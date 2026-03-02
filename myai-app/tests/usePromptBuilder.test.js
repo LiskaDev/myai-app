@@ -183,4 +183,50 @@ describe('usePromptBuilder - constructPrompt', () => {
         expect(hasUser).toBe(true);
         expect(hasAssistant).toBe(true);
     });
+
+    // v6.1: 写作风格系统测试
+    it('应该注入写作风格模板指令（adventure）', async () => {
+        const appState = createMockAppState({ writingStyle: 'adventure' });
+        const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
+        const { constructPrompt } = usePromptBuilder(appState);
+
+        const messages = constructPrompt();
+        const styleMsg = messages.find(m => m.content.includes('WRITING STYLE DIRECTIVE'));
+        expect(styleMsg).toBeDefined();
+        expect(styleMsg.content).toContain('ACTION/ADVENTURE');
+    });
+
+    it('空 writingStyle 不应注入风格模板', async () => {
+        const appState = createMockAppState({ writingStyle: '' });
+        const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
+        const { constructPrompt } = usePromptBuilder(appState);
+
+        const messages = constructPrompt();
+        const styleMsg = messages.find(m => m.content.includes('WRITING STYLE DIRECTIVE'));
+        expect(styleMsg).toBeUndefined();
+    });
+
+    it('应该注入动态风格指令', async () => {
+        const appState = createMockAppState({
+            styleDirectives: ['多用短句，快节奏', '增加感官描写'],
+        });
+        const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
+        const { constructPrompt } = usePromptBuilder(appState);
+
+        const messages = constructPrompt();
+        const directiveMsg = messages.find(m => m.content.includes('写作风格偏好'));
+        expect(directiveMsg).toBeDefined();
+        expect(directiveMsg.content).toContain('多用短句');
+        expect(directiveMsg.content).toContain('增加感官描写');
+    });
+
+    it('空 styleDirectives 不应注入指令', async () => {
+        const appState = createMockAppState({ styleDirectives: [] });
+        const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
+        const { constructPrompt } = usePromptBuilder(appState);
+
+        const messages = constructPrompt();
+        const directiveMsg = messages.find(m => m.content.includes('写作风格偏好'));
+        expect(directiveMsg).toBeUndefined();
+    });
 });

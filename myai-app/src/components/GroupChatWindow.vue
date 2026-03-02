@@ -3,6 +3,7 @@ import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
 import { parseDualLayerResponse, extractExpression } from '../utils/textParser';
 import RelationshipRadar from './RelationshipRadar.vue';
+import { STYLE_QUICK_TAGS } from '../composables/presets';
 
 const props = defineProps({
     messages: { type: Array, default: () => [] },
@@ -35,6 +36,7 @@ const emit = defineEmits([
     'update-affinity',
     'skip-current-role',
     'continue-multi-round',
+    'update-group-style-directives',
 ]);
 
 const containerRef = ref(null);
@@ -77,6 +79,42 @@ const showEventPanel = ref(false);
 const showCommandMenu = ref(false);
 const customEventText = ref('');
 const showRelationshipPanel = ref(false);
+const showGroupStylePanel = ref(false);
+const groupCustomDirective = ref('');
+
+// v6.1: 群聊风格指令管理
+function addGroupStyleDirective(directive) {
+  const group = props.currentGroup;
+  if (!group) return;
+  if (!group.styleDirectives) group.styleDirectives = [];
+  if (!group.styleDirectives.includes(directive)) {
+    group.styleDirectives.push(directive);
+    emit('update-group-style-directives', [...group.styleDirectives]);
+  }
+}
+
+function removeGroupStyleDirective(index) {
+  const group = props.currentGroup;
+  if (!group?.styleDirectives) return;
+  group.styleDirectives.splice(index, 1);
+  emit('update-group-style-directives', [...group.styleDirectives]);
+}
+
+function addGroupCustomDirective() {
+  const text = groupCustomDirective.value.trim();
+  if (!text) return;
+  addGroupStyleDirective(text);
+  groupCustomDirective.value = '';
+}
+
+function toggleGroupStylePanel() {
+  showGroupStylePanel.value = !showGroupStylePanel.value;
+  if (showGroupStylePanel.value) {
+    showEventPanel.value = false;
+    showWhisperPanel.value = false;
+    showRelationshipPanel.value = false;
+  }
+}
 
 const WORLD_EVENTS = [
     { category: '☁️ 天气', items: [
@@ -814,6 +852,45 @@ onUnmounted(() => removeFloatingHearts());
                 />
             </div>
 
+            <!-- 🎨 群聊风格调整面板 -->
+            <div v-if="showGroupStylePanel"
+                 class="absolute bottom-full left-0 right-0 mb-2 style-adjust-panel z-10">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-200">🎨 群聊风格调整</span>
+                <button @click="showGroupStylePanel = false" class="text-gray-400 hover:text-white transition text-xs">✖</button>
+              </div>
+              <div class="text-xs text-gray-500 mb-1.5">快捷调整</div>
+              <div class="flex flex-wrap gap-1.5 mb-3">
+                <button v-for="tag in STYLE_QUICK_TAGS" :key="tag.label"
+                        @click="addGroupStyleDirective(tag.directive)"
+                        class="style-tag-btn"
+                        :class="{ active: currentGroup?.styleDirectives?.includes(tag.directive) }">
+                  {{ tag.label }}
+                </button>
+              </div>
+              <div class="text-xs text-gray-500 mb-1.5">自定义指令</div>
+              <div class="flex space-x-2 mb-3">
+                <input v-model="groupCustomDirective"
+                       @keydown.enter.prevent="addGroupCustomDirective"
+                       placeholder="例如：多用短句，不要铺垫"
+                       class="flex-1 glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 text-sm outline-none border border-white/10 focus:border-primary transition" />
+                <button @click="addGroupCustomDirective"
+                        :disabled="!groupCustomDirective.trim()"
+                        class="px-3 py-2 rounded-lg bg-primary hover:bg-indigo-600 transition text-sm text-white disabled:opacity-40">
+                  添加
+                </button>
+              </div>
+              <div v-if="currentGroup?.styleDirectives?.length > 0">
+                <div class="text-xs text-gray-500 mb-1.5">已激活 ({{ currentGroup.styleDirectives.length }})</div>
+                <div class="style-directives-list">
+                  <div v-for="(d, i) in currentGroup.styleDirectives" :key="i" class="style-directive-item">
+                    <span class="style-directive-text">{{ d }}</span>
+                    <button @click="removeGroupStyleDirective(i)" class="style-directive-remove">✖</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- 主输入行：⚡ + textarea + 发送/停止 -->
             <form @submit.prevent="handleSend" class="flex items-end space-x-2">
                 <!-- ⚡ 命令菜单包裹器 -->
@@ -838,6 +915,9 @@ onUnmounted(() => removeFloatingHearts());
                             </button>
                             <button class="cmd-menu-item" @click="toggleRelationshipPanel(); showCommandMenu = false;">
                                 <span>📊</span><span>关系雷达</span>
+                            </button>
+                            <button class="cmd-menu-item" @click="toggleGroupStylePanel(); showCommandMenu = false;">
+                                <span>🎨</span><span>风格调整</span>
                             </button>
                             <div class="cmd-menu-divider"></div>
                             <button v-for="p in participants" :key="p.id"

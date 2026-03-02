@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onBeforeUnmount } from 'vue';
 import { generateRoleFromDescription } from '../../composables/useRoleGenerator';
+import { WRITING_STYLE_PRESETS } from '../../composables/presets';
 
 const props = defineProps({
   currentRole: Object,
@@ -149,6 +150,39 @@ defineExpose({ cancelGeneration });
         <textarea v-model="currentRole.firstMessage" rows="2" 
                   placeholder="例如：你好，旅行者。在这个数字世界里，没有什么是我无法破解的..."
                   class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-secondary transition resize-none text-shadow-light"></textarea>
+      </div>
+
+      <!-- 🎨 写作风格模板 -->
+      <div class="basic-field">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-base">🎨</span>
+          <label class="text-sm text-gray-200 font-medium">写作风格</label>
+          <div class="tooltip-trigger relative group ml-auto">
+            <span class="cursor-help text-gray-500 hover:text-gray-300 text-xs">❓</span>
+            <div class="tooltip-content">
+              选择一种写作风格模板，AI 会自动调整回复的节奏、语言和氛围
+            </div>
+          </div>
+        </div>
+        <div class="writing-style-grid">
+          <button class="writing-style-option"
+                  :class="{ active: !currentRole.writingStyle }"
+                  @click="currentRole.writingStyle = ''">
+            <span class="ws-icon">✨</span>
+            <span class="ws-label">默认</span>
+          </button>
+          <button v-for="preset in WRITING_STYLE_PRESETS" :key="preset.id"
+                  class="writing-style-option"
+                  :class="{ active: currentRole.writingStyle === preset.id }"
+                  @click="currentRole.writingStyle = preset.id"
+                  :title="preset.description">
+            <span class="ws-icon">{{ preset.icon }}</span>
+            <span class="ws-label">{{ preset.label }}</span>
+          </button>
+        </div>
+        <p v-if="currentRole.writingStyle" class="text-xs text-gray-500 mt-1.5" style="padding-left: 2px;">
+          {{ WRITING_STYLE_PRESETS.find(s => s.id === currentRole.writingStyle)?.description }}
+        </p>
       </div>
 
       <!-- 💡 新角色引导提示 -->
@@ -300,5 +334,49 @@ defineExpose({ cancelGeneration });
 
 @keyframes ai-spin {
   to { transform: rotate(360deg); }
+}
+
+/* 🎨 Writing Style Selector */
+.writing-style-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.writing-style-option {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(200, 200, 220, 0.8);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.writing-style-option:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.08);
+  color: rgba(220, 220, 240, 1);
+}
+
+.writing-style-option.active {
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.15);
+  color: white;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.15);
+}
+
+.ws-icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.ws-label {
+  font-weight: 500;
 }
 </style>
