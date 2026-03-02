@@ -1,5 +1,8 @@
 ﻿@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500&display=swap');
 @import "tailwindcss";
+@import "./styles/tokens.css";
+@import "./styles/theme-tokens.css";
+@import "./styles/decor-tokens.css";
 
 @theme {
   --color-primary: #6366f1;
@@ -1704,6 +1707,70 @@ footer {
     transform: translateY(-120vh) rotate(15deg);
     opacity: 0;
   }
+}
+
+/* ════════════════════════════════════════
+   Chrome (header / footer / input) 风格适配
+   消费 decor-tokens.css 中的 --chrome-* 变量
+   ════════════════════════════════════════ */
+
+/* Header: 用三类选择器确保胜过 .bg-glass-dark */
+[class*="chrome-style-"].bg-glass-dark.header-bar {
+  background: var(--chrome-header-bg) !important;
+  border-bottom-color: var(--chrome-header-border) !important;
+  color: var(--chrome-header-text);
+  transition: background 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+}
+
+[class*="chrome-style-"].header-bar .header-title {
+  color: var(--chrome-header-text);
+}
+
+[class*="chrome-style-"].header-bar p {
+  color: var(--chrome-header-subtext) !important;
+}
+
+[class*="chrome-style-"].header-bar .header-action-btn {
+  color: var(--chrome-header-text);
+}
+
+[class*="chrome-style-"].header-bar .header-action-btn:hover {
+  background: var(--chrome-header-btn-hover-bg) !important;
+}
+
+[class*="chrome-style-"].header-bar svg {
+  color: var(--chrome-header-text);
+  stroke: currentColor;
+}
+
+[class*="chrome-style-"]+.token-pressure-bar,
+[class*="chrome-style-"].header-bar~.token-pressure-bar {
+  background: var(--chrome-header-border);
+}
+
+/* Footer: 同样用三类高优先级选择器 */
+footer[class*="chrome-style-"].bg-glass-dark {
+  background: var(--chrome-footer-bg) !important;
+  border-top-color: var(--chrome-footer-border) !important;
+  transition: background 0.35s ease, border-color 0.35s ease;
+}
+
+/* Input textarea */
+footer[class*="chrome-style-"] textarea {
+  background: var(--chrome-input-bg) !important;
+  border-color: var(--chrome-input-border) !important;
+  color: var(--chrome-input-text) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: background 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+}
+
+footer[class*="chrome-style-"] textarea::placeholder {
+  color: var(--chrome-input-placeholder) !important;
+}
+
+footer[class*="chrome-style-"] textarea:focus {
+  border-color: var(--chrome-input-focus-border) !important;
 }
 
 /* === Base fallback (no style class) - use Simple === */

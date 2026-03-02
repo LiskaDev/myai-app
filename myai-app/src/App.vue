@@ -746,7 +746,8 @@ function handleAvatarError(type, roleId) {
   <div id="app" class="h-full flex flex-col relative">
 
     <!-- 顶部导航栏 -->
-    <header class="glass-strong bg-glass-dark px-4 py-3 flex items-center justify-between border-b border-white/10 flex-shrink-0 z-20 header-bar">
+    <header class="glass-strong bg-glass-dark px-4 py-3 flex items-center justify-between border-b border-white/10 flex-shrink-0 z-20 header-bar"
+            :class="'chrome-style-' + (globalSettings.rpTextStyle || 'clear')">
       <div class="flex items-center space-x-3 min-w-0 flex-1">
         <button @click="showSidebar = !showSidebar" class="p-2 rounded-full hover:bg-white/10 transition flex-shrink-0">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -902,7 +903,8 @@ function handleAvatarError(type, roleId) {
       />
 
       <!-- 底部输入区域（单聊） -->
-      <footer class="glass-strong bg-glass-dark border-t border-white/10 p-3 flex-shrink-0">
+      <footer class="glass-strong bg-glass-dark border-t border-white/10 p-3 flex-shrink-0"
+              :class="'chrome-style-' + (globalSettings.rpTextStyle || 'clear')">
         <form @submit.prevent="sendMessageWithSound" class="flex items-end space-x-2">
           <div class="flex-1 relative">
             <textarea ref="inputArea" v-model="userInput"

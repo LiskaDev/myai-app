@@ -696,7 +696,8 @@ onUnmounted(() => removeFloatingHearts());
     </Transition>
 
     <!-- 底部输入区 -->
-    <footer class="glass-strong bg-glass-dark border-t border-white/10 p-3 flex-shrink-0">
+    <footer class="glass-strong bg-glass-dark border-t border-white/10 p-3 flex-shrink-0"
+            :class="'chrome-style-' + (globalSettings?.rpTextStyle || 'clear')">
         <div class="relative">
             <!-- @ 提及下拉列表 -->
             <div v-if="showMentionList && filteredMentions.length > 0"

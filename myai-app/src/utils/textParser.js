@@ -151,8 +151,14 @@ export function formatRoleplayText(text) {
 
     // Step 2: 处理正文中的对话引号（动作文本已被占位排除）
     // v5.2: 不保留原始引号，让CSS的::before/::after显示自定义符号
+    // 英文直引号
     html = html.replace(/&quot;([^&]*?)&quot;/g, '<<DIALOGUE_START>>$1<<DIALOGUE_END>>');
     html = html.replace(/&#39;([^&]*?)&#39;/g, '<<DIALOGUE_START>>$1<<DIALOGUE_END>>');
+    // 中文弯引号 ""  ''
+    html = html.replace(/\u201c([^\u201d]*?)\u201d/g, '<<DIALOGUE_START>>$1<<DIALOGUE_END>>');
+    html = html.replace(/\u2018([^\u2019]*?)\u2019/g, '<<DIALOGUE_START>>$1<<DIALOGUE_END>>');
+    // 直角引号 「」
+    html = html.replace(/\u300c([^\u300d]*?)\u300d/g, '<<DIALOGUE_START>>$1<<DIALOGUE_END>>');
 
     // Step 3: Status/Prefix [...]  ->  <span class="rp-status">...</span>
     // v5.2: 去除方括号，只保留内容

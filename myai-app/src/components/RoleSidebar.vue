@@ -37,6 +37,24 @@ function getRoleMood(role) {
   return '💤';
 }
 
+function getRoleLastLine(role) {
+  const hist = role.chatHistory || [];
+  for (let i = hist.length - 1; i >= 0; i--) {
+    if (hist[i].role === 'assistant') {
+      const raw = hist[i].rawContent || hist[i].content || '';
+      const clean = raw
+        .replace(/<inner>[\s\S]*?<\/inner>/g, '')
+        .replace(/<expr:[^>]+>/g, '')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\*[^*]+\*/g, '')
+        .trim();
+      const first = clean.split(/[。！？\n]/)[0].trim();
+      return first.slice(0, 30) || '';
+    }
+  }
+  return '';
+}
+
 defineEmits([
   'switch-role',
   'create-role',
@@ -84,9 +102,9 @@ defineEmits([
             </div>
             <div class="flex-1 min-w-0">
               <h3 class="font-semibold text-sm truncate">{{ role.name }}</h3>
-              <p class="text-xs text-gray-400 truncate italic">
+              <p class="text-xs truncate italic" :class="role.chatHistory?.length ? 'text-gray-300' : 'text-gray-500'">
                 {{ role.chatHistory?.length
-                  ? (role.chatHistory[role.chatHistory.length - 1]?.content || '').replace(/<[^>]+>/g, '').slice(0, 25) + '…'
+                  ? getRoleLastLine(role)
                   : (role.firstMessage || '点击开始对话').replace(/<[^>]+>/g, '').slice(0, 28)
                 }}
               </p>
