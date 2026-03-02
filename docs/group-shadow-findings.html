@@ -1,0 +1,51 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>群聊重影排查截图</title>
+<style>
+body{font-family:Consolas,Menlo,monospace;background:#111;color:#eee;padding:24px;line-height:1.5}
+.card{background:#1c1c1c;border:1px solid #333;border-radius:10px;padding:16px;margin:0 0 16px}
+h2{margin:0 0 10px;color:#8dd}
+.ok{color:#7ee787}
+.bad{color:#ff7b72}
+code,pre{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:10px;display:block;white-space:pre-wrap}
+.small{font-size:13px;color:#aaa}
+</style>
+</head>
+<body>
+<div class="card">
+<h2>1) v-for 是否重复渲染</h2>
+<div class="ok">结论：未发现重复渲染。displayItems 每条 message 只 push 一次。</div>
+<pre>GroupChatWindow.vue:146-166
+while (i &lt; msgs.length) {
+  if (msgs[i].role === 'pass') { ... }
+  else { items.push({ type: 'message', msg: msgs[i], index: i }); i++; }
+}
+
+GroupChatWindow.vue:484
+&lt;template v-for="(item, idx) in displayItems" :key="displayItemKey(item, idx)"&gt;</pre>
+</div>
+<div class="card">
+<h2>2) 文字重影来源</h2>
+<div class="bad">根因：群聊正文启用了 text-shadow（全局 + 群聊增强）。</div>
+<pre>style.css:891
+.vn-body { text-shadow: 0 1px 3px rgba(0,0,0,.4); }
+
+style.css:899-900 (已修)
+.group-speech-bubble .vn-body {
+  text-shadow: none !important;
+}</pre>
+</div>
+<div class="card">
+<h2>3) 伪元素是否意外输出文字</h2>
+<div class="ok">结论：未发现伪元素输出文字。群聊气泡伪元素仅有装饰光晕，content 为空字符串。</div>
+<pre>GroupChatWindow.vue scoped CSS
+.group-speech-bubble.style-loveDark::after { content: ''; ... }
+
+style.css
+.rp-dialogue.say::before / ::after 只输出引号「」</pre>
+</div>
+<div class="small">生成时间: 2026-03-02</div>
+</body>
+</html>

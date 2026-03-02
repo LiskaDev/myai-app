@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick, computed, onMounted } from 'vue';
+import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
 import { parseDualLayerResponse, extractExpression } from '../utils/textParser';
 import RelationshipRadar from './RelationshipRadar.vue';
@@ -45,6 +45,32 @@ const inputRef = ref(null);
 const activeMessageIndex = ref(-1);
 const expandedPassGroups = ref(new Set());
 const showRoundMenu = ref(false);
+
+// 💕 loveDark 飘动心形背景（群聊）
+let heartElements = [];
+function createFloatingHearts() {
+    removeFloatingHearts();
+    const host = containerRef.value;
+    if (!host) return;
+    const chars = ['♡', '♥', '🌸', '✿', '·'];
+    for (let i = 0; i < 14; i++) {
+        const el = document.createElement('div');
+        el.className = 'floating-heart';
+        el.textContent = chars[Math.floor(Math.random() * chars.length)];
+        el.style.cssText = `
+      --heart-x: ${Math.random() * 100}%;
+      --heart-duration: ${4 + Math.random() * 5}s;
+      --heart-delay: ${-Math.random() * 8}s;
+      --heart-size: ${10 + Math.random() * 8}px;
+    `;
+        host.appendChild(el);
+        heartElements.push(el);
+    }
+}
+function removeFloatingHearts() {
+    heartElements.forEach(el => el.remove());
+    heartElements = [];
+}
 
 // 世界事件面板
 const showEventPanel = ref(false);
@@ -138,6 +164,18 @@ const displayItems = computed(() => {
     }
     return items;
 });
+
+function displayItemKey(item, idx) {
+    if (item.type === 'message') {
+        const msg = item.msg || {};
+        return `m-${item.index}-${msg.role || 'unknown'}-${msg.timestamp || idx}`;
+    }
+    if (item.type === 'pass-group') {
+        const firstTs = item.passes?.[0]?.timestamp || idx;
+        return `p-${item.startIndex}-${item.passes?.length || 0}-${firstTs}`;
+    }
+    return `i-${idx}`;
+}
 
 function togglePassGroup(startIndex) {
     if (expandedPassGroups.value.has(startIndex)) {
@@ -377,6 +415,14 @@ watch(() => props.currentGroup?.id, () => {
     }, 50));
 });
 
+watch(() => props.globalSettings?.rpTextStyle, (style) => {
+    if (style === 'loveDark') {
+        createFloatingHearts();
+    } else {
+        removeFloatingHearts();
+    }
+}, { immediate: true });
+
 function handleSend() {
     if (!directorInput.value.trim()) return;
     showMentionList.value = false;
@@ -390,12 +436,18 @@ onMounted(() => {
             containerRef.value.scrollTop = containerRef.value.scrollHeight;
         }
     }, 100);
+    if (props.globalSettings?.rpTextStyle === 'loveDark') {
+        createFloatingHearts();
+    }
 });
+
+onUnmounted(() => removeFloatingHearts());
 </script>
 
 <template>
     <div ref="containerRef"
-         class="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-5"
+         class="flex-1 overflow-y-scroll px-4 py-4 pb-24 space-y-5"
+         :class="'chat-style-' + (globalSettings?.rpTextStyle || 'clear')"
          style="scroll-behavior: smooth;">
 
         <!-- 空消息时的提示 -->
@@ -429,7 +481,7 @@ onMounted(() => {
         </div>
 
         <!-- 消息列表 -->
-        <template v-for="(item, idx) in displayItems" :key="idx">
+        <template v-for="(item, idx) in displayItems" :key="displayItemKey(item, idx)">
 
             <!-- PASS 折叠组（Discord 风格） -->
             <div v-if="item.type === 'pass-group'" class="flex justify-center">
@@ -506,7 +558,7 @@ onMounted(() => {
             <div v-else-if="item.type === 'message' && item.msg.role === 'director'" class="flex justify-center">
                 <div class="message-wrapper">
                     <div class="director-message cursor-pointer"
-                         :class="{ 'ring-2 ring-amber-400/50': activeMessageIndex === item.index }"
+                         :class="['style-' + (globalSettings?.rpTextStyle || 'clear'), { 'ring-2 ring-amber-400/50': activeMessageIndex === item.index }]"
                          @click.stop="toggleSelect(item.index)">
                         <span class="director-label">🎬 导演</span>
                         <span>{{ item.msg.content }}</span>
@@ -553,7 +605,7 @@ onMounted(() => {
                     <div class="text-center mt-0.5 opacity-0 group-hover:opacity-100 transition text-[10px] text-gray-400">💬</div>
                 </div>
 
-                <div class="max-w-[80%] min-w-0 message-wrapper">
+                <div class="w-full max-w-[80%] min-w-0 message-wrapper">
                     <!-- 角色名 -->
                     <div class="text-xs mb-1 font-medium"
                          :style="{ color: getRoleColor(item.msg.roleId) }">
@@ -568,18 +620,18 @@ onMounted(() => {
                       </summary>
                       <div class="reasoning-content">{{ extractReasoning(item.msg.rawContent || item.msg.content) }}</div>
                     </details>
-                    <!-- v5.9: 内心独白思想气泡 -->
+                    <!-- Layer 2: Inner Thoughts Bubble - 按风格显示 -->
                     <div v-if="globalSettings?.showInner && extractInner(item.msg.rawContent || item.msg.content)"
-                         class="thought-cloud">
-                        {{ extractInner(item.msg.rawContent || item.msg.content) }}
+                         class="inner-bubble"
+                         :class="'inner-' + (globalSettings?.rpTextStyle || 'clear')">
+                        <span class="inner-icon">{{ ['loveDark','loveLight'].includes(globalSettings?.rpTextStyle) ? '🌸' : '💭' }}</span>
+                        <span class="inner-text">{{ extractInner(item.msg.rawContent || item.msg.content) }}</span>
                     </div>
                     <!-- 消息内容 -->
-                    <div class="group-speech-bubble cursor-pointer"
-                         :class="{ 'selected': activeMessageIndex === item.index, 'latest-bubble': item.index === messages.length - 1 && item.msg.role === 'assistant' }"
-                         :style="{ borderLeftColor: getRoleColor(item.msg.roleId) }"
+                    <div class="group-speech-bubble speech-bubble cursor-pointer"
+                         :class="['style-' + (globalSettings?.rpTextStyle || 'clear'), { 'selected': activeMessageIndex === item.index }]"
                          @click.stop="toggleSelect(item.index)">
                         <div v-if="item.msg.content" class="vn-body markdown-body message-content whitespace-pre-wrap"
-                             :class="['style-' + (globalSettings?.rpTextStyle || 'simple')]"
                              v-html="safeRender(item.msg.rawContent || item.msg.content)">
                         </div>
                         <div v-else class="typing-indicator">
@@ -932,60 +984,6 @@ onMounted(() => {
     white-space: nowrap;
 }
 
-/* 群聊气泡 */
-.group-speech-bubble {
-    background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-left: 3px solid rgba(99, 102, 241, 0.25);
-    padding: 16px 20px 18px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    transition: all 0.3s ease;
-    line-height: 1.85;
-    letter-spacing: 0.02em;
-}
-
-/* 段落间距 */
-.group-speech-bubble .vn-body p + p,
-.group-speech-bubble .vn-body br + br {
-    margin-top: 0.6em;
-}
-
-/* 确保 RP 文本元素有良好间距 */
-.group-speech-bubble .vn-body > span + span {
-    margin-left: 0.15em;
-}
-
-.group-speech-bubble:hover {
-    border-color: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-
-.group-speech-bubble.selected {
-    border-color: rgba(129, 140, 248, 0.3);
-    box-shadow: 0 0 12px rgba(129, 140, 248, 0.1);
-}
-
-/* Only the latest message gets the full glow */
-.group-speech-bubble.latest-bubble {
-    border-left-width: 3px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), -4px 0 16px -4px var(--glow-color, rgba(99, 102, 241, 0.2));
-    animation: bubble-glow-in 0.6s ease forwards;
-}
-
-@keyframes bubble-glow-in {
-    from {
-        border-left-width: 2px;
-        opacity: 0.7;
-    }
-    to {
-        border-left-width: 3px;
-        opacity: 1;
-    }
-}
-
 /* 消息操作工具栏 */
 .message-wrapper {
     position: relative;
@@ -1234,3 +1232,4 @@ onMounted(() => {
 }
 
 </style>
+

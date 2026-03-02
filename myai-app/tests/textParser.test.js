@@ -54,11 +54,11 @@ describe('formatRoleplayText - HTML 转义', () => {
         expect(result).toContain('&lt;script&gt;');
     });
 
-    it('应该转义引号', () => {
-        // 双引号会被转换为对话标记
+    it('应该格式化单引号对话', () => {
+        // 单引号现在被视为对话标记
         const input = "test 'single quote'";
         const result = formatRoleplayText(input);
-        expect(result).toContain('&#39;');
+        expect(result).toContain('rp-dialogue');
     });
 
     it('应该转义反引号', () => {

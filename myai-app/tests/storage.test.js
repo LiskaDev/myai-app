@@ -28,7 +28,7 @@ describe('DEFAULT_GLOBAL_SETTINGS', () => {
         expect(DEFAULT_GLOBAL_SETTINGS.apiKey).toBe('');
         expect(DEFAULT_GLOBAL_SETTINGS.showLogic).toBe(true);
         expect(DEFAULT_GLOBAL_SETTINGS.showInner).toBe(true);
-        expect(DEFAULT_GLOBAL_SETTINGS.rpTextStyle).toBe('simple');
+        expect(DEFAULT_GLOBAL_SETTINGS.rpTextStyle).toBe('clear');
     });
 
     it('应该包含 customStyle 默认值', () => {

@@ -1,7 +1,7 @@
-<script setup>
-import { computed, ref, watch, nextTick } from 'vue';
+﻿<script setup>
+import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
-import { parseDualLayerResponse, getCustomStyleVars } from '../utils/textParser';
+import { parseDualLayerResponse } from '../utils/textParser';
 import { useLongPress } from '../composables/useGestures';
 import BranchSwitcher from './BranchSwitcher.vue';
 
@@ -53,6 +53,48 @@ const containerRef = ref(null);
 const searchInputRef = ref(null);
 const moreMenuIndex = ref(null);
 const copyFeedbackIndex = ref(null);
+
+// 💕 loveDark 飘动心形背景
+let heartElements = [];
+function createFloatingHearts() {
+  removeFloatingHearts();
+  const host = containerRef.value;
+  if (!host) return;
+  const chars = ['♡', '♥', '🌸', '✿', '·'];
+  for (let i = 0; i < 14; i++) {
+    const el = document.createElement('div');
+    el.className = 'floating-heart';
+    el.textContent = chars[Math.floor(Math.random() * chars.length)];
+    el.style.cssText = `
+      --heart-x: ${Math.random() * 100}%;
+      --heart-duration: ${4 + Math.random() * 5}s;
+      --heart-delay: ${-Math.random() * 8}s;
+      --heart-size: ${10 + Math.random() * 8}px;
+    `;
+    host.appendChild(el);
+    heartElements.push(el);
+  }
+}
+function removeFloatingHearts() {
+  heartElements.forEach(el => el.remove());
+  heartElements = [];
+}
+
+watch(() => props.globalSettings.rpTextStyle, (style) => {
+  if (style === 'loveDark') {
+    createFloatingHearts();
+  } else {
+    removeFloatingHearts();
+  }
+}, { immediate: true });
+
+onMounted(() => {
+  if (props.globalSettings.rpTextStyle === 'loveDark') {
+    createFloatingHearts();
+  }
+});
+
+onUnmounted(() => removeFloatingHearts());
 
 // ⏰ 格式化时间戳
 function formatTime(ts) {
@@ -335,8 +377,11 @@ function isCurrentMatch(originalIndex) {
 </script>
 
 <template>
-  <main ref="containerRef" class="flex-1 overflow-y-auto p-4 space-y-4" @click="handleChatAreaClick"
-        :class="{ 'mode-immersive': globalSettings.immersiveMode }">
+  <main ref="containerRef" class="flex-1 overflow-y-scroll p-4 space-y-4" @click="handleChatAreaClick"
+        :class="[
+          'chat-style-' + (globalSettings.rpTextStyle || 'clear'),
+          { 'mode-immersive': globalSettings.immersiveMode }
+        ]">
 
     <!-- 搜索工具栏 -->
     <Transition name="search-bar">
@@ -444,10 +489,10 @@ function isCurrentMatch(originalIndex) {
                @touchend="longPress.onTouchEnd"
                @touchmove="longPress.onTouchMove">
             <div class="flex items-start justify-end space-x-3 space-x-reverse w-full">
-              <div class="max-w-[80%] message-wrapper">
+              <div class="w-full max-w-[80%] message-wrapper">
                 <div @click.stop="$emit('toggle-select', getOriginalIndex(visibleIndex))"
                      class="user-speech-bubble cursor-pointer"
-                     :class="{ 'selected': activeMessageIndex === getOriginalIndex(visibleIndex) }">
+                     :class="['style-' + (globalSettings.rpTextStyle || 'clear'), { 'selected': activeMessageIndex === getOriginalIndex(visibleIndex) }]">
                   <div class="message-body message-content text-sm whitespace-pre-wrap" v-html="renderMarkdown(msg.content || '')"></div>
                 </div>
 
@@ -503,7 +548,8 @@ function isCurrentMatch(originalIndex) {
                    :class="[parsedMessages[visibleIndex]?.expression ? 'expr-' + parsedMessages[visibleIndex].expression : '',
                             getOriginalIndex(visibleIndex) === messages.length - 1 ? 'expr-latest' : '']">🎭</div>
 
-              <div class="max-w-[80%] message-wrapper">
+              <div class="w-full max-w-[80%] message-wrapper">
+                <div class="role-name-label">{{ currentRole.name }}</div>
                 <!-- 🌟 主动消息标记 -->
                 <div v-if="msg.isActiveMessage" class="active-message-badge">✨ 主动找你</div>
                 <!-- Layer 0: R1 Reasoning (折叠图标: ✨ 思考中, 💡 思考完成) -->
@@ -516,15 +562,17 @@ function isCurrentMatch(originalIndex) {
                   <div class="reasoning-content">{{ parsedMessages[visibleIndex].thought }}</div>
                 </details>
 
-                <!-- Layer 2: Thought Cloud (Character Inner Thoughts) - 云朵气泡 -->
-                <div v-if="globalSettings.showInner && parsedMessages[visibleIndex]?.inner" class="thought-cloud">
-                  {{ parsedMessages[visibleIndex].inner }}
+                <!-- Layer 2: Inner Thoughts Bubble - 按风格显示 -->
+                <div v-if="globalSettings.showInner && parsedMessages[visibleIndex]?.inner"
+                     class="inner-bubble"
+                     :class="'inner-' + (globalSettings.rpTextStyle || 'clear')">
+                  <span class="inner-icon">{{ ['loveDark','loveLight'].includes(globalSettings.rpTextStyle) ? '🌸' : '💭' }}</span>
+                  <span class="inner-text">{{ parsedMessages[visibleIndex].inner }}</span>
                 </div>
 
                 <div @click.stop="$emit('toggle-select', getOriginalIndex(visibleIndex))"
                      class="speech-bubble cursor-pointer"
-                     :class="['style-' + globalSettings.rpTextStyle, { 'selected': activeMessageIndex === getOriginalIndex(visibleIndex) }]"
-                     :style="getCustomStyleVars(globalSettings)">
+                     :class="['style-' + globalSettings.rpTextStyle, { 'selected': activeMessageIndex === getOriginalIndex(visibleIndex) }]">
                   <div class="message-body vn-body message-content"
                        :class="{ 'typing-cursor': isStreaming && getOriginalIndex(visibleIndex) === messages.length - 1 }"
                        v-html="parsedMessages[visibleIndex]?.bodyHtml"></div>
@@ -744,3 +792,4 @@ function isCurrentMatch(originalIndex) {
   transform: translateY(-100%);
 }
 </style>
+

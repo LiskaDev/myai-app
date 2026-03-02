@@ -1,3 +1,4 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -43,6 +44,8 @@ body {
 /* 📱 iOS 软键盘偏移量 */
 :root {
   --keyboard-offset: 0px;
+  --font-sans-sc: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'WenQuanYi Micro Hei', 'Noto Sans CJK SC', sans-serif;
+  --font-serif-sc: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', 'Noto Serif CJK SC', serif;
 }
 
 footer {
@@ -894,315 +897,813 @@ footer {
 
 /* 群聊气泡内文字增强 */
 .group-speech-bubble .vn-body {
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  text-shadow: none !important;
 }
 
-/* ============== v4.9 Four-Style Typography System ============== */
+/* ================================================================
+   NEW: 5 种文字风格系统 (clear / misty / day / loveDark / loveLight)
+   所有值从 style/ 参考 HTML 原样复制
+   ================================================================ */
 
-/* === STYLE 1: Simple (简约符号) === */
-.style-simple .rp-action {
-  color: #a1a1aa;
-  font-style: italic;
+/* Google Fonts 已移至文件顶部 */
+
+/* ── 聊天区背景 ── */
+.chat-style-clear {
+  background: #12121a !important;
 }
 
-.style-simple .rp-action::before {
-  content: "*";
-  opacity: 0.6;
+.chat-style-misty {
+  background: #0e0c09 !important;
 }
 
-.style-simple .rp-action::after {
-  content: "*";
-  opacity: 0.6;
+.chat-style-day {
+  background: #f7f5f1 !important;
 }
 
-.style-simple .rp-thought {
-  color: #78716c;
-  font-size: 0.9em;
+.chat-style-loveDark {
+  background: #130d14 !important;
+  background-color: #130d14 !important;
+  background-image: none !important;
+  position: relative;
+  overflow-x: hidden;
 }
 
-.style-simple .rp-thought::before {
-  content: "(";
-  opacity: 0.6;
-}
-
-.style-simple .rp-thought::after {
-  content: ")";
-  opacity: 0.6;
-}
-
-.style-simple .rp-dialogue {
-  color: #e5e7eb;
-}
-
-.style-simple .rp-dialogue::before {
-  content: '"';
-  opacity: 0.8;
-}
-
-.style-simple .rp-dialogue::after {
-  content: '"';
-  opacity: 0.8;
-}
-
-.style-simple .rp-status {
-  display: inline;
-  color: #6b7280;
-  font-size: 0.9em;
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin-right: 4px;
-}
-
-.style-simple .rp-status::before {
-  content: "[";
-  opacity: 0.5;
-}
-
-.style-simple .rp-status::after {
-  content: "]";
-  opacity: 0.5;
-}
-
-/* Simple - Dark Mode */
-.style-simple.speech-bubble .rp-action {
-  color: #a1a1aa;
-}
-
-.style-simple.speech-bubble .rp-thought {
-  color: #a1a1aa;
-}
-
-.style-simple.speech-bubble .rp-status {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-/* === STYLE 2: Moonlight (月光夜曲) === */
-.style-moonlight .rp-action {
-  color: #94a3b8;
-  font-style: italic;
-}
-
-.style-moonlight .rp-action::before {
-  content: "☽ ";
-  opacity: 0.5;
-}
-
-.style-moonlight .rp-thought {
-  color: #7dd3fc;
-  font-size: 0.9em;
-  font-style: italic;
-}
-
-.style-moonlight .rp-thought::before {
-  content: "✧ ";
-  opacity: 0.6;
-}
-
-.style-moonlight .rp-status {
-  display: inline;
-  color: #fbbf24;
-  font-size: 0.85em;
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin-right: 4px;
-}
-
-.style-moonlight .rp-status::before {
-  content: "⋆ ";
-  opacity: 0.7;
-}
-
-.style-moonlight .rp-status::after {
+.chat-style-loveDark::before {
   content: none;
 }
 
-/* Moonlight - Dark Mode */
-.style-moonlight.speech-bubble .rp-action {
-  color: #cbd5e1;
+.chat-style-loveLight {
+  background: #f9f4f6 !important;
+  background-image: none !important;
 }
 
-.style-moonlight.speech-bubble .rp-thought {
-  color: #7dd3fc;
+.chat-style-clear,
+.chat-style-misty,
+.chat-style-day,
+.chat-style-loveDark,
+.chat-style-loveLight {
+  transition: background-color 0.3s, color 0.3s;
+  scrollbar-gutter: stable;
 }
 
-.style-moonlight.speech-bubble .rp-status {
-  color: #fcd34d;
+.speech-bubble,
+.user-speech-bubble,
+.group-speech-bubble,
+.inner-bubble,
+.role-name-label,
+.msg-time {
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
-/* === STYLE 3: Dreamy (Soft & Romantic) === */
-.style-dreamy .rp-action {
-  color: #a78bfa;
-  font-style: italic;
+/* ── 角色名标签 ── */
+.role-name-label {
+  display: none;
 }
 
-.style-dreamy .rp-thought {
-  color: #f472b6;
-  font-size: 0.88em;
-  font-style: italic;
-}
+/* 默认隐藏，仅新风格显示 */
 
-.style-dreamy .rp-thought::before {
-  content: "♡ ";
-  opacity: 0.5;
-}
-
-.style-dreamy .rp-status {
-  display: inline-block;
-  background: linear-gradient(135deg, rgba(244, 114, 182, 0.15), rgba(167, 139, 250, 0.15));
-  color: #c084fc;
-  font-size: 0.75em;
-  font-weight: 500;
-  padding: 2px 10px;
-  border-radius: 9999px;
-  border: 1px solid rgba(196, 132, 252, 0.2);
-  margin-right: 6px;
-}
-
-.style-dreamy .rp-status::before,
-.style-dreamy .rp-status::after {
-  content: none;
-}
-
-/* Dreamy - Dark Mode */
-.style-dreamy.speech-bubble .rp-action {
-  color: #c4b5fd;
-}
-
-.style-dreamy.speech-bubble .rp-thought {
-  color: #f9a8d4;
-}
-
-.style-dreamy.speech-bubble .rp-status {
-  background: linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(167, 139, 250, 0.2));
-  color: #e9d5ff;
-  border-color: rgba(196, 132, 252, 0.3);
-}
-
-/* === STYLE 4: Crystal (清透水晶) === */
-.style-crystal .rp-action {
-  color: #38bdf8;
-  font-style: italic;
-}
-
-.style-crystal .rp-action::before {
-  content: "✦ ";
-  opacity: 0.6;
-}
-
-.style-crystal .rp-thought {
-  color: #94a3b8;
-  font-size: 0.9em;
-  font-style: italic;
-}
-
-.style-crystal .rp-thought::before {
-  content: "༄ ";
-  opacity: 0.5;
-}
-
-.style-crystal .rp-status {
-  display: inline-block;
-  background: rgba(139, 92, 246, 0.12);
-  color: #a78bfa;
-  font-size: 0.75em;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 4px;
-  margin-right: 6px;
-}
-
-.style-crystal .rp-status::before {
-  content: "◈ ";
-  opacity: 0.7;
-}
-
-.style-crystal .rp-status::after {
-  content: none;
-}
-
-/* Crystal - Dark Mode */
-.style-crystal.speech-bubble .rp-action {
-  color: #7dd3fc;
-}
-
-.style-crystal.speech-bubble .rp-thought {
-  color: #cbd5e1;
-}
-
-.style-crystal.speech-bubble .rp-status {
-  background: rgba(139, 92, 246, 0.2);
-  color: #c4b5fd;
-}
-
-/* === STYLE 5: Custom (用户自定义) === */
-.style-custom .rp-action {
-  color: var(--rp-action-color, #a1a1aa);
-  font-style: italic;
-}
-
-.style-custom .rp-action::before {
-  content: var(--rp-action-symbol, '*');
-  opacity: 0.7;
-}
-
-.style-custom .rp-action::after {
-  content: var(--rp-action-symbol, '*');
-  opacity: 0.7;
-}
-
-.style-custom .rp-thought {
-  color: var(--rp-thought-color, #78716c);
-  font-size: 0.9em;
-}
-
-.style-custom .rp-thought::before {
-  content: var(--rp-thought-symbol, '(');
-  opacity: 0.7;
-}
-
-.style-custom .rp-thought::after {
-  content: var(--rp-thought-symbol, ')');
-  opacity: 0.7;
-}
-
-/* v5.2: 自定义状态使用胶囊样式 */
-.style-custom .rp-status {
-  display: inline-block;
-  color: var(--rp-status-color, #d1d5db);
-  font-size: 0.8em;
-  font-weight: 500;
-  background: rgba(31, 41, 55, 0.8);
-  padding: 3px 12px;
-  border-radius: 9999px;
-  margin-right: 8px;
+.chat-style-clear .role-name-label {
+  display: block;
+  font-family: var(--font-sans-sc);
+  font-weight: 300;
+  color: rgba(107, 159, 255, 0.45);
+  font-size: 10px;
+  letter-spacing: 2px;
   margin-bottom: 4px;
-  border: 1px solid rgba(75, 85, 99, 0.4);
 }
 
-.style-custom .rp-status::before,
-.style-custom .rp-status::after {
+.chat-style-misty .role-name-label {
+  display: block;
+  font-family: var(--font-serif-sc);
+  font-weight: 400;
+  color: rgba(200, 168, 120, 0.4);
+  font-size: 11px;
+  letter-spacing: 3px;
+  margin-bottom: 4px;
+}
+
+.chat-style-day .role-name-label {
+  display: block;
+  font-family: var(--font-serif-sc);
+  color: rgba(139, 115, 85, 0.5);
+  font-size: 11px;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+.chat-style-loveDark .role-name-label {
+  display: block;
+  font-family: var(--font-sans-sc);
+  font-weight: 300;
+  color: rgba(255, 110, 160, 0.4);
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+.chat-style-loveLight .role-name-label {
+  display: block;
+  font-family: var(--font-serif-sc);
+  color: rgba(232, 105, 154, 0.45);
+  font-size: 11px;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+/* ════════════════════════════════════════
+   内心戏气泡 (.inner-bubble)
+   ════════════════════════════════════════ */
+
+.inner-bubble {
+  display: flex;
+  align-items: flex-start;
+  max-width: 94%;
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.inner-bubble .inner-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── clear 内心戏 ── */
+.inner-clear {
+  gap: 8px;
+  background: rgba(100, 130, 220, 0.07);
+  border: 1px solid rgba(100, 130, 220, 0.14);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 4px;
+}
+
+.inner-clear .inner-icon {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.inner-clear .inner-text {
+  font-family: var(--font-sans-sc);
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.75;
+  color: rgba(140, 170, 255, 0.58);
+  letter-spacing: 0.3px;
+  font-style: italic;
+}
+
+.inner-clear::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 18px;
+  width: 8px;
+  height: 6px;
+  background: rgba(100, 130, 220, 0.07);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+/* ── misty 内心戏（无气泡，左竖线） ── */
+.inner-misty {
+  gap: 10px;
+  padding: 8px 0 8px 14px;
+  border-left: 1.5px solid rgba(200, 168, 120, 0.22);
+  background: none;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 0;
+}
+
+.inner-misty .inner-icon {
+  font-size: 11px;
+  opacity: 0.5;
+  margin-top: 2px;
+}
+
+.inner-misty .inner-text {
+  font-family: var(--font-serif-sc);
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.8;
+  color: rgba(200, 168, 120, 0.42);
+  letter-spacing: 0.8px;
+  font-style: italic;
+}
+
+/* misty 无小三角 */
+.inner-misty::after {
+  display: none;
+}
+
+/* ── day 内心戏 ── */
+.inner-day {
+  gap: 8px;
+  background: rgba(139, 115, 85, 0.05);
+  border: 1px solid rgba(139, 115, 85, 0.13);
+  border-radius: 8px;
+  padding: 9px 13px;
+}
+
+.inner-day .inner-icon {
+  font-size: 11px;
+  opacity: 0.45;
+  margin-top: 2px;
+}
+
+.inner-day .inner-text {
+  font-family: var(--font-serif-sc);
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.75;
+  color: rgba(100, 80, 50, 0.48);
+  letter-spacing: 0.4px;
+  font-style: italic;
+}
+
+.inner-day::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 18px;
+  width: 8px;
+  height: 6px;
+  background: rgba(139, 115, 85, 0.05);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+/* ── loveDark 内心戏 ── */
+.inner-loveDark {
+  gap: 7px;
+  background: rgba(255, 110, 160, 0.06);
+  border: 1px solid rgba(255, 110, 160, 0.13);
+  border-radius: 10px;
+  padding: 9px 13px;
+}
+
+.inner-loveDark .inner-icon {
+  font-size: 12px;
+  opacity: 0.55;
+}
+
+.inner-loveDark .inner-text {
+  font-family: var(--font-sans-sc);
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.75;
+  color: rgba(255, 160, 200, 0.52);
+  letter-spacing: 0.3px;
+  font-style: italic;
+}
+
+.inner-loveDark::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 18px;
+  width: 8px;
+  height: 6px;
+  background: rgba(255, 110, 160, 0.06);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+/* ── loveLight 内心戏 ── */
+.inner-loveLight {
+  gap: 7px;
+  background: rgba(255, 110, 160, 0.05);
+  border: 1px solid rgba(255, 110, 160, 0.12);
+  border-radius: 10px;
+  padding: 9px 13px;
+}
+
+.inner-loveLight .inner-icon {
+  font-size: 12px;
+  opacity: 0.55;
+}
+
+.inner-loveLight .inner-text {
+  font-family: var(--font-serif-sc);
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.75;
+  color: rgba(220, 100, 150, 0.48);
+  letter-spacing: 0.5px;
+  font-style: italic;
+}
+
+.inner-loveLight::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 18px;
+  width: 8px;
+  height: 6px;
+  background: rgba(255, 110, 160, 0.05);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+/* ════════════════════════════════════════
+   主消息气泡 (.speech-bubble) 覆写
+   ════════════════════════════════════════ */
+
+/* ── clear ── */
+.speech-bubble.style-clear {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 4px 14px 14px 14px;
+  padding: 12px 15px;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.speech-bubble.style-clear .vn-body {
+  font-family: var(--font-sans-sc);
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.9;
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 0.3px;
+  text-shadow: none;
+}
+
+.style-clear .rp-action {
+  color: rgba(255, 255, 255, 0.32) !important;
+  font-style: italic;
+  font-size: 13px !important;
+}
+
+.style-clear .rp-action::before,
+.style-clear .rp-action::after {
   content: none;
 }
 
-.style-custom .vn-body {
-  font-size: calc(1em * var(--rp-font-scale, 1));
+.style-clear .rp-dialogue {
+  color: rgba(255, 255, 255, 0.88) !important;
 }
 
-/* v5.2: Custom dialogue styling */
-.style-custom .rp-dialogue {
-  color: var(--rp-dialogue-color, #e5e7eb);
+.style-clear .rp-dialogue::before,
+.style-clear .rp-dialogue::after,
+.style-clear .rp-dialogue.say::before,
+.style-clear .rp-dialogue.say::after {
+  content: none;
 }
 
-.style-custom .rp-dialogue::before {
-  content: var(--rp-dialogue-open, '"');
-  opacity: 0.8;
+.style-clear .rp-thought {
+  color: rgba(255, 255, 255, 0.78) !important;
+  font-size: inherit;
+  font-style: normal;
 }
 
-.style-custom .rp-dialogue::after {
-  content: var(--rp-dialogue-close, '"');
-  opacity: 0.8;
+.style-clear .rp-thought::before,
+.style-clear .rp-thought::after {
+  content: none;
+}
+
+.style-clear .rp-status {
+  display: inline;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9em;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.style-clear .rp-status::before,
+.style-clear .rp-status::after {
+  content: none;
+}
+
+/* ── misty（无气泡） ── */
+.speech-bubble.style-misty {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(200, 168, 120, 0.07);
+  border-radius: 0;
+  padding: 4px 0 14px 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.speech-bubble.style-misty .vn-body {
+  font-family: var(--font-serif-sc);
+  font-size: 14.5px;
+  font-weight: 400;
+  line-height: 2.15;
+  color: rgba(235, 215, 185, 0.72);
+  letter-spacing: 0.8px;
+  text-shadow: none;
+}
+
+.style-misty .rp-action {
+  color: rgba(200, 168, 120, 0.42) !important;
+  font-style: normal !important;
+  font-size: inherit !important;
+}
+
+.style-misty .rp-action::before,
+.style-misty .rp-action::after {
+  content: none;
+}
+
+.style-misty .rp-dialogue {
+  color: rgba(248, 232, 208, 0.88) !important;
+}
+
+.style-misty .rp-dialogue.say::before,
+.style-day .rp-dialogue.say::before {
+  content: '「';
+  color: rgba(200, 168, 120, 0.5);
+}
+
+.style-misty .rp-dialogue.say::after,
+.style-day .rp-dialogue.say::after {
+  content: '」';
+  color: rgba(200, 168, 120, 0.5);
+}
+
+.style-misty .rp-thought {
+  color: rgba(235, 215, 185, 0.72) !important;
+  font-size: inherit;
+  font-style: normal;
+}
+
+.style-misty .rp-thought::before,
+.style-misty .rp-thought::after {
+  content: none;
+}
+
+.style-misty .rp-status {
+  display: none;
+}
+
+/* ── day ── */
+.speech-bubble.style-day {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 4px 14px 14px 14px;
+  padding: 12px 15px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.speech-bubble.style-day .vn-body {
+  font-family: var(--font-serif-sc);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 2;
+  color: rgba(60, 45, 30, 0.75);
+  letter-spacing: 0.4px;
+  text-shadow: none;
+}
+
+.style-day .rp-action {
+  color: rgba(139, 115, 85, 0.55) !important;
+  font-style: italic;
+  font-size: 13px !important;
+}
+
+.style-day .rp-action::before,
+.style-day .rp-action::after {
+  content: none;
+}
+
+.style-day .rp-dialogue {
+  color: rgba(40, 30, 20, 0.85) !important;
+}
+
+.style-day .rp-dialogue::before,
+.style-day .rp-dialogue::after {
+  content: none;
+}
+
+.style-day .rp-thought {
+  color: rgba(60, 45, 30, 0.75) !important;
+  font-size: inherit;
+  font-style: normal;
+}
+
+.style-day .rp-thought::before,
+.style-day .rp-thought::after {
+  content: none;
+}
+
+.style-day .rp-status {
+  display: none;
+}
+
+/* ── loveDark ── */
+.speech-bubble.style-loveDark {
+  background: rgba(255, 110, 160, 0.07);
+  border: 1px solid rgba(255, 110, 160, 0.13);
+  border-radius: 4px 16px 16px 16px;
+  max-width: 72%;
+  padding: 13px 16px;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 气泡内右下角淡粉光晕 */
+.speech-bubble.style-loveDark::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 110, 160, 0.06);
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.speech-bubble.style-loveDark .vn-body {
+  font-family: var(--font-sans-sc);
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.95;
+  color: rgba(255, 230, 240, 0.8);
+  letter-spacing: 0.3px;
+  text-shadow: none;
+  position: relative;
+  z-index: 1;
+}
+
+.style-loveDark .rp-action {
+  color: rgba(255, 140, 180, 0.4) !important;
+  font-style: italic;
+  font-size: 13px !important;
+}
+
+.style-loveDark .rp-action::before,
+.style-loveDark .rp-action::after {
+  content: none;
+}
+
+.style-loveDark .rp-dialogue {
+  color: rgba(255, 235, 245, 0.92) !important;
+}
+
+.style-loveDark .rp-dialogue::before,
+.style-loveDark .rp-dialogue::after {
+  content: none;
+}
+
+.style-loveDark .rp-dialogue.say::before,
+.style-loveLight .rp-dialogue.say::before {
+  content: '「';
+  color: rgba(220, 120, 160, 0.6);
+}
+
+.style-loveDark .rp-dialogue.say::after,
+.style-loveLight .rp-dialogue.say::after {
+  content: '」';
+  color: rgba(220, 120, 160, 0.6);
+}
+
+.style-loveLight .rp-dialogue::before,
+.style-loveLight .rp-dialogue::after {
+  content: none;
+}
+
+.style-loveDark .rp-thought {
+  color: rgba(255, 230, 240, 0.8) !important;
+  font-size: inherit;
+  font-style: normal;
+}
+
+.style-loveDark .rp-thought::before,
+.style-loveDark .rp-thought::after {
+  content: none;
+}
+
+.style-loveDark .rp-status {
+  display: none;
+}
+
+/* ── loveLight ── */
+.speech-bubble.style-loveLight {
+  background: #ffffff;
+  border: 1px solid rgba(255, 110, 160, 0.12);
+  border-radius: 4px 16px 16px 16px;
+  max-width: 72%;
+  padding: 13px 16px;
+  box-shadow: 0 2px 10px rgba(255, 110, 160, 0.06);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.speech-bubble.style-loveLight .vn-body {
+  font-family: var(--font-serif-sc);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 2;
+  color: rgba(80, 40, 60, 0.75);
+  letter-spacing: 0.4px;
+  text-shadow: none;
+}
+
+.style-loveLight .rp-action {
+  color: rgba(220, 120, 160, 0.4) !important;
+  font-style: italic;
+  font-size: 13px !important;
+}
+
+.style-loveLight .rp-action::before,
+.style-loveLight .rp-action::after {
+  content: none;
+}
+
+.style-loveLight .rp-dialogue {
+  color: rgba(60, 30, 45, 0.88) !important;
+}
+
+.style-loveLight .rp-thought {
+  color: rgba(80, 40, 60, 0.75) !important;
+  font-size: inherit;
+  font-style: normal;
+}
+
+.style-loveLight .rp-thought::before,
+.style-loveLight .rp-thought::after {
+  content: none;
+}
+
+.style-loveLight .rp-status {
+  display: none;
+}
+
+/* ════════════════════════════════════════
+   用户消息气泡覆写
+   ════════════════════════════════════════ */
+
+.user-speech-bubble.style-clear {
+  background: rgba(107, 159, 255, 0.08);
+  border: 1px solid rgba(107, 159, 255, 0.18);
+  border-radius: 14px 4px 14px 14px;
+  box-shadow: none;
+  padding: 10px 14px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.user-speech-bubble.style-clear .message-body {
+  font-family: var(--font-sans-sc);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.user-speech-bubble.style-misty {
+  background: transparent;
+  border: none;
+  border-right: 1px solid rgba(200, 168, 120, 0.1);
+  border-bottom: 1px solid rgba(200, 168, 120, 0.05);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 4px 14px 12px 0;
+  text-align: right;
+  color: rgba(230, 210, 180, 0.5);
+}
+
+.user-speech-bubble.style-misty .message-body {
+  font-family: var(--font-serif-sc);
+  font-size: 14px;
+  line-height: 1.95;
+  color: rgba(230, 210, 180, 0.5);
+  font-style: italic;
+}
+
+.user-speech-bubble.style-day {
+  background: rgba(139, 115, 85, 0.07);
+  border: 1px solid rgba(139, 115, 85, 0.14);
+  border-radius: 14px 4px 14px 14px;
+  box-shadow: none;
+  padding: 10px 14px;
+  color: rgba(60, 45, 30, 0.58);
+}
+
+.user-speech-bubble.style-day .message-body {
+  font-family: var(--font-serif-sc);
+  font-size: 14px;
+  color: rgba(60, 45, 30, 0.58);
+}
+
+.user-speech-bubble.style-loveDark {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px 4px 16px 16px;
+  max-width: 72%;
+  box-shadow: none;
+  padding: 10px 14px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.user-speech-bubble.style-loveDark .message-body {
+  font-family: var(--font-sans-sc);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.user-speech-bubble.style-loveLight {
+  background: rgba(255, 110, 160, 0.07);
+  border: 1px solid rgba(255, 110, 160, 0.13);
+  border-radius: 16px 4px 16px 16px;
+  max-width: 72%;
+  box-shadow: none;
+  padding: 10px 14px;
+  color: rgba(80, 40, 60, 0.58);
+}
+
+.user-speech-bubble.style-loveLight .message-body {
+  font-family: var(--font-serif-sc);
+  font-size: 14px;
+  color: rgba(80, 40, 60, 0.58);
+}
+
+/* ── hover/selected 覆写（浅色风格需要不同高亮） ── */
+.chat-style-day .speech-bubble:hover,
+.chat-style-loveLight .speech-bubble:hover {
+  transform: translateY(-1px);
+}
+
+.chat-style-day .speech-bubble.selected {
+  border-color: rgba(139, 115, 85, 0.3);
+}
+
+.chat-style-loveLight .speech-bubble.selected {
+  border-color: rgba(255, 110, 160, 0.3);
+}
+
+.chat-style-day .user-speech-bubble.selected {
+  border-color: rgba(139, 115, 85, 0.3);
+}
+
+.chat-style-loveLight .user-speech-bubble.selected {
+  border-color: rgba(255, 110, 160, 0.3);
+}
+
+/* 深色风格 hover/selected 维持原样即可 */
+
+/* ── 浅色风格下的时间戳颜色 ── */
+.chat-style-day .msg-time {
+  color: rgba(0, 0, 0, 0.2);
+}
+
+.chat-style-day .speech-bubble:hover .msg-time {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.chat-style-loveLight .msg-time {
+  color: rgba(232, 105, 154, 0.25);
+}
+
+.chat-style-loveLight .speech-bubble:hover .msg-time {
+  color: rgba(232, 105, 154, 0.45);
+}
+
+/* ════════════════════════════════════════
+   loveDark 飘动心形背景
+   ════════════════════════════════════════ */
+.floating-heart {
+  position: absolute;
+  bottom: -24px;
+  font-size: var(--heart-size, 14px);
+  color: rgba(255, 110, 160, 0.25);
+  pointer-events: none;
+  z-index: 1;
+  will-change: transform, opacity;
+  animation: heartFloat var(--heart-duration, 6s) ease-in-out infinite var(--heart-delay, 0s);
+  opacity: 0;
+  left: var(--heart-x, 50%);
+}
+
+.chat-style-loveDark > :not(.floating-heart) {
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes heartFloat {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 0.6;
+  }
+
+  90% {
+    opacity: 0.15;
+  }
+
+  100% {
+    transform: translateY(-120vh) rotate(15deg);
+    opacity: 0;
+  }
 }
 
 /* === Base fallback (no style class) - use Simple === */
@@ -1260,13 +1761,11 @@ footer {
 }
 
 .rp-dialogue::before {
-  content: '"';
-  opacity: 0.8;
+  content: none;
 }
 
 .rp-dialogue::after {
-  content: '"';
-  opacity: 0.8;
+  content: none;
 }
 
 /* ============== v4.6 Immersive Mode ============== */
@@ -2507,3 +3006,4 @@ details.reasoning-block[open]>summary {
 .round-menu-item:hover {
   background: rgba(99, 102, 241, 0.2);
 }
+

@@ -141,29 +141,54 @@ export function formatRoleplayText(text) {
         .replace(/'/g, '&#39;')
         .replace(/`/g, '&#96;');
 
-    // Step 1: v5.1 - Process dialogue quotes FIRST (before any spans are inserted)
-    // Using placeholder markers to avoid regex collision
+    // Step 1: 先提取动作文本，避免动作里的引号被识别为对话
+    const actionBlocks = [];
+    html = html.replace(/\*([^*]+)\*/g, (_, actionText) => {
+        const key = `<<ACTION_${actionBlocks.length}>>`;
+        actionBlocks.push(actionText);
+        return key;
+    });
+
+    // Step 2: 处理正文中的对话引号（动作文本已被占位排除）
     // v5.2: 不保留原始引号，让CSS的::before/::after显示自定义符号
     html = html.replace(/&quot;([^&]*?)&quot;/g, '<<DIALOGUE_START>>$1<<DIALOGUE_END>>');
-    html = html.replace(/"([^"]*?)"/g, '<<DIALOGUE_START>>$1<<DIALOGUE_END>>');
+    html = html.replace(/&#39;([^&]*?)&#39;/g, '<<DIALOGUE_START>>$1<<DIALOGUE_END>>');
 
-    // Step 2: Status/Prefix [...]  ->  <span class="rp-status">...</span>
+    // Step 3: Status/Prefix [...]  ->  <span class="rp-status">...</span>
     // v5.2: 去除方括号，只保留内容
     html = html.replace(/\[([^\]]+)\]/g, '<span class="rp-status">$1</span>');
 
-    // Step 3: Thought/Feeling (...)  ->  <span class="rp-thought">...</span>
+    // Step 4: Thought/Feeling (...)  ->  <span class="rp-thought">...</span>
     // v5.2: 去除圆括号，只保留内容
     html = html.replace(/\(([^()]+)\)/g, '<span class="rp-thought">$1</span>');
 
-    // Step 4: Action/Environment *...*  ->  <span class="rp-action">...</span>
-    // v5.2: 去除星号，只保留内容
-    html = html.replace(/\*([^*]+)\*/g, '<span class="rp-action">$1</span>');
-
     // Step 5: Convert dialogue placeholders to actual spans
-    html = html.replace(/<<DIALOGUE_START>>/g, '<span class="rp-dialogue">');
+    html = html.replace(/<<DIALOGUE_START>>/g, '<span class="rp-dialogue say">');
     html = html.replace(/<<DIALOGUE_END>>/g, '</span>');
 
-    // Step 6: Convert line breaks — normalize paragraph spacing
+    // Step 5.5: 还原动作文本
+    html = html.replace(/<<ACTION_(\d+)>>/g, (_, idx) => {
+        const actionText = actionBlocks[Number(idx)] ?? '';
+        return `<span class="rp-action">${actionText}</span>`;
+    });
+
+    // Step 6: 无引号的纯对话行也标记为 say（只在渲染层加引号）
+    html = html
+        .split('\n')
+        .map((line) => {
+            const core = line.trim();
+            if (!core) return line;
+            if (core.includes('<span class="rp-dialogue')) return line;
+            if (!core.includes('<span class="rp-')) {
+                const leading = line.match(/^\s*/)?.[0] || '';
+                const trailing = line.match(/\s*$/)?.[0] || '';
+                return `${leading}<span class="rp-dialogue say">${core}</span>${trailing}`;
+            }
+            return line;
+        })
+        .join('\n');
+
+    // Step 7: Convert line breaks — normalize paragraph spacing
     // 先把连续空行统一为段落间距，再处理单个换行
     html = html.replace(/\n{2,}/g, '<br><br>');
     html = html.replace(/\n/g, '<br>');
@@ -258,23 +283,3 @@ export function stripThinkingTags(text) {
         .trim();
 }
 
-/**
- * Get custom style CSS variables for :style binding
- */
-export function getCustomStyleVars(globalSettings) {
-    if (!globalSettings || globalSettings.rpTextStyle !== 'custom') return {};
-    const cs = globalSettings.customStyle || {};
-    return {
-        '--rp-action-color': cs.actionColor || '#a1a1aa',
-        '--rp-action-symbol': '"' + (cs.actionSymbol || '*') + '"',
-        '--rp-thought-color': cs.thoughtColor || '#78716c',
-        '--rp-thought-symbol': '"' + (cs.thoughtSymbol || '(') + '"',
-        '--rp-status-color': cs.statusColor || '#6b7280',
-        '--rp-status-open': '"' + (cs.statusBracket ? cs.statusBracket[0] : '[') + '"',
-        '--rp-status-close': '"' + (cs.statusBracket ? cs.statusBracket[1] : ']') + '"',
-        '--rp-font-scale': cs.fontSize || 1,
-        '--rp-dialogue-color': cs.dialogueColor || '#e5e7eb',
-        '--rp-dialogue-open': '"' + (cs.dialogueSymbol || '"') + '"',
-        '--rp-dialogue-close': '"' + (cs.dialogueSymbol || '"') + '"'
-    };
-}

@@ -18,7 +18,7 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     autoPlayTTS: false,
     responseLength: 'normal',
     immersiveMode: false,
-    rpTextStyle: 'simple',
+    rpTextStyle: 'clear',
     // v5.0: Custom style settings
     customStyle: {
         actionColor: '#a1a1aa',

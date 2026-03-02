@@ -254,72 +254,24 @@ function resetCustomStyle() {
 
       <!-- 文字风格选择 -->
       <div class="pt-3 mt-3 border-t border-white/10">
-        <label class="block text-sm text-gray-300 mb-2">🎨 Roleplay Text Style (角色扮演文字风格)</label>
-        <select v-model="globalSettings.rpTextStyle"
-                class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition">
-          <option value="simple">Simple (简约符号)</option>
-          <option value="moonlight">Moonlight (月光夜曲)</option>
-          <option value="dreamy">Dreamy (梦幻浪漫)</option>
-          <option value="crystal">Crystal (清透水晶)</option>
-          <option value="custom">Custom (自定义)</option>
-        </select>
-        <p class="text-xs text-gray-400 mt-1">*动作* (思绪) [状态] "对话" 的显示样式</p>
-      </div>
-
-      <!-- 自定义风格面板 -->
-      <div v-if="globalSettings.rpTextStyle === 'custom'" class="mt-4 p-3 rounded-lg bg-white/5 border border-white/10 space-y-4">
-        <p class="text-xs text-gray-400 mb-2">🌨️ 自定义设置</p>
-
-        <!-- 动作颜色 + 符号 -->
-        <div class="flex items-center gap-3">
-          <label class="text-xs text-gray-400 w-20">*动作*</label>
-          <input type="color" v-model="globalSettings.customStyle.actionColor"
-                 class="w-8 h-8 rounded cursor-pointer border-0 bg-transparent">
-          <input type="text" v-model="globalSettings.customStyle.actionSymbol" maxlength="2" placeholder="*"
-                 class="w-12 text-center glass-light bg-glass-light text-gray-100 rounded px-2 py-1 text-sm border border-white/10">
+        <label class="block text-sm text-gray-300 mb-2">🎨 文字风格 (Text Style)</label>
+        <div class="style-card-grid">
+          <div v-for="s in [
+            { id: 'clear', name: '清澈·标准', desc: '深色·无衬线', color: '#6b9fff' },
+            { id: 'misty', name: '烟雨·无气泡', desc: '深暖·衬线', color: '#c8a878' },
+            { id: 'day', name: '烟雨·日间', desc: '浅色·衬线', color: '#8b7355' },
+            { id: 'loveDark', name: '甜心·暗粉', desc: '深色·粉色调', color: '#ff6eb0' },
+            { id: 'loveLight', name: '甜心·浅粉', desc: '浅色·衬线', color: '#e8699a' }
+          ]" :key="s.id"
+               class="style-card"
+               :class="{ active: globalSettings.rpTextStyle === s.id }"
+               :style="{ '--card-accent': s.color }"
+               @click="globalSettings.rpTextStyle = s.id">
+            <div class="style-card-dot" :style="{ background: s.color }"></div>
+            <div class="style-card-name">{{ s.name }}</div>
+            <div class="style-card-desc">{{ s.desc }}</div>
+          </div>
         </div>
-
-        <!-- 思绪颜色 + 符号 -->
-        <div class="flex items-center gap-3">
-          <label class="text-xs text-gray-400 w-20">(思绪)</label>
-          <input type="color" v-model="globalSettings.customStyle.thoughtColor"
-                 class="w-8 h-8 rounded cursor-pointer border-0 bg-transparent">
-          <input type="text" v-model="globalSettings.customStyle.thoughtSymbol" maxlength="2" placeholder="♡"
-                 class="w-12 text-center glass-light bg-glass-light text-gray-100 rounded px-2 py-1 text-sm border border-white/10">
-        </div>
-
-        <!-- 状态颜色 + 括号 -->
-        <div class="flex items-center gap-3">
-          <label class="text-xs text-gray-400 w-20">[状态]</label>
-          <input type="color" v-model="globalSettings.customStyle.statusColor"
-                 class="w-8 h-8 rounded cursor-pointer border-0 bg-transparent">
-          <input type="text" v-model="globalSettings.customStyle.statusBracket" maxlength="2" placeholder="[]"
-                 class="w-12 text-center glass-light bg-glass-light text-gray-100 rounded px-2 py-1 text-sm border border-white/10">
-        </div>
-
-        <!-- 对话颜色 + 符号 -->
-        <div class="flex items-center gap-3">
-          <label class="text-xs text-gray-400 w-20">"对话"</label>
-          <input type="color" v-model="globalSettings.customStyle.dialogueColor"
-                 class="w-8 h-8 rounded cursor-pointer border-0 bg-transparent">
-          <input type="text" v-model="globalSettings.customStyle.dialogueSymbol" maxlength="2" placeholder='"'
-                 class="w-12 text-center glass-light bg-glass-light text-gray-100 rounded px-2 py-1 text-sm border border-white/10">
-        </div>
-
-        <!-- 字体大小 -->
-        <div class="flex items-center gap-3">
-          <label class="text-xs text-gray-400 w-20">字体大小</label>
-          <input type="range" v-model.number="globalSettings.customStyle.fontSize"
-                 min="0.8" max="1.4" step="0.05"
-                 class="flex-1 h-2 bg-glass-light rounded-lg appearance-none cursor-pointer accent-primary">
-          <span class="text-xs text-gray-400 w-10 text-right">{{ (globalSettings.customStyle.fontSize || 1).toFixed(2) }}</span>
-        </div>
-
-        <!-- 重置按钮 -->
-        <button @click="resetCustomStyle"
-                class="w-full mt-2 px-3 py-2 rounded-lg bg-white/5 text-gray-400 text-xs hover:bg-white/10 transition">
-          🔄 重置为默认
-        </button>
       </div>
       </div><!-- end mt-3 space-y-0 -->
       </details><!-- end advanced settings -->
@@ -372,4 +324,44 @@ function resetCustomStyle() {
   animation: spin 0.6s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+.style-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.style-card {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+.style-card:hover {
+  border-color: var(--card-accent, rgba(255,255,255,0.2));
+  background: rgba(255,255,255,0.06);
+}
+.style-card.active {
+  border-color: var(--card-accent, #6b9fff);
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--card-accent) 20%, transparent);
+}
+.style-card-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin: 0 auto 6px;
+}
+.style-card-name {
+  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 2px;
+  letter-spacing: 1px;
+}
+.style-card-desc {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.5px;
+}
 </style>
