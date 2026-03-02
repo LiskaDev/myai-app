@@ -11,7 +11,7 @@ import { useSoundEffects } from './composables/useSoundEffects';
 import { useDiary } from './composables/useDiary';
 import { useActiveMessage } from './composables/useActiveMessage';
 import { useBackgroundTasks } from './composables/useBackgroundTasks';
-import { extractExpression } from './utils/textParser';
+import { extractExpression, parseDualLayerResponse } from './utils/textParser';
 
 // Import Components
 import ChatWindow from './components/ChatWindow.vue';
@@ -550,11 +550,14 @@ function saveEditMessage() {
       const msg = messages.value[editModal.index];
       // 🛡️ 保留 inner/thinking 层：只更新 rawContent，由渲染器重新拆分
       msg.rawContent = content;
-      // 重新解析 content（移除 inner/think 标签后的纯文本）
-      msg.content = content
-          .replace(/<inner>[\s\S]*?<\/inner>/g, '')
-          .replace(/<think>[\s\S]*?<\/think>/g, '')
-          .trim();
+      // 🛡️ AI 消息通过解析器处理，确保 think/inner/expr 标签不泄露（容错变体）
+      if (msg.role === 'assistant') {
+        const parsed = parseDualLayerResponse(content);
+        msg.content = parsed.content || content;
+        if (parsed.inner) msg.inner = parsed.inner;
+      } else {
+        msg.content = content;
+      }
       saveData();
       showToast('消息已更新');
     }

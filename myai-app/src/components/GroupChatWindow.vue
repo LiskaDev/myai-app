@@ -246,15 +246,26 @@ function safeRender(content) {
         const parsed = parseDualLayerResponse(content);
         let result = parsed.content || '';
 
-        // 🛡️ 安全兜底：确保 <think> / <inner> 标签永不泄露到显示层
+        // 🛡️ 安全兜底：确保 <think> / <inner> / <expr> 标签永不泄露到显示层
+        // v5.3.1: 同时处理 HTML 转义后的标签
         if (result) {
             result = result
+                // 原始标签
                 .replace(/<think>[\s\S]*?<\/think>/gi, '')
                 .replace(/<think>[\s\S]*$/gi, '')
                 .replace(/<inner>[\s\S]*?<\/inner>/gi, '')
                 .replace(/<inner>[\s\S]*$/gi, '')
                 .replace(/<\/think>/gi, '')
                 .replace(/<\/inner>/gi, '')
+                // HTML 转义后的标签
+                .replace(/&lt;\s*think\s*&gt;[\s\S]*?&lt;\s*\/\s*think\s*&gt;/gi, '')
+                .replace(/&lt;\s*think\s*&gt;[\s\S]*$/gi, '')
+                .replace(/&lt;\s*inner\s*&gt;[\s\S]*?&lt;\s*\/\s*inner\s*&gt;/gi, '')
+                .replace(/&lt;\s*inner\s*&gt;[\s\S]*$/gi, '')
+                .replace(/&lt;\s*\/?\s*think\s*&gt;/gi, '')
+                .replace(/&lt;\s*\/?\s*inner\s*&gt;/gi, '')
+                .replace(/&lt;expr:\w+&gt;/gi, '')
+                .replace(/&lt;\/expr:\w+&gt;/gi, '')
                 .trim();
         }
         return result;
@@ -294,10 +305,11 @@ function extractReasoning(content) {
 }
 
 // v5.9.3: 推理状态图标
+// 🛡️ v5.3.1: 容错匹配标签变体
 function getReasoningStatus(msg) {
     const raw = msg?.rawContent || msg?.content || '';
-    const hasThinkOpen = raw.includes('<think>');
-    const hasThinkClose = raw.includes('</think>');
+    const hasThinkOpen = /<\s*think\s*>/i.test(raw);
+    const hasThinkClose = /<\s*\/\s*think\s*>/i.test(raw);
     const isThinking = hasThinkOpen && !hasThinkClose;
     return {
         isThinking,
@@ -306,13 +318,14 @@ function getReasoningStatus(msg) {
 }
 
 // v5.9.3: 复制消息文本
+// 🛡️ v5.3.1: 容错匹配标签变体
 function copyMessageText(msg) {
     const raw = msg.rawContent || msg.content || '';
     const cleanText = raw
-        .replace(/<think>[\s\S]*?<\/think>/g, '')
-        .replace(/<think>[\s\S]*$/g, '')
-        .replace(/<inner>[\s\S]*?<\/inner>/g, '')
-        .replace(/<inner>[\s\S]*$/g, '')
+        .replace(/<\s*think\s*>[\s\S]*?<\s*\/\s*think\s*>/gi, '')
+        .replace(/<\s*think\s*>[\s\S]*$/gi, '')
+        .replace(/<\s*inner\s*>[\s\S]*?<\s*\/\s*inner\s*>/gi, '')
+        .replace(/<\s*inner\s*>[\s\S]*$/gi, '')
         .replace(/<[^>]+>/g, '')
         .trim();
     navigator.clipboard.writeText(cleanText).catch(() => {});

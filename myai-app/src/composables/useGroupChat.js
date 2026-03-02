@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue';
 import { generateUUID } from '../utils/uuid';
 import { STORAGE_KEYS } from '../utils/storage';
-import { parseDualLayerResponse, formatRoleplayText } from '../utils/textParser';
+import { parseDualLayerResponse, formatRoleplayText, normalizeTags } from '../utils/textParser';
 import {
     initMatrix,
     syncMatrix,
@@ -582,7 +582,8 @@ Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
                             groupMessages.value[msgIndex].thinking = parsed.reasoning;
                         }
 
-                        if (fullContent.includes('</think>')) {
+                        // 🛡️ v5.3.1: 容错匹配标签变体
+                        if (/<\s*\/\s*think\s*>/i.test(fullContent)) {
                             groupMessages.value[msgIndex].thinkingComplete = true;
                         }
 
@@ -614,9 +615,11 @@ Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
         groupMessages.value[msgIndex].rawContent = fullContent;
 
         // [PASS] 弃权机制 — 必须在 formatRoleplayText 之前检测，否则 [PASS] 会被转成 <span>
-        const cleanForPass = fullContent
-            .replace(/<think>[\s\S]*?<\/think>/g, '')
-            .replace(/<inner>[\s\S]*?<\/inner>/g, '')
+        // 🛡️ v5.3.1: 先正规化标签变体再清理
+        const cleanForPass = normalizeTags(fullContent)
+            .replace(/<think>[\s\S]*?<\/think>/gi, '')
+            .replace(/<inner>[\s\S]*?<\/inner>/gi, '')
+            .replace(/<\/?expr:\w+>/gi, '')
             .trim();
         if (/^\[?PASS\]?[。.，,\s]*$/i.test(cleanForPass)) {
             groupMessages.value[msgIndex] = {
@@ -635,11 +638,13 @@ Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
         if (finalParsed.content) {
             groupMessages.value[msgIndex].content = finalParsed.content;
         } else if (fullContent) {
-            let fallback = fullContent
-                .replace(/<think>[\s\S]*$/, '')
-                .replace(/<inner>[\s\S]*$/, '')
-                .replace(/<think>[\s\S]*?<\/think>/g, '')
-                .replace(/<inner>[\s\S]*?<\/inner>/g, '')
+            // 🛡️ v5.3.1: 先正规化标签变体，再用容错正则清理
+            let fallback = normalizeTags(fullContent)
+                .replace(/<think>[\s\S]*$/gi, '')
+                .replace(/<inner>[\s\S]*$/gi, '')
+                .replace(/<think>[\s\S]*?<\/think>/gi, '')
+                .replace(/<inner>[\s\S]*?<\/inner>/gi, '')
+                .replace(/<\/?expr:\w+>/gi, '')
                 .trim();
             groupMessages.value[msgIndex].content = fallback
                 ? formatRoleplayText(fallback)
@@ -1261,8 +1266,15 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
         if (!currentGroup.value) return;
         if (index >= 0 && index < groupMessages.value.length) {
             const msg = groupMessages.value[index];
-            msg.content = newContent;
             msg.rawContent = newContent;
+            // 🛡️ AI 消息通过解析器处理，确保 think/inner/expr 标签不泄露
+            if (msg.role === 'assistant') {
+                const parsed = parseDualLayerResponse(newContent);
+                msg.content = parsed.content || newContent;
+                if (parsed.inner) msg.inner = parsed.inner;
+            } else {
+                msg.content = newContent;
+            }
             saveGroups();
             showToast('消息已更新');
         }

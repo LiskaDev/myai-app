@@ -253,15 +253,26 @@ function safeParseMessage(message) {
   // intentionally during streaming to prevent flash/leak
   let bodyHtml = parsed.content;
 
-  // 🛡️ 安全兜底：确保 <think> / <inner> 标签永远不会泄露到显示层
+  // 🛡️ 安全兜底：确保 <think> / <inner> / <expr> 标签永远不会泄露到显示层
+  // v5.3.1: 同时处理 HTML 转义后的标签（formatRoleplayText 会把 < 转义成 &lt;）
   if (bodyHtml) {
     bodyHtml = bodyHtml
+      // 原始标签（理论上不应该走到这里，但作为防线）
       .replace(/<think>[\s\S]*?<\/think>/gi, '')
       .replace(/<think>[\s\S]*$/gi, '')
       .replace(/<inner>[\s\S]*?<\/inner>/gi, '')
       .replace(/<inner>[\s\S]*$/gi, '')
       .replace(/<\/think>/gi, '')
       .replace(/<\/inner>/gi, '')
+      // HTML 转义后的标签（这才是实际会出现的形式）
+      .replace(/&lt;\s*think\s*&gt;[\s\S]*?&lt;\s*\/\s*think\s*&gt;/gi, '')
+      .replace(/&lt;\s*think\s*&gt;[\s\S]*$/gi, '')
+      .replace(/&lt;\s*inner\s*&gt;[\s\S]*?&lt;\s*\/\s*inner\s*&gt;/gi, '')
+      .replace(/&lt;\s*inner\s*&gt;[\s\S]*$/gi, '')
+      .replace(/&lt;\s*\/?\s*think\s*&gt;/gi, '')
+      .replace(/&lt;\s*\/?\s*inner\s*&gt;/gi, '')
+      .replace(/&lt;expr:\w+&gt;/gi, '')
+      .replace(/&lt;\/expr:\w+&gt;/gi, '')
       .trim();
   }
 
@@ -278,18 +289,22 @@ function safeParseMessage(message) {
 function getReasoningStatus(message, index) {
   const raw = message?.rawContent || message?.content || '';
   const isLastMessage = index === props.messages.length - 1;
-  
+
+  // 🛡️ v5.3.1: 容错匹配标签变体（< think >、</Think> 等）
+  const hasThinkOpen = /<\s*think\s*>/i.test(raw);
+  const hasThinkClose = /<\s*\/\s*think\s*>/i.test(raw);
+
   // 状态 A: 正在思考 (有开头，没结尾) -> 显示 ✨
-  if (raw.includes('<think>') && !raw.includes('</think>')) {
+  if (hasThinkOpen && !hasThinkClose) {
     return { icon: '✨', isThinking: true };
   }
-  
+
   // 状态 B: 思考完成 -> 立马显示 💡
   // Check message.thinkingComplete or if </think> is present
-  if (message?.thinkingComplete || raw.includes('</think>') || message?.thinking) {
+  if (message?.thinkingComplete || hasThinkClose || message?.thinking) {
     return { icon: '💡', isThinking: false };
   }
-  
+
   return null; // 没有思考内容
 }
 

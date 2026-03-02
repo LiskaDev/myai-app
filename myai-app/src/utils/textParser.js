@@ -1,12 +1,13 @@
 /**
- * v5.3 终极解析器：双重流式卫兵 + 完整文本格式化
- * 
+ * v5.3.1 终极解析器：双重流式卫兵 + 完整文本格式化
+ *
  * 解决问题:
  * 1. 符号替换而非添加：去除原始标记符号，只显示自定义符号
  * 2. 所有 <inner> 标签都从正文中移除并提取
  * 3. 正确的分行显示
- * 
- * 使用 indexOf + substring 而非正则，更稳定不会卡死。
+ * 4. 🛡️ 标签容错：AI 输出 </think > / < /think> / </Think> 等变体时不再卡死
+ *
+ * 使用 indexOf + substring（标签正规化后），稳定不会卡死。
  */
 
 // ========================================
@@ -28,6 +29,18 @@ const EXPRESSION_FALLBACK = {
     calm: 'neutral', confused: 'neutral', thinking: 'neutral', serious: 'neutral',
 };
 
+// ========================================
+// 🛡️ 标签容错正规化
+// 修复 AI 输出 </think > 、</ think> 、<Think> 等变体导致解析失败
+// ========================================
+export function normalizeTags(text) {
+    return text
+        .replace(/<\s*think\s*>/gi, '<think>')
+        .replace(/<\s*\/\s*think\s*>/gi, '</think>')
+        .replace(/<\s*inner\s*>/gi, '<inner>')
+        .replace(/<\s*\/\s*inner\s*>/gi, '</inner>');
+}
+
 /**
  * 提取 <expr:emotion> 标签
  * 流式安全：未完整的 <expr... 残片会被静默隐藏
@@ -47,8 +60,8 @@ export function extractExpression(text) {
         } else if (EXPRESSION_FALLBACK[rawEmotion]) {
             expression = EXPRESSION_FALLBACK[rawEmotion];
         }
-        // 从正文移除标签
-        const content = text.replace(/<expr:\w+>/gi, '').trim();
+        // 从正文移除标签（含开标签和闭标签）
+        const content = text.replace(/<\/?expr:\w+>/gi, '').trim();
         return { content, expression };
     }
 
@@ -58,6 +71,12 @@ export function extractExpression(text) {
     if (partialMatch) {
         const content = text.substring(0, partialMatch.index).trim();
         return { content, expression: null };
+    }
+
+    // 3. 清理孤立的闭合标签 </expr:...>（AI 有时只输出闭合标签）
+    const cleaned = text.replace(/<\/expr:\w+>/gi, '');
+    if (cleaned !== text) {
+        return { content: cleaned.trim(), expression: null };
     }
 
     return { content: text, expression: null };
@@ -203,8 +222,9 @@ export function formatRoleplayText(text) {
 }
 
 /**
- * 双重流式卫兵解析器 v5.3
+ * 双重流式卫兵解析器 v5.3.1
  * 支持多个 <inner> 标签的提取
+ * 🛡️ v5.3.1: 标签容错 + think 优先提取（避免 think 块内标签被误匹配）
  */
 export function parseDualLayerResponse(rawText) {
     // 0. 安全兜底
@@ -213,25 +233,25 @@ export function parseDualLayerResponse(rawText) {
     let reasoning = null;
     let inner = null;
     let expression = null;
-    let content = rawText; // 初始文本
 
-    // === 第零道关卡：表情标签提取 ===
-    const exprResult = extractExpression(content);
-    content = exprResult.content;
-    expression = exprResult.expression;
+    // 🛡️ 标签容错：统一 <think>/<inner> 标签格式
+    // 修复 AI 输出 </think > 、</ think> 、<Think> 等变体导致解析失败的老 BUG
+    let content = normalizeTags(rawText);
 
-    // === 第一道关卡：R1 思考卫兵 ===
+    // === 第一道关卡：R1 思考卫兵（优先于表情提取，避免 think 块内的标签被误匹配）===
     const thinkStart = content.indexOf('<think>');
     const thinkEnd = content.indexOf('</think>');
 
     if (thinkStart !== -1) {
-        if (thinkEnd === -1) {
+        if (thinkEnd === -1 || thinkEnd < thinkStart) {
             // [状态：思考未闭合] -> ☢️ 全线阻断
+            // 仍然尝试提取表情（用于流式头像显示）
+            const exprResult = extractExpression(content);
             return {
                 reasoning: content.substring(thinkStart + 7).trim(),
                 inner: null,
                 content: "", // 静默
-                expression,
+                expression: exprResult.expression,
             };
         } else {
             // [状态：思考已闭合] -> ✅ 放行
@@ -241,6 +261,11 @@ export function parseDualLayerResponse(rawText) {
             content = content.trim();
         }
     }
+
+    // === 第零道关卡：表情标签提取（只从 think 之外的正文提取，更准确）===
+    const exprResult = extractExpression(content);
+    content = exprResult.content;
+    expression = exprResult.expression;
 
     // === 第二道关卡：内心戏卫兵 (v5.3: 支持多个) ===
     const innerResult = extractAllInnerTags(content);
@@ -280,10 +305,12 @@ export function parseDualLayerResponse(rawText) {
 
 /**
  * Strip tags from content (for TTS - don't read AI reasoning)
+ * 🛡️ v5.3.1: 使用容错正则匹配标签变体
  */
 export function stripThinkingTags(text) {
     if (!text) return '';
-    return text
+    let cleaned = normalizeTags(text);
+    return cleaned
         .replace(/<think>[\s\S]*?<\/think>/gi, '')
         .replace(/<inner>[\s\S]*?<\/inner>/gi, '')
         .trim();

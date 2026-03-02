@@ -1,4 +1,4 @@
-import { parseDualLayerResponse, formatRoleplayText } from '../utils/textParser';
+import { parseDualLayerResponse, formatRoleplayText, normalizeTags } from '../utils/textParser';
 import { usePromptBuilder } from './usePromptBuilder';
 import { useAutoSummary } from './useAutoSummary';
 import { useUserPersona } from './useUserPersona';
@@ -309,7 +309,8 @@ Example format:
                         }
 
                         // CRITICAL: Check if </think> just closed to mark thinkingComplete
-                        if (fullContent.includes('</think>')) {
+                        // 🛡️ v5.3.1: 容错匹配标签变体（</think >、</ think>、</Think> 等）
+                        if (/<\s*\/\s*think\s*>/i.test(fullContent)) {
                             messages.value[msgIndex].thinkingComplete = true;
                         }
 
@@ -353,12 +354,13 @@ Example format:
         if (finalParsed.content) {
             messages.value[msgIndex].content = finalParsed.content;
         } else if (fullContent) {
-            // fallback: 手动清理
-            let fallback = fullContent
-                .replace(/<think>[\s\S]*$/, '')
-                .replace(/<inner>[\s\S]*$/, '')
-                .replace(/<think>[\s\S]*?<\/think>/g, '')
-                .replace(/<inner>[\s\S]*?<\/inner>/g, '')
+            // fallback: 手动清理（🛡️ 先正规化标签变体，再用 i 旗处理大小写）
+            let fallback = normalizeTags(fullContent)
+                .replace(/<think>[\s\S]*$/gi, '')
+                .replace(/<inner>[\s\S]*$/gi, '')
+                .replace(/<think>[\s\S]*?<\/think>/gi, '')
+                .replace(/<inner>[\s\S]*?<\/inner>/gi, '')
+                .replace(/<\/?expr:\w+>/gi, '')
                 .trim();
             messages.value[msgIndex].content = fallback
                 ? formatRoleplayText(fallback)

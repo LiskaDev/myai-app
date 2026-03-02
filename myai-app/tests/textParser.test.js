@@ -162,6 +162,18 @@ describe('extractExpression - 表情标签提取', () => {
         expect(extractExpression('').expression).toBeNull();
         expect(extractExpression(undefined).expression).toBeNull();
     });
+
+    it('应该清理闭合标签 </expr:neutral>', () => {
+        const result = extractExpression('*微笑*</expr:neutral>');
+        expect(result.content).toBe('*微笑*');
+        expect(result.expression).toBeNull();
+    });
+
+    it('应该同时清理开标签和闭标签', () => {
+        const result = extractExpression('<expr:joy>*开心*</expr:joy>');
+        expect(result.content).toBe('*开心*');
+        expect(result.expression).toBe('joy');
+    });
 });
 
 describe('parseDualLayerResponse - expression 集成', () => {
@@ -181,5 +193,82 @@ describe('parseDualLayerResponse - expression 集成', () => {
         expect(result.expression).toBe('blush');
         expect(result.reasoning).toBe('思考中');
         expect(result.content).not.toContain('expr');
+    });
+});
+
+// ========================================
+// 🛡️ v5.3.1: 标签容错测试
+// ========================================
+describe('parseDualLayerResponse - 标签容错 (v5.3.1)', () => {
+    it('应该处理 </think > (闭合标签空格变体)', () => {
+        const input = '<think>这是思考</think >这是回答';
+        const result = parseDualLayerResponse(input);
+        expect(result.reasoning).toBe('这是思考');
+        expect(result.content).toContain('这是回答');
+    });
+
+    it('应该处理 < /think> (斜杠前空格)', () => {
+        const input = '<think>思考内容< /think>正文内容';
+        const result = parseDualLayerResponse(input);
+        expect(result.reasoning).toBe('思考内容');
+        expect(result.content).toContain('正文内容');
+    });
+
+    it('应该处理 </Think> (大小写变体)', () => {
+        const input = '<Think>思考过程</Think>回答内容';
+        const result = parseDualLayerResponse(input);
+        expect(result.reasoning).toBe('思考过程');
+        expect(result.content).toContain('回答内容');
+    });
+
+    it('应该处理 < think > (开标签空格变体)', () => {
+        const input = '< think >思考< /think >正文';
+        const result = parseDualLayerResponse(input);
+        expect(result.reasoning).toBe('思考');
+        expect(result.content).toContain('正文');
+    });
+
+    it('应该处理 </inner > (内心戏闭合标签空格变体)', () => {
+        const input = '<inner>内心独白</inner >正文';
+        const result = parseDualLayerResponse(input);
+        expect(result.inner).toBe('内心独白');
+    });
+
+    it('应该处理 < Inner > (内心戏大小写变体)', () => {
+        const input = '正文 < Inner >心声</ Inner >';
+        const result = parseDualLayerResponse(input);
+        expect(result.inner).toBe('心声');
+    });
+
+    it('think 块内的 <expr:joy> 不应被误匹配为正文表情', () => {
+        const input = '<think>需要加上<expr:joy>标签</think><expr:sad>*叹气*';
+        const result = parseDualLayerResponse(input);
+        // 表情应该从正文部分提取（sad），而不是 think 块内提到的（joy）
+        expect(result.expression).toBe('sad');
+        expect(result.reasoning).toContain('<expr:joy>');
+    });
+
+    it('完整场景：think + expr + inner + 正文（模拟真实 AI 输出）', () => {
+        const input = '<think>用户说你好，我应该用<expr:joy>和<inner>来回应</think><expr:joy><inner>好开心遇到新朋友</inner>*微笑着挥手* "你好呀！"';
+        const result = parseDualLayerResponse(input);
+        expect(result.reasoning).toContain('用户说你好');
+        expect(result.expression).toBe('joy');
+        expect(result.inner).toBe('好开心遇到新朋友');
+        expect(result.content).toContain('rp-action');
+        expect(result.content).toContain('rp-dialogue');
+        expect(result.content).not.toContain('think');
+        expect(result.content).not.toContain('inner');
+        expect(result.content).not.toContain('expr');
+    });
+
+    it('完整场景 + 标签变体（模拟导致 bug 的 AI 输出）', () => {
+        const input = '< think >用户打招呼，需要热情回应</ think ><expr:joy>< inner >新朋友来了！</ inner >*开心地* "你好！"';
+        const result = parseDualLayerResponse(input);
+        expect(result.reasoning).toContain('用户打招呼');
+        expect(result.expression).toBe('joy');
+        expect(result.inner).toBe('新朋友来了！');
+        expect(result.content).toContain('rp-dialogue');
+        expect(result.content).not.toContain('think');
+        expect(result.content).not.toContain('inner');
     });
 });
