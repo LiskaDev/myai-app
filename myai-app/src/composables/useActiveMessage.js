@@ -32,21 +32,30 @@ export function useActiveMessage(appState) {
         // 1. 检查离开时长
         const lastVisit = parseInt(localStorage.getItem('myai_lastVisitTime') || '0');
         if (!lastVisit) {
+            console.log('[主动消息] 首次访问，记录时间');
             localStorage.setItem('myai_lastVisitTime', now.toString());
             return false;
         }
 
         const hoursAway = (now - lastVisit) / 3600000;
-        if (hoursAway < 2) return false;
+        console.log(`[主动消息] 距上次访问 ${hoursAway.toFixed(2)} 小时`);
+        if (hoursAway < 2) {
+            console.log('[主动消息] 离开不足 2 小时，跳过');
+            return false;
+        }
 
         // 2. 防重复：每个角色每次回访只触发一次
         const todayKey = `myai_activeMsg_${roleId}_${new Date().toDateString()}`;
-        if (localStorage.getItem(todayKey)) return false;
+        if (localStorage.getItem(todayKey)) {
+            console.log('[主动消息] 今日已触发过，跳过');
+            return false;
+        }
 
         // 3. 需要有聊天记录（空聊天不触发，让欢迎屏展示）
         const msgs = messages.value;  // 分支感知版
+        console.log(`[主动消息] 聊天记录条数: ${msgs?.length ?? 'null'}`);
         if (!msgs || msgs.length === 0) {
-            console.log('[\u4e3b\u52a8\u6d88\u606f] 无聊天记录，跳过');
+            console.log('[主动消息] 无聊天记录，跳过');
             return false;
         }
 

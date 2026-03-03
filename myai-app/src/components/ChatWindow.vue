@@ -136,10 +136,8 @@ const returnMessage = computed(() => {
   return `🕐 已经过去 ${days} 天了，${name} 一直在想你`;
 });
 
-// 记录访问时间
-if (typeof window !== 'undefined') {
-  localStorage.setItem('myai_lastVisitTime', Date.now().toString());
-}
+// ⚠️ 注意：访问时间由 App.vue 的 visibilitychange/beforeunload 统一管理
+// 不在这里写入，避免覆盖「上次离开时间」导致主动消息永远检测到 0 小时
 
 defineExpose({
   get scrollTop() {

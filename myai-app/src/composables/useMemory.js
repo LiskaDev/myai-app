@@ -497,7 +497,9 @@ ${dialogueText}`,
 
             const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
                 .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
-            const model = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
+            // reasoner 模型不适合 JSON 结构化输出，强制降级到 deepseek-chat
+            const rawModel = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
+            const model = rawModel.includes('reasoner') ? 'deepseek-chat' : rawModel;
 
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
@@ -509,6 +511,7 @@ ${dialogueText}`,
                     model,
                     max_tokens: 500,
                     temperature: 0.3,
+                    response_format: { type: 'json_object' },
                     messages: [
                         {
                             role: 'system',

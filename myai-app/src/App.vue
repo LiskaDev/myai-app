@@ -632,6 +632,16 @@ function exportData() {
 }
 
 // Lifecycle
+// 记录用户「离开时」的时间戳（供主动消息判断离开时长）
+function recordLeaveTime() {
+  localStorage.setItem('myai_lastVisitTime', Date.now().toString());
+}
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    recordLeaveTime();
+  }
+}
+
 onMounted(() => {
   loadData();
   setupWatchers();
@@ -644,6 +654,9 @@ onMounted(() => {
   // 延迟确保 DOM 完全渲染后再强制滚动到底部
   setTimeout(() => scrollToBottom(true), 100);
   window.addEventListener('keydown', handleGlobalKeydown);
+  // 🕐 用户离开时记录时间（visibilitychange 比 beforeunload 更可靠）
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener('beforeunload', recordLeaveTime);
 
   // 🌟 主动消息：回访检测（diary 生成完后再弹未读日记）
   setTimeout(async () => {
@@ -675,6 +688,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  window.removeEventListener('beforeunload', recordLeaveTime);
+  recordLeaveTime(); // 组件卸载时也记录一次
 });
 
 // 导入数据（从文件选择器获取解析后的数据）

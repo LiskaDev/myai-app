@@ -278,10 +278,10 @@ ${prevContext}
 
             let diaryContent = rawDiary;
             let summary = null;
-            const summaryMatch = rawDiary.match(/[摘要](.+)/s);
+            const summaryMatch = rawDiary.match(/\[摘要\]([\s\S]+)/);
             if (summaryMatch) {
                 summary = summaryMatch[1].trim().slice(0, 80);
-                diaryContent = rawDiary.replace(/\n*[摘要].+/s, '').trim();
+                diaryContent = rawDiary.replace(/\n*\[摘要\][\s\S]+/, '').trim();
             }
 
             const entry = {
