@@ -655,8 +655,8 @@ onMounted(() => {
   setTimeout(() => scrollToBottom(true), 100);
   window.addEventListener('keydown', handleGlobalKeydown);
   // 🕐 用户离开时记录时间（visibilitychange 比 beforeunload 更可靠）
+  // ⚠️ 不使用 beforeunload：刷新页面时也会触发，会覆盖离开时间导致主动消息永远判定为 0 小时
   document.addEventListener('visibilitychange', handleVisibilityChange);
-  window.addEventListener('beforeunload', recordLeaveTime);
 
   // 🌟 主动消息：回访检测（diary 生成完后再弹未读日记）
   setTimeout(async () => {
@@ -689,8 +689,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown);
   document.removeEventListener('visibilitychange', handleVisibilityChange);
-  window.removeEventListener('beforeunload', recordLeaveTime);
-  recordLeaveTime(); // 组件卸载时也记录一次
+  recordLeaveTime(); // 组件卸载时记录一次（不包括刷新场景）
 });
 
 // 导入数据（从文件选择器获取解析后的数据）
