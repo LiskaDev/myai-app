@@ -130,35 +130,6 @@ function resetCustomStyle() {
     };
   }
 }
-
-// 🧪 模拟思念日记测试
-const absenceTestDone = ref(false);
-function simulateAbsence() {
-  console.log('[🧪 测试按钮] 开始模拟...');
-  // 设置最后访问时间为 10 小时前
-  var fakeTime = Date.now() - 10 * 3600 * 1000;
-  localStorage.setItem('myai_lastVisitTime', fakeTime.toString());
-  console.log('[🧪 测试按钮] 设置 myai_lastVisitTime =', fakeTime, '（', new Date(fakeTime).toLocaleString(), '）');
-  // 清除所有角色的今日触发记录
-  var d = new Date().toDateString();
-  var roles = JSON.parse(localStorage.getItem('myai_roles_v1') || '[]');
-  console.log('[🧪 测试按钮] 找到', roles.length, '个角色');
-  var count = 0;
-  for (var i = 0; i < roles.length; i++) {
-    var k1 = 'myai_activeMsg_' + roles[i].id + '_' + d;
-    var k2 = 'myai_absenceDiary_' + roles[i].id + '_' + d;
-    localStorage.removeItem(k1);
-    localStorage.removeItem(k2);
-    console.log('[🧪 测试按钮] 清除:', roles[i].name, '(' + roles[i].id + ')');
-    count++;
-  }
-  // 验证设置成功
-  var verify = localStorage.getItem('myai_lastVisitTime');
-  console.log('[🧪 测试按钮] ✅ 完成! 验证 lastVisitTime =', verify, '  角色数:', count);
-  console.log('[🧪 测试按钮] 👉 现在请刷新页面 (F5)，然后看 Console 中 [主动消息] 开头的日志');
-  absenceTestDone.value = true;
-  emit('show-toast', '✅ 已模拟 10 小时未访问（' + count + ' 个角色已重置），请刷新页面！');
-}
 </script>
 
 <template>
@@ -497,17 +468,6 @@ function simulateAbsence() {
         </div>
       </div>
 
-      <!-- 🧪 测试工具 -->
-      <div class="pt-3 mt-3 border-t border-white/10">
-        <label class="block text-sm text-gray-300 mb-2">🧪 测试工具</label>
-        <button @click="simulateAbsence"
-                class="w-full px-4 py-2 rounded-lg text-sm transition"
-                :class="absenceTestDone ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/15 text-amber-300 hover:bg-amber-500/25'"
-                :disabled="absenceTestDone">
-          {{ absenceTestDone ? '✅ 已模拟，请刷新页面' : '💭 模拟思念日记（伪装 10h 未访问）' }}
-        </button>
-        <p class="text-[10px] text-gray-500 mt-1">点击后刷新页面将触发思念日记生成</p>
-      </div>
 
       </div><!-- end mt-3 space-y-0 -->
       </details><!-- end advanced settings -->
