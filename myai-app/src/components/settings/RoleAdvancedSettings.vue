@@ -6,6 +6,8 @@ const props = defineProps({
   availableVoices: Array
 });
 
+const emit = defineEmits(['show-toast']);
+
 const fileInputRef = ref(null);
 const isProcessing = ref(false);
 
@@ -19,7 +21,7 @@ async function handleFileSelect(event) {
 
   // 限制文件大小 5MB
   if (file.size > 5 * 1024 * 1024) {
-    alert('图片不能超过 5MB');
+    emit('show-toast', '图片不能超过 5MB', 'error');
     return;
   }
 
@@ -28,7 +30,7 @@ async function handleFileSelect(event) {
     const dataUrl = await compressImage(file, 256);
     props.currentRole.avatar = dataUrl;
   } catch (err) {
-    alert('图片处理失败: ' + err.message);
+    emit('show-toast', '图片处理失败: ' + err.message, 'error');
   } finally {
     isProcessing.value = false;
     // 重置 input 以便重复选择同一文件
@@ -160,7 +162,7 @@ function clearAvatar() {
         <!-- Temperature (创造力) -->
         <div>
           <div class="flex justify-between text-sm mb-1">
-            <label class="text-gray-400">🎛️ Temperature (创造力)</label>
+            <label class="text-gray-400">🎛️ 创造力（随机性）</label>
             <span class="text-primary font-mono">{{ (currentRole.temperature || 1.0).toFixed(1) }}</span>
           </div>
           <input v-model.number="currentRole.temperature" type="range" min="0" max="2" step="0.1"

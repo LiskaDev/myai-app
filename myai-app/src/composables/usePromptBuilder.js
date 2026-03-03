@@ -214,6 +214,14 @@ Remember: You are an actor playing a role. The USER is the co-author, not someon
             });
         }
 
+        // Step 6.9: 🎬 开场白记忆注入
+        // 开场白只是 UI 展示的欢迎语，不保存进 messages.value
+        // 若对话历史以用户消息开头（即 AI 从未"见过"自己说过开场白），
+        // 在此注入，确保 AI 的上下文连贯，不会产生"我为什么这么说"的割裂感
+        if (role.firstMessage && messages.value.length > 0 && messages.value[0]?.role === 'user') {
+            apiMessages.push({ role: 'assistant', content: role.firstMessage });
+        }
+
         // Step 7: 对话窗口（近期全文）
         const windowSize = role.memoryWindow || 15;
         const recentMessages = messages.value.slice(-windowSize);

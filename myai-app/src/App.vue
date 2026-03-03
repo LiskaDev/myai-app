@@ -653,12 +653,23 @@ onMounted(() => {
       scrollToBottom(true);
     }
   }, 500);
-  // 自动弹出未读日记
+  // 自动弹出未读日记（🛡️ 设置面板已开时延后弹出，避免双弹窗）
   setTimeout(() => {
     const unread = diary.getUnreadDiaries();
     if (unread.length > 0) {
-      diaryDisplayList.value = unread;
-      showDiaryModal.value = true;
+      if (showSettings.value) {
+        // 设置面板正在显示，等待用户关闭后再弹日记
+        const stopWatch = watch(showSettings, (val) => {
+          if (!val) {
+            diaryDisplayList.value = unread;
+            showDiaryModal.value = true;
+            stopWatch();
+          }
+        });
+      } else {
+        diaryDisplayList.value = unread;
+        showDiaryModal.value = true;
+      }
     }
   }, 800);
 });
@@ -885,8 +896,8 @@ function handleAvatarError(type, roleId) {
       </div>
     </header>
 
-    <!-- Token 压力条 -->
-    <div class="token-pressure-bar">
+    <!-- Token 压力条（已隐藏） -->
+    <div v-if="false" class="token-pressure-bar">
       <div class="token-pressure-fill" :style="{ width: (contextPressure * 100) + '%', background: pressureColor }" :title="`${Math.round(contextPressure * 100)}% 记忆口用量`"></div>
     </div>
 
@@ -1019,9 +1030,9 @@ function handleAvatarError(type, roleId) {
                       class="w-full glass-light bg-glass-light text-gray-100 rounded-2xl px-4 py-3 resize-none input-focus outline-none border border-white/10 focus:border-primary transition max-h-32 overflow-y-auto text-shadow-light"
                       style="min-height: 48px;"></textarea>
           </div>
-          <button type="submit" :disabled="!userInput.trim() || isStreaming"
+          <button type="submit" :disabled="!userInput.trim() || isStreaming || isThinking"
                   class="send-btn w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  v-if="!isStreaming">
+                  v-if="!isStreaming && !isThinking">
             <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
             </svg>
@@ -1047,6 +1058,8 @@ function handleAvatarError(type, roleId) {
         :current-speaking-role="groupChat.currentSpeakingRole.value"
         :global-settings="globalSettings"
         :missing-count="groupChat.missingMembers.value.length"
+        :search-results="searchResults"
+        :current-match-index="currentMatchIndex"
         :class="{ 'blur-background': showSettings }"
         @send-director="groupChat.sendDirectorMessage"
         @continue-round="groupChat.continueOneRound"

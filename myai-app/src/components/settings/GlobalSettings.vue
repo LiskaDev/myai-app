@@ -35,6 +35,8 @@ const props = defineProps({
   globalSettings: Object
 });
 
+const emit = defineEmits(['show-toast']);
+
 const appState = useAppState();
 const storageUsage = computed(() => appState.storageUsage);
 
@@ -70,13 +72,13 @@ function triggerUserFilePicker() {
 async function handleUserFileSelect(event) {
   const file = event.target.files?.[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { alert('图片不能超过 5MB'); return; }
+  if (file.size > 5 * 1024 * 1024) { emit('show-toast', '图片不能超过 5MB', 'error'); return; }
   isUserAvatarProcessing.value = true;
   try {
     const dataUrl = await compressImage(file, 256);
     props.globalSettings.userAvatar = dataUrl;
   } catch (err) {
-    alert('图片处理失败: ' + err.message);
+    emit('show-toast', '图片处理失败: ' + err.message, 'error');
   } finally {
     isUserAvatarProcessing.value = false;
     event.target.value = '';
@@ -270,7 +272,7 @@ function resetCustomStyle() {
       <!-- 自动朗读 -->
       <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
         <div>
-          <label class="block text-sm text-gray-300">🔊 自动朗读 (Auto-Play TTS)</label>
+          <label class="block text-sm text-gray-300">🔊 自动朗读</label>
           <p class="text-xs text-gray-400">AI 回复完成后自动语音朗读</p>
         </div>
         <div class="toggle-switch" :class="{ 'active': globalSettings.autoPlayTTS }"
@@ -279,13 +281,13 @@ function resetCustomStyle() {
 
       <!-- 输出长度偏好 -->
       <div class="pt-3 mt-3 border-t border-white/10">
-        <label class="block text-sm text-gray-300 mb-2">📝 输出长度偏好 (Response Length)</label>
+        <label class="block text-sm text-gray-300 mb-2">📝 输出长度偏好</label>
         <select v-model="globalSettings.responseLength"
                 class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition">
-          <option value="auto">Auto (AI 自己决定)</option>
-          <option value="short">Concise (日常/短回复 50-150字)</option>
-          <option value="normal">Standard (标准模式 200-400字)</option>
-          <option value="long">Novel Mode (沉浸小说 400+字)</option>
+          <option value="auto">自动（AI 自行决定）</option>
+          <option value="short">简短（日常对话 50-150字）</option>
+          <option value="normal">标准（均衡模式 200-400字）</option>
+          <option value="long">详述（沉浸小说 400+字）</option>
         </select>
         <p class="text-xs text-gray-400 mt-1">控制 AI 回复的详细程度和篇幅</p>
       </div>
@@ -294,7 +296,7 @@ function resetCustomStyle() {
       <!-- 显示推理过程 -->
       <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
         <div>
-          <label class="block text-sm text-gray-300">🔧 Show AI Reasoning (显示推理过程)</label>
+          <label class="block text-sm text-gray-300">🔧 显示推理过程</label>
           <p class="text-xs text-gray-400">显示 DeepSeek R1 的底层思维链 (&lt;think&gt;)</p>
         </div>
         <div class="toggle-switch" :class="{ 'active': globalSettings.showLogic }"
@@ -304,7 +306,7 @@ function resetCustomStyle() {
       <!-- 显示内心戏 -->
       <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
         <div>
-          <label class="block text-sm text-gray-300">💭 Show Inner Thoughts (显示内心戏)</label>
+          <label class="block text-sm text-gray-300">💭 显示内心戏</label>
           <p class="text-xs text-gray-400">显示角色的潜台词和心理活动 (&lt;inner&gt;)</p>
         </div>
         <div class="toggle-switch" :class="{ 'active': globalSettings.showInner }"
@@ -314,14 +316,14 @@ function resetCustomStyle() {
       <!-- ⚙️ 高级设置（默认折叠） -->
       <details class="pt-3 mt-3 border-t border-white/10">
         <summary class="cursor-pointer text-sm text-gray-300 hover:text-gray-100 transition select-none py-1">
-          ⚙️ Advanced Settings (高级设置)
+          ⚙️ 高级设置
         </summary>
         <div class="mt-3 space-y-0">
 
       <!-- 沉浸模式 -->
       <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
         <div>
-          <label class="block text-sm text-gray-300">🌙 Immersive Mode (沉浸模式)</label>
+          <label class="block text-sm text-gray-300">🌙 沉浸模式</label>
           <p class="text-xs text-gray-400">隐藏思维标记和状态提示，提供纯粹的阅读体验</p>
         </div>
         <div class="toggle-switch" :class="{ 'active': globalSettings.immersiveMode }"
@@ -331,7 +333,7 @@ function resetCustomStyle() {
       <!-- 🔊 音效开关 -->
       <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
         <div>
-          <label class="block text-sm text-gray-300">🔊 Sound Effects (音效)</label>
+          <label class="block text-sm text-gray-300">🔊 音效</label>
           <p class="text-xs text-gray-400">UI 交互音效和 AI 回复提示音</p>
         </div>
         <div class="toggle-switch" :class="{ 'active': !globalSettings.soundMuted }"
@@ -348,7 +350,7 @@ function resetCustomStyle() {
       <!-- v5.9: Token 消耗量显示 -->
       <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
         <div>
-          <label class="block text-sm text-gray-300">🪙 Show Token Count (Token 消耗)</label>
+          <label class="block text-sm text-gray-300">🪙 显示 Token 用量</label>
           <p class="text-xs text-gray-400">在每条 AI 回复上显示 Token 用量</p>
         </div>
         <div class="toggle-switch" :class="{ 'active': globalSettings.showTokens }"
@@ -358,7 +360,7 @@ function resetCustomStyle() {
       <!-- 🧠 智能后台分析 -->
       <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
         <div>
-          <label class="block text-sm text-gray-300">🧠 Smart Analysis (智能后台分析)</label>
+          <label class="block text-sm text-gray-300">🧠 智能后台分析</label>
           <p class="text-xs text-gray-400">自动生成摘要、分析关系、提取用户画像（额外消耗 token）</p>
         </div>
         <div class="toggle-switch" :class="{ 'active': globalSettings.enableSmartAnalysis !== false }"
@@ -367,7 +369,7 @@ function resetCustomStyle() {
 
       <!-- 文字风格选择 -->
       <div class="pt-3 mt-3 border-t border-white/10">
-        <label class="block text-sm text-gray-300 mb-2">🎨 文字风格 (Text Style)</label>
+        <label class="block text-sm text-gray-300 mb-2">🎨 文字风格</label>
         <div class="style-card-grid">
           <div v-for="s in [
             { id: 'clear', name: '清澈·标准', desc: '深色·无衬线', color: '#6b9fff' },
@@ -468,6 +470,11 @@ function resetCustomStyle() {
       </div><!-- end mt-3 space-y-0 -->
       </details><!-- end advanced settings -->
     </div><!-- end space-y-3 -->
+
+    <!-- 免责声明 -->
+    <p class="text-[11px] text-gray-600 text-center mt-4 leading-relaxed">
+      本工具仅提供对话界面，AI 内容由第三方 API 生成，用户需遵守相关法律法规和 API 服务商的使用条款。
+    </p>
   </section>
 </template>
 

@@ -373,7 +373,8 @@ ${truncated}`;
  */
 export async function polishStory(messages, roleName, apiConfig) {
     const prompt = buildPolishPrompt(messages, roleName);
-    const baseUrl = (apiConfig.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+    const baseUrl = (apiConfig.baseUrl || 'https://api.deepseek.com')
+        .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',

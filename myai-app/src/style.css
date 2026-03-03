@@ -230,6 +230,7 @@ footer {
 
 /* ============== Token Pressure Bar ============== */
 .token-pressure-bar {
+  display: none !important;
   height: 3px;
   background: rgba(255, 255, 255, 0.04);
   flex-shrink: 0;

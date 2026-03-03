@@ -107,7 +107,8 @@ export function useTimeline(appState) {
 
             const prompt = buildTimelinePrompt(dialogueText, role.name, existingEvents);
 
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {

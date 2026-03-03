@@ -285,7 +285,8 @@ ${relevantMsgs}
 如果没有任何变化，输出：{"changes":[]}`;
 
     try {
-        const baseUrl = (apiConfig.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+        const baseUrl = (apiConfig.baseUrl || 'https://api.deepseek.com')
+            .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
         const response = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: {

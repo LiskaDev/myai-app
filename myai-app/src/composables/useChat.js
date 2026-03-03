@@ -207,8 +207,10 @@ Example format:
             });
         }
 
-        // 构建 API URL
-        const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+        // 构建 API URL（🛡️ Bug#11: 防止用户误粘贴完整 endpoint 导致 /chat/completions/chat/completions）
+        const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+            .replace(/\/$/, '')
+            .replace(/\/chat\/completions$/, '');
         const apiUrl = `${baseUrl}/chat/completions`;
 
         // 直接调用 DeepSeek API
@@ -420,7 +422,7 @@ Example format:
         }
     }
 
-    // 删除消息
+    // 删除消息（支持撤销）
     function deleteMessage(index) {
         // 🛡️ 流式输出时禁止删除正在写入的最后一条消息
         if (isStreaming.value && index === messages.value.length - 1) {
@@ -428,9 +430,15 @@ Example format:
             return;
         }
         if (index >= 0 && index < messages.value.length) {
-            messages.value.splice(index, 1);
+            const deleted = messages.value.splice(index, 1)[0];
             saveData();
-            showToast('消息已删除');
+            showToast('消息已删除', 'info', {
+                label: '撤销',
+                callback: () => {
+                    messages.value.splice(index, 0, deleted);
+                    saveData();
+                },
+            });
         }
     }
 

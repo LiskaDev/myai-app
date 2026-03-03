@@ -35,7 +35,7 @@ const filledCount = computed(() =>
       <div class="depth-card p-3 rounded-lg bg-white/5 border border-white/10 hover:border-rose-500/30 transition">
         <div class="flex items-center gap-2 mb-2">
           <span class="text-lg">🗣️</span>
-          <label class="text-sm text-gray-200 font-medium">Speaking Style (说话风格)</label>
+          <label class="text-sm text-gray-200 font-medium">说话风格</label>
           <div class="tooltip-trigger relative group ml-auto">
             <span class="cursor-help text-gray-500 hover:text-gray-300">❓</span>
             <div class="tooltip-content">
@@ -52,7 +52,7 @@ const filledCount = computed(() =>
       <div class="depth-card p-3 rounded-lg bg-white/5 border border-white/10 hover:border-purple-500/30 transition">
         <div class="flex items-center gap-2 mb-2">
           <span class="text-lg">🔐</span>
-          <label class="text-sm text-gray-200 font-medium">Secret / Motivation (内心秘密)</label>
+          <label class="text-sm text-gray-200 font-medium">内心秘密与动机</label>
           <div class="tooltip-trigger relative group ml-auto">
             <span class="cursor-help text-gray-500 hover:text-gray-300">❓</span>
             <div class="tooltip-content">
@@ -69,7 +69,7 @@ const filledCount = computed(() =>
       <div class="depth-card p-3 rounded-lg bg-white/5 border border-white/10 hover:border-pink-500/30 transition">
         <div class="flex items-center gap-2 mb-2">
           <span class="text-lg">💕</span>
-          <label class="text-sm text-gray-200 font-medium">Current Relationship (当前关系)</label>
+          <label class="text-sm text-gray-200 font-medium">当前关系</label>
           <div class="tooltip-trigger relative group ml-auto">
             <span class="cursor-help text-gray-500 hover:text-gray-300">❓</span>
             <div class="tooltip-content">
@@ -86,7 +86,7 @@ const filledCount = computed(() =>
       <div class="depth-card p-3 rounded-lg bg-white/5 border border-white/10 hover:border-amber-500/30 transition">
         <div class="flex items-center gap-2 mb-2">
           <span class="text-lg">👤</span>
-          <label class="text-sm text-gray-200 font-medium">Appearance (外貌特征)</label>
+          <label class="text-sm text-gray-200 font-medium">外貌特征</label>
           <div class="tooltip-trigger relative group ml-auto">
             <span class="cursor-help text-gray-500 hover:text-gray-300">❓</span>
             <div class="tooltip-content">
@@ -103,7 +103,7 @@ const filledCount = computed(() =>
       <div class="depth-card p-3 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/30 transition">
         <div class="flex items-center gap-2 mb-2">
           <span class="text-lg">🌍</span>
-          <label class="text-sm text-gray-200 font-medium">World Logic (世界观)</label>
+          <label class="text-sm text-gray-200 font-medium">世界观</label>
           <div class="tooltip-trigger relative group ml-auto">
             <span class="cursor-help text-gray-500 hover:text-gray-300">❓</span>
             <div class="tooltip-content">

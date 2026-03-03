@@ -452,7 +452,7 @@ function isCurrentMatch(originalIndex) {
         <div class="welcome-avatar-wrapper">
           <div class="avatar-glow"></div>
           <div v-if="currentRole.avatar" class="welcome-avatar">
-            <img :src="currentRole.avatar" alt="Role Avatar" class="w-full h-full rounded-full object-cover">
+            <img :src="currentRole.avatar" alt="Role Avatar" class="w-full h-full rounded-full object-cover" @error="$event.target.style.display='none'">
           </div>
           <div v-else class="welcome-avatar welcome-avatar-placeholder">🎭</div>
         </div>
@@ -498,6 +498,7 @@ function isCurrentMatch(originalIndex) {
       <template v-for="(msg, visibleIndex) in visibleMessages" :key="getOriginalIndex(visibleIndex)">
         <template v-if="msg.role === 'user'">
           <div class="message-bubble flex flex-col items-end"
+               v-memo="[msg.content, activeMessageIndex === getOriginalIndex(visibleIndex), isCurrentMatch(getOriginalIndex(visibleIndex)), searchResults.length]"
                :data-msg-index="getOriginalIndex(visibleIndex)"
                :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }"
                @touchstart="(e) => longPress.onTouchStart(e, getOriginalIndex(visibleIndex))"
@@ -537,7 +538,7 @@ function isCurrentMatch(originalIndex) {
                 </div>
               </div>
               <div v-if="globalSettings.userAvatar" class="avatar flex-shrink-0">
-                <img :src="globalSettings.userAvatar" alt="User Avatar" class="w-full h-full rounded-full object-cover">
+                <img :src="globalSettings.userAvatar" alt="User Avatar" class="w-full h-full rounded-full object-cover" @error="$event.target.style.display='none'">
               </div>
               <div v-else class="avatar-placeholder avatar-user text-white flex-shrink-0">👤</div>
             </div>
@@ -546,6 +547,7 @@ function isCurrentMatch(originalIndex) {
 
         <template v-else-if="msg.role === 'assistant'">
           <div class="message-bubble flex flex-col items-start"
+               v-memo="[parsedMessages[visibleIndex]?.content, parsedMessages[visibleIndex]?.thought, parsedMessages[visibleIndex]?.inner, activeMessageIndex === getOriginalIndex(visibleIndex), isCurrentMatch(getOriginalIndex(visibleIndex)), isStreaming && getOriginalIndex(visibleIndex) === messages.length - 1, globalSettings.showLogic, globalSettings.showInner, globalSettings.showTokens, searchResults.length]"
                :data-msg-index="getOriginalIndex(visibleIndex)"
                :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }"
                @touchstart="(e) => longPress.onTouchStart(e, getOriginalIndex(visibleIndex))"
@@ -556,7 +558,7 @@ function isCurrentMatch(originalIndex) {
                    class="avatar flex-shrink-0 expr-avatar"
                    :class="[parsedMessages[visibleIndex]?.expression ? 'expr-' + parsedMessages[visibleIndex].expression : '',
                             getOriginalIndex(visibleIndex) === messages.length - 1 ? 'expr-latest' : '']">
-                <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover">
+                <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover" @error="$event.target.style.display='none'">
               </div>
               <div v-else
                    class="avatar-placeholder avatar-ai text-white flex-shrink-0 expr-avatar"
@@ -650,7 +652,7 @@ function isCurrentMatch(originalIndex) {
 
     <div v-if="isThinking" class="message-bubble flex items-start space-x-3">
       <div v-if="currentRole.avatar" class="avatar">
-        <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover">
+        <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover" @error="$event.target.style.display='none'">
       </div>
       <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
       <div class="glass bg-glass-message rounded-2xl rounded-tl-sm px-4 py-3">
@@ -664,7 +666,7 @@ function isCurrentMatch(originalIndex) {
     <div v-if="isStreaming && !isThinking && (messages.length === 0 || messages[messages.length - 1]?.role !== 'assistant')"
          class="flex items-start space-x-3">
       <div v-if="currentRole.avatar" class="avatar">
-        <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover">
+        <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover" @error="$event.target.style.display='none'">
       </div>
       <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
       <div class="glass bg-glass-message rounded-2xl rounded-tl-sm px-4 py-3">

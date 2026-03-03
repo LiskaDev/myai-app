@@ -13,6 +13,8 @@ const props = defineProps({
     currentSpeakingRole: String,
     globalSettings: Object,
     missingCount: { type: Number, default: 0 },
+    searchResults: { type: Array, default: () => [] },       // Bug#14: 搜索跳转支持
+    currentMatchIndex: { type: Number, default: 0 },         // Bug#14
 });
 
 // ⏰ 时间格式化
@@ -180,23 +182,51 @@ function handleSendWhisper() {
     showWhisperPanel.value = false;
 }
 
+// 🛡️ 消息折叠分页：消息过多时自动折叠，避免 DOM 过大导致卡顿
+const GROUP_FOLD_THRESHOLD = 60;  // 超过此数量启用折叠
+const GROUP_LOAD_MORE = 30;       // 每次加载更多的条数
+
+const groupVisibleCount = ref(GROUP_FOLD_THRESHOLD);
+
+// 消息清空时重置
+watch(() => props.messages.length, (newLen) => {
+    if (newLen === 0) groupVisibleCount.value = GROUP_FOLD_THRESHOLD;
+});
+
+const groupHiddenCount = computed(() =>
+    Math.max(0, props.messages.length - groupVisibleCount.value)
+);
+
+const visibleGroupMessages = computed(() => {
+    if (groupHiddenCount.value === 0) return props.messages;
+    return props.messages.slice(-groupVisibleCount.value);
+});
+
+function loadMoreGroupMessages() {
+    groupVisibleCount.value = Math.min(
+        groupVisibleCount.value + GROUP_LOAD_MORE,
+        props.messages.length
+    );
+}
+
 // 将消息分组：连续的 pass 消息合并为一个 pass-group
 const displayItems = computed(() => {
     const items = [];
     let i = 0;
-    const msgs = props.messages;
+    const msgs = visibleGroupMessages.value;
+    const offset = props.messages.length - msgs.length; // 被折叠的消息数量
     while (i < msgs.length) {
         if (msgs[i].role === 'pass') {
             // 收集连续的 pass
             const passGroup = [];
-            const startIndex = i;
+            const startIndex = i + offset;
             while (i < msgs.length && msgs[i].role === 'pass') {
                 passGroup.push(msgs[i]);
                 i++;
             }
             items.push({ type: 'pass-group', passes: passGroup, startIndex });
         } else {
-            items.push({ type: 'message', msg: msgs[i], index: i });
+            items.push({ type: 'message', msg: msgs[i], index: i + offset });
             i++;
         }
     }
@@ -474,6 +504,17 @@ watch(() => props.globalSettings?.rpTextStyle, (style) => {
     }
 }, { immediate: true });
 
+// Bug#14: 搜索结果变化时滚动到目标消息
+watch([() => props.currentMatchIndex, () => props.searchResults], () => {
+    if (!props.searchResults.length) return;
+    const targetMsgIndex = props.searchResults[props.currentMatchIndex];
+    if (targetMsgIndex == null) return;
+    nextTick(() => {
+        const el = containerRef.value?.querySelector(`[data-msg-index="${targetMsgIndex}"]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+});
+
 function handleSend() {
     if (!directorInput.value.trim()) return;
     showMentionList.value = false;
@@ -531,6 +572,17 @@ onUnmounted(() => removeFloatingHearts());
           ⚠️ {{ missingCount }} 个群聊角色已被删除，他们的历史消息保留但不会再发言。可在「编辑群聊」中添加新角色。
         </div>
 
+        <!-- 🛡️ 消息折叠提示（消息过多时分批加载，避免卡顿） -->
+        <div v-if="groupHiddenCount > 0" class="flex justify-center mb-4">
+            <button @click="loadMoreGroupMessages"
+                    class="glass bg-glass-light px-4 py-2 rounded-full text-sm text-gray-300 hover:bg-white/20 transition border border-white/10 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                </svg>
+                加载更多消息（{{ groupHiddenCount }} 条）
+            </button>
+        </div>
+
         <!-- 消息列表 -->
         <template v-for="(item, idx) in displayItems" :key="displayItemKey(item, idx)">
 
@@ -550,7 +602,7 @@ onUnmounted(() => removeFloatingHearts());
                 <div v-for="p in item.passes" :key="p.roleId + p.timestamp" class="pass-detail-item">
                     <div v-if="p.avatar" class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"
                          :style="{ border: `1.5px solid ${getRoleColor(p.roleId)}` }">
-                        <img :src="p.avatar" class="w-full h-full object-cover" />
+                        <img :src="p.avatar" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
                     </div>
                     <div v-else class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0"
                          :style="{ background: getRoleColor(p.roleId) }">🎭</div>
@@ -606,7 +658,9 @@ onUnmounted(() => removeFloatingHearts());
             </div>
 
             <!-- 导演消息（非编辑） -->
-            <div v-else-if="item.type === 'message' && item.msg.role === 'director'" class="flex justify-center">
+            <div v-else-if="item.type === 'message' && item.msg.role === 'director'" class="flex justify-center"
+                 v-memo="[item.msg.content, activeMessageIndex === item.index]"
+                 :data-msg-index="item.index">
                 <div class="message-wrapper">
                     <div class="director-message cursor-pointer"
                          :class="['style-' + (globalSettings?.rpTextStyle || 'clear'), { 'ring-2 ring-amber-400/50': activeMessageIndex === item.index }]"
@@ -635,7 +689,9 @@ onUnmounted(() => removeFloatingHearts());
             </div>
 
             <!-- AI 角色消息（非编辑） -->
-            <div v-else-if="item.type === 'message' && item.msg.role === 'assistant'" class="flex items-start space-x-3">
+            <div v-else-if="item.type === 'message' && item.msg.role === 'assistant'" class="flex items-start space-x-3"
+                 v-memo="[item.msg.content, item.msg.rawContent, activeMessageIndex === item.index, isStreaming && item.index === messages.length - 1, globalSettings?.showLogic, globalSettings?.showInner, globalSettings?.showTokens]"
+                 :data-msg-index="item.index">
                 <!-- 角色头像（可点击让该角色继续说） -->
                 <div class="flex-shrink-0 cursor-pointer group relative" @click="$emit('speak-as-role', item.msg.roleId)"
                      :title="`让${item.msg.roleName}继续说`">
@@ -644,7 +700,7 @@ onUnmounted(() => removeFloatingHearts());
                          :class="[getExpression(item.msg) ? 'expr-' + getExpression(item.msg) : '',
                                   item.index === messages.length - 1 ? 'expr-latest' : '']"
                          :style="{ border: `2px solid ${getRoleColor(item.msg.roleId)}` }">
-                        <img :src="item.msg.avatar" class="w-full h-full object-cover" />
+                        <img :src="item.msg.avatar" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
                     </div>
                     <div v-else
                          class="w-10 h-10 rounded-full flex items-center justify-center text-sm transition group-hover:ring-2 group-hover:ring-white/30 expr-avatar"
@@ -757,7 +813,7 @@ onUnmounted(() => removeFloatingHearts());
                      @mousedown.prevent="selectMention(role)"
                      class="flex items-center space-x-2 px-3 py-2 hover:bg-white/10 cursor-pointer transition">
                     <div v-if="role.avatar" class="w-6 h-6 rounded-full overflow-hidden">
-                        <img :src="role.avatar" class="w-full h-full object-cover" />
+                        <img :src="role.avatar" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
                     </div>
                     <div v-else class="w-6 h-6 rounded-full flex items-center justify-center text-xs"
                          :style="{ background: getRoleColor(role.id) }">🎭</div>
@@ -816,7 +872,7 @@ onUnmounted(() => removeFloatingHearts());
                                     class="whisper-role-btn"
                                     :class="{ active: whisperTargetRoleId === p.id }">
                                 <div v-if="p.avatar" class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
-                                    <img :src="p.avatar" class="w-full h-full object-cover" />
+                                    <img :src="p.avatar" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
                                 </div>
                                 <div v-else class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0"
                                      :style="{ background: getRoleColor(p.id) }">🎭</div>

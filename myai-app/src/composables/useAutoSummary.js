@@ -63,7 +63,8 @@ export function useAutoSummary(appState) {
             const summaryPrompt = buildSummaryPrompt(toSummarize, role, existingSummary);
 
             // 构建摘要请求
-            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',

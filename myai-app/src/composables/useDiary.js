@@ -122,7 +122,8 @@ ${chatContext}${prevDiaryContext}
 - 最后另起一行写 【摘要】从第一天到今天的整体故事线概括（不超过50字，用于下次日记延续）`;
             }
 
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const apiUrl = `${baseUrl}/chat/completions`;
 
             // 使用便宜的模型生成日记

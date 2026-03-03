@@ -42,7 +42,9 @@ export function useGroupChat(appState) {
     const isGroupMode = ref(false);
     const isGroupStreaming = ref(false);
     const currentSpeakingRole = ref(null); // 当前正在说话的角色名
-    const groupAbortController = ref(null);
+    const groupAbortController = ref(null); // 保留兼容性，实际用 activeAbortControllers
+    const activeAbortControllers = new Set(); // 🛡️ 并行请求用 Set 管理，避免单 ref 被覆盖
+    let isMultiRoundStopped = false; // 🛡️ 多轮对话中途停止标志
     let isGroupSummarizing = false; // 防止重复触发群聊摘要
     let directorMsgCount = 0; // 用于跟踪记忆同步触发频率
 
@@ -263,6 +265,7 @@ export function useGroupChat(appState) {
             apiKey: globalSettings.apiKey,
             baseUrl: globalSettings.baseUrl,
             model: globalSettings.model,
+            enableSmartAnalysis: globalSettings.enableSmartAnalysis, // 🛡️ Bug#15: 尊重智能分析开关
         });
 
         // @ 提及解析：如果导演消息中 @了某角色，自动让该角色回复
@@ -327,7 +330,7 @@ export function useGroupChat(appState) {
                 // 并行请求当前批次内所有角色
                 const results = await Promise.allSettled(
                     batch.map(role => {
-                        return generateRoleResponse(role).then(() => ({ role, ok: true }))
+                        return generateRoleResponseSafe(role).then(() => ({ role, ok: true }))
                             .catch(error => {
                                 if (error.name === 'AbortError') throw error;
                                 const errorMsg = error.name === 'TimeoutError'
@@ -354,42 +357,54 @@ export function useGroupChat(appState) {
             isGroupStreaming.value = false;
             currentSpeakingRole.value = null;
             groupAbortController.value = null;
-            // 一轮结束后的后台分析（受 enableSmartAnalysis 控制）
+            activeAbortControllers.clear(); // 🛡️ 清空活跃控制器集合
+            // 🛡️ v6.2: 错峰执行后台任务，避免同时发起多个 API 请求
             if (globalSettings.enableSmartAnalysis) {
-                checkGroupSummary();
-                checkAutoDirector();
-                analyzeRelationships();
-                syncGroupEventsToMemory();
-                checkGroupTimeline();
+                setTimeout(() => checkGroupSummary(), 0);
+                setTimeout(() => checkAutoDirector(), 800);
+                setTimeout(() => analyzeRelationships(), 1600);
+                setTimeout(() => syncGroupEventsToMemory(), 2400);
+                setTimeout(() => checkGroupTimeline(), 3200);
                 // v6.0: 每个角色独立触发认知卡/章节摘要更新
                 const { checkAndTriggerMemorySystems } = useMemory(appState);
-                for (const role of activeParticipants) {
-                    migrateRoleMemoryFields(role); // 确保字段存在
-                    checkAndTriggerMemorySystems(role, currentGroup.value?.chatHistory || []);
-                }
+                activeParticipants.forEach((role, idx) => {
+                    setTimeout(() => {
+                        migrateRoleMemoryFields(role); // 确保字段存在
+                        checkAndTriggerMemorySystems(role, currentGroup.value?.chatHistory || []);
+                    }, 4000 + idx * 800);
+                });
             }
         }
     }
 
     // 🔄 连续多轮对话
     async function continueMultiRound(rounds) {
+        // 🛡️ 防重入：已在流式输出中则忽略
+        if (isGroupStreaming.value) {
+            showToast('请等待当前回复完成', 'error');
+            return;
+        }
+        isMultiRoundStopped = false; // 重置停止标志
         for (let i = 0; i < rounds; i++) {
             if (!currentGroup.value) break;
+            if (isMultiRoundStopped) break; // 🛡️ 用户中途停止
             await continueOneRound();
-            // 用户中途停止 → 退出循环
-            if (isGroupStreaming.value) break;
+            // 🛡️ 修复：原逻辑 isGroupStreaming 在 continueOneRound 结束后始终为 false
+            // 改为检查专用停止标志
+            if (isMultiRoundStopped) break;
             if (i < rounds - 1) {
                 showToast(`✅ 第 ${i + 1}/${rounds} 轮完成`, 'info');
                 // 短暂间隔让用户有机会干预
                 await new Promise(r => setTimeout(r, 800));
             }
         }
+        isMultiRoundStopped = false;
     }
 
     // 🛡️ 跳过当前角色（用户手动触发）
     function skipCurrentRole() {
-        if (groupAbortController.value) {
-            groupAbortController.value.abort();
+        if (activeAbortControllers.size > 0) {
+            activeAbortControllers.forEach(ctrl => ctrl.abort());
             showToast(`已跳过 ${currentSpeakingRole.value || '当前角色'}`);
         }
     }
@@ -423,6 +438,7 @@ export function useGroupChat(appState) {
             isGroupStreaming.value = false;
             currentSpeakingRole.value = null;
             groupAbortController.value = null;
+            activeAbortControllers.clear(); // 🛡️ 清空活跃控制器集合
             checkGroupSummary();
         }
     }
@@ -477,8 +493,10 @@ Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
             effectiveTemperature = Math.min(effectiveTemperature, 0.9);
         }
 
-        // 创建 AbortController
-        groupAbortController.value = new AbortController();
+        // 🛡️ 每个角色独立创建 AbortController，注册到 Set 中防止并行时相互覆盖
+        const localCtrl = new AbortController();
+        activeAbortControllers.add(localCtrl);
+        groupAbortController.value = localCtrl; // 保留兼容性
         // 🛡️ 根据模型类型动态设置超时
         const timeoutMs = isReasoner ? REASONER_TIMEOUT_MS : FETCH_TIMEOUT_MS;
         const timeoutSignal = AbortSignal.timeout(timeoutMs);
@@ -486,18 +504,18 @@ Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
         let combinedSignal;
         if (typeof AbortSignal.any === 'function') {
             combinedSignal = AbortSignal.any([
-                groupAbortController.value.signal,
+                localCtrl.signal,
                 timeoutSignal,
             ]);
         } else {
-            const ctrl = groupAbortController.value;
-            combinedSignal = ctrl.signal;
+            combinedSignal = localCtrl.signal;
             timeoutSignal.addEventListener('abort', () => {
-                if (!ctrl.signal.aborted) ctrl.abort(timeoutSignal.reason);
+                if (!localCtrl.signal.aborted) localCtrl.abort(timeoutSignal.reason);
             });
         }
 
-        const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+        const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+            .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
         const apiUrl = `${baseUrl}/chat/completions`;
 
         const requestBody = {
@@ -617,6 +635,9 @@ Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
 
         groupMessages.value[msgIndex].rawContent = fullContent;
 
+        // 🛡️ 请求完成，从活跃集合中移除
+        activeAbortControllers.delete(localCtrl);
+
         // [PASS] 弃权机制 — 必须在 formatRoleplayText 之前检测，否则 [PASS] 会被转成 <span>
         // 🛡️ v5.3.1: 先正规化标签变体再清理
         const cleanForPass = normalizeTags(fullContent)
@@ -658,6 +679,28 @@ Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
         }
 
         saveGroups();
+    }
+
+    // 🛡️ generateRoleResponse 包装：捕获错误并清理占位消息
+    async function generateRoleResponseSafe(role) {
+        // 记录调用前的消息数量，用于定位可能插入的占位消息
+        const msgCountBefore = groupMessages.value.length;
+        try {
+            await generateRoleResponse(role);
+        } catch (error) {
+            // 如果在 fetch 成功后才报错（占位消息已插入），清理掉它
+            const lastMsg = groupMessages.value[groupMessages.value.length - 1];
+            if (
+                groupMessages.value.length > msgCountBefore &&
+                lastMsg?.role === 'assistant' &&
+                lastMsg?.roleId === role.id &&
+                (!lastMsg.content || lastMsg.content.trim() === '')
+            ) {
+                groupMessages.value.splice(groupMessages.value.length - 1, 1);
+                saveGroups();
+            }
+            throw error; // 继续向上传播，让 continueOneRound 处理
+        }
     }
 
     // ============== AI 影子导演 (Shadow Director) ==============
@@ -749,7 +792,7 @@ ${recentChat || '\uff08\u6682\u65e0\u5bf9\u8bdd\u8bb0\u5f55\uff09'}
             const baseUrl = globalSettings.baseUrl || 'https://api.deepseek.com';
 
             // 🛡️ 统一 API 路径（与 generateRoleResponse 一致，避免 /v1/v1 问题）
-            const normalizedUrl = baseUrl.replace(/\/$/, '');
+            const normalizedUrl = baseUrl.replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const response = await fetch(`${normalizedUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -765,6 +808,7 @@ ${recentChat || '\uff08\u6682\u65e0\u5bf9\u8bdd\u8bb0\u5f55\uff09'}
                     max_tokens: 200,
                     temperature: 0.9,
                 }),
+                signal: AbortSignal.timeout(20000), // 🛡️ 20s 超时，防止网络卡死时 isGroupStreaming 永远为 true
             });
 
             if (!response.ok) {
@@ -837,6 +881,8 @@ ${recentChat || '\uff08\u6682\u65e0\u5bf9\u8bdd\u8bb0\u5f55\uff09'}
     async function generateGroupSummary() {
         if (isGroupSummarizing) return;
         isGroupSummarizing = true;
+        const { trackTask } = useBackgroundTasks();
+        const bgTask = trackTask('群聊摘要');
 
         try {
             const group = currentGroup.value;
@@ -883,7 +929,8 @@ ${dialogueText}
 请直接输出摘要，不要加任何前缀或解释：`;
 
             // 使用便宜的模型做摘要
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -915,8 +962,10 @@ ${dialogueText}
                 showToast('💾 群聊记忆已自动压缩', 'info');
             }
         } catch (error) {
+            bgTask.fail();
             console.warn('[GroupSummary] 摘要失败:', error.message);
         } finally {
+            bgTask.done();
             isGroupSummarizing = false;
         }
     }
@@ -1192,9 +1241,13 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
 
     // 停止生成
     function stopGroupGeneration() {
-        groupAbortController.value?.abort();
+        // 🛡️ 中止所有并行中的请求
+        activeAbortControllers.forEach(ctrl => ctrl.abort());
+        activeAbortControllers.clear();
+        groupAbortController.value = null;
         isGroupStreaming.value = false;
         currentSpeakingRole.value = null;
+        isMultiRoundStopped = true; // 🛡️ 通知多轮循环停止
     }
 
     // 清空群聊记录
@@ -1360,6 +1413,8 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
         if (recentMsgs.filter(m => m.role === 'assistant').length < 1) return;
 
         console.log('[Relationship] 开始分析对话...');
+        const { trackTask } = useBackgroundTasks();
+        const bgTask = trackTask('关系分析');
 
         try {
             const updatedMatrix = await analyzeAndUpdate(
@@ -1380,7 +1435,10 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
                 console.log('[Relationship] 本轮无明显关系变化');
             }
         } catch (error) {
+            bgTask.fail();
             console.warn('[Relationship] 更新失败:', error.message);
+        } finally {
+            bgTask.done();
         }
     }
 
@@ -1433,8 +1491,11 @@ ${chatText}
 - memory 用角色第一人称书写，15-40字
 - 最多提取 3 个事件`;
 
+        const { trackTask } = useBackgroundTasks();
+        const bgTask = trackTask('记忆同步');
         try {
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const model = globalSettings.model?.includes('reasoner')
                 ? 'deepseek-chat' : (globalSettings.model || 'deepseek-chat');
 
@@ -1494,8 +1555,9 @@ ${chatText}
                 saveData(); // 显式保存角色数据
                 console.log(`[MemorySync] ✅ 已同步 ${syncCount} 条群聊记忆到角色数据`);
             }
+            bgTask.done();
         } catch {
-            // 静默失败
+            bgTask.done(); // 静默失败
         }
     }
 
@@ -1522,6 +1584,8 @@ ${chatText}
 
     async function analyzeGroupTimeline() {
         if (!acquireBackgroundLock()) return;
+        const { trackTask } = useBackgroundTasks();
+        const bgTask = trackTask('剧情时间线');
         try {
             const group = currentGroup.value;
             if (!group) return;
@@ -1541,7 +1605,8 @@ ${chatText}
             const existingEvents = (group.timeline || []).slice(-5).map(e => e.event).join('；');
             const prompt = buildTimelinePrompt(dialogueText, group.name, existingEvents);
 
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -1571,6 +1636,7 @@ ${chatText}
             }
             groupTimelineLastCount = dirMsgCount;
         } finally {
+            bgTask.done();
             releaseBackgroundLock();
         }
     }

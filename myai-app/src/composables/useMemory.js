@@ -193,7 +193,8 @@ export function useMemory(appState) {
 ${rawContent}`;
 
             // 构建 API URL
-            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
             const apiUrl = `${baseUrl}/chat/completions`;
 
@@ -292,7 +293,8 @@ ${rawContent}`;
                 .map((m, i) => `${i + 1}. ${m.content}`)
                 .join('\n');
 
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const model = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
 
             const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -383,7 +385,8 @@ ${rawContent}`;
 
             if (!dialogueText.trim()) return;
 
-            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
             const model = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
 
@@ -492,7 +495,8 @@ ${dialogueText}`,
             const hasCard = currentCard.userProfile || (currentCard.keyEvents || []).length > 0;
             const currentCardJSON = hasCard ? JSON.stringify(currentCard, null, 2) : '暂无';
 
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const model = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
 
             const response = await fetch(`${baseUrl}/chat/completions`, {

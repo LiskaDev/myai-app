@@ -60,13 +60,22 @@ export function extractJSON(text) {
         }
     }
 
-    // 策略 3: 提取第一个 { ... } 块
-    const braceMatch = text.match(/\{[\s\S]*\}/);
-    if (braceMatch) {
-        try {
-            return JSON.parse(braceMatch[0]);
-        } catch {
-            // 所有策略都失败
+    // 策略 3: 通过括号计数找到第一个完整 { ... } 块（比贪婪正则更精确）
+    let braceDepth = 0;
+    let startIdx = -1;
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] === '{') {
+            if (braceDepth === 0) startIdx = i;
+            braceDepth++;
+        } else if (text[i] === '}') {
+            braceDepth--;
+            if (braceDepth === 0 && startIdx !== -1) {
+                try {
+                    return JSON.parse(text.slice(startIdx, i + 1));
+                } catch {
+                    startIdx = -1; // 当前块解析失败，尝试找下一个 {
+                }
+            }
         }
     }
 
@@ -114,7 +123,8 @@ export async function generateRoleFromDescription(description, apiConfig, extern
     }
 
     const prompt = buildGeneratePrompt(description.trim());
-    const baseUrl = (apiConfig.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+    const baseUrl = (apiConfig.baseUrl || 'https://api.deepseek.com')
+        .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
 
     try {
         const controller = new AbortController();

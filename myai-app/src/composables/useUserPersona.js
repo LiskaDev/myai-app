@@ -103,7 +103,8 @@ category 只能是以下五种之一：preference / personality / fact / style /
 
         try {
             const bgTask = useBackgroundTasks().trackTask('用户画像');
-            const baseUrl = (apiConfig.bgBaseUrl || apiConfig.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (apiConfig.bgBaseUrl || apiConfig.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const apiKey = apiConfig.bgApiKey || apiConfig.apiKey;
 
             // 使用便宜的模型做分析
@@ -197,7 +198,8 @@ ${others.map((t, i) => `${i + 1}. [${t.category}] ${t.content}`).join('\n')}
 严格按 JSON 格式输出：{"refined": [{"category": "...", "content": "..."}]}`;
 
         try {
-            const baseUrl = (apiConfig.bgBaseUrl || apiConfig.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (apiConfig.bgBaseUrl || apiConfig.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const apiKey = apiConfig.bgApiKey || apiConfig.apiKey;
             const model = apiConfig.bgModel || apiConfig.model || 'deepseek-chat';
 

@@ -108,7 +108,7 @@ function removeTimelineItem(idx) {
       <!-- ========== 角色 Tab ========== -->
       <template v-if="activeTab === 'role' && !isGroupMode">
         <RoleBasicSettings :currentRole="currentRole" :globalSettings="globalSettings" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
-        <RoleAdvancedSettings :currentRole="currentRole" :availableVoices="availableVoices" />
+        <RoleAdvancedSettings :currentRole="currentRole" :availableVoices="availableVoices" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
         <CharacterDepthSettings :currentRole="currentRole" />
       </template>
 
@@ -130,7 +130,7 @@ function removeTimelineItem(idx) {
 
       <!-- ========== 通用 Tab ========== -->
       <template v-if="activeTab === 'general'">
-        <GlobalSettings :globalSettings="globalSettings" />
+        <GlobalSettings :globalSettings="globalSettings" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
       </template>
 
       <!-- ========== 用户画像 Tab ========== -->
