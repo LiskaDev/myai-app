@@ -42,6 +42,10 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     enableSmartAnalysis: true,
     // v6.1: 聊天字体大小
     chatFontSize: 1.0,
+    // v6.3: 聊天区亮度 & 文字深浅（50-150，100=无调整）
+    chatBgBrightness: 100,
+    chatTextBrightness: 100,
+    chatFontWeight: 0,  // 字重微调: -2~+3, 0=不调整
     // v6.2: 后台任务专用模型（留空则使用主模型）
     bgModel: '',
     bgBaseUrl: '',

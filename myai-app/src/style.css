@@ -902,6 +902,32 @@ footer {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
+/* ── 用户可调：文字深浅 ── */
+.vn-body,
+.message-body,
+[class*="inner-"] .inner-text,
+.inner-bubble,
+.reasoning-content {
+  filter: brightness(var(--text-brightness, 1)) !important;
+}
+
+/* ── 用户可调：文字粗细（影响聊天区所有文字） ── */
+[class*="chat-style-"] .vn-body,
+[class*="chat-style-"] .message-body,
+[class*="chat-style-"] [class*="inner-"] .inner-text,
+[class*="chat-style-"] .inner-bubble,
+[class*="chat-style-"] .reasoning-content,
+[class*="chat-style-"] .welcome-bubble,
+[class*="chat-style-"] .role-name-label {
+  font-weight: calc(400 + var(--font-weight-delta, 0)) !important;
+}
+
+/* ── 用户可调：聊天区亮度（聊天区 + 顶部栏 + 底部输入栏） ── */
+[class*="chat-style-"],
+[class*="chrome-style-"] {
+  filter: brightness(var(--bg-brightness, 1));
+}
+
 .vn-body p {
   margin: 0.6em 0;
 }

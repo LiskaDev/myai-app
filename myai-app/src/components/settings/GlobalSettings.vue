@@ -290,24 +290,6 @@ function resetCustomStyle() {
         <p class="text-xs text-gray-400 mt-1">控制 AI 回复的详细程度和篇幅</p>
       </div>
 
-      <!-- 聊天字体大小 -->
-      <div class="pt-3 mt-3 border-t border-white/10">
-        <div class="flex items-center justify-between mb-2">
-          <label class="block text-sm text-gray-300">🔤 聊天字体大小</label>
-          <span class="text-xs text-gray-400">{{ Math.round((globalSettings.chatFontSize || 1.0) * 100) }}%</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="text-xs text-gray-500">A</span>
-          <input type="range" min="0.8" max="1.4" step="0.05"
-                 :value="globalSettings.chatFontSize || 1.0"
-                 @input="globalSettings.chatFontSize = parseFloat($event.target.value)"
-                 class="flex-1 accent-primary" />
-          <span class="text-sm text-gray-400 font-bold">A</span>
-        </div>
-        <p class="text-xs text-gray-500 mt-1" :style="{ fontSize: ((globalSettings.chatFontSize || 1.0) * 14) + 'px' }">
-          预览：这是一段示例文字，看看大小是否合适
-        </p>
-      </div>
 
       <!-- 显示推理过程 -->
       <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
@@ -401,6 +383,85 @@ function resetCustomStyle() {
             <div class="style-card-dot" :style="{ background: s.color }"></div>
             <div class="style-card-name">{{ s.name }}</div>
             <div class="style-card-desc">{{ s.desc }}</div>
+          </div>
+        </div>
+
+        <!-- ☀️ 聊天区亮度滑块 -->
+        <div class="mt-3">
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs text-gray-400">☀️ 聊天区亮度</label>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">{{ globalSettings.chatBgBrightness || 100 }}%</span>
+              <button v-if="(globalSettings.chatBgBrightness || 100) !== 100"
+                      @click="globalSettings.chatBgBrightness = 100"
+                      class="text-[10px] text-gray-500 hover:text-gray-300 transition">重置</button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-gray-600">🌙</span>
+            <input type="range" min="50" max="150" step="5"
+                   :value="globalSettings.chatBgBrightness || 100"
+                   @input="globalSettings.chatBgBrightness = parseInt($event.target.value)"
+                   class="flex-1 accent-primary" />
+            <span class="text-[10px] text-gray-600">☀️</span>
+          </div>
+        </div>
+
+        <!-- ✍️ 文字深浅滑块 -->
+        <div class="mt-2">
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs text-gray-400">✍️ 文字深浅</label>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">{{ globalSettings.chatTextBrightness || 100 }}%</span>
+              <button v-if="(globalSettings.chatTextBrightness || 100) !== 100"
+                      @click="globalSettings.chatTextBrightness = 100"
+                      class="text-[10px] text-gray-500 hover:text-gray-300 transition">重置</button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-gray-600">淡</span>
+            <input type="range" min="50" max="150" step="5"
+                   :value="globalSettings.chatTextBrightness || 100"
+                   @input="globalSettings.chatTextBrightness = parseInt($event.target.value)"
+                   class="flex-1 accent-primary" />
+            <span class="text-[10px] text-gray-600">深</span>
+          </div>
+        </div>
+
+        <!-- 𝐁 文字粗细滑块 -->
+        <div class="mt-2">
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs text-gray-400">𝐁 文字粗细</label>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">{{ (globalSettings.chatFontWeight || 0) === 0 ? '默认' : ((globalSettings.chatFontWeight > 0 ? '+' : '') + globalSettings.chatFontWeight) }}</span>
+              <button v-if="(globalSettings.chatFontWeight || 0) !== 0"
+                      @click="globalSettings.chatFontWeight = 0"
+                      class="text-[10px] text-gray-500 hover:text-gray-300 transition">重置</button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-gray-600">细</span>
+            <input type="range" min="-2" max="3" step="1"
+                   :value="globalSettings.chatFontWeight || 0"
+                   @input="globalSettings.chatFontWeight = parseInt($event.target.value)"
+                   class="flex-1 accent-primary" />
+            <span class="text-[10px] text-gray-600 font-bold">粗</span>
+          </div>
+        </div>
+
+        <!-- 🔤 聊天字体大小 -->
+        <div class="mt-2">
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs text-gray-400">🔤 聊天字体大小</label>
+            <span class="text-xs text-gray-500">{{ Math.round((globalSettings.chatFontSize || 1.0) * 100) }}%</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-gray-600">A</span>
+            <input type="range" min="0.8" max="1.4" step="0.05"
+                   :value="globalSettings.chatFontSize || 1.0"
+                   @input="globalSettings.chatFontSize = parseFloat($event.target.value)"
+                   class="flex-1 accent-primary" />
+            <span class="text-[10px] text-gray-600 font-bold">A</span>
           </div>
         </div>
       </div>
