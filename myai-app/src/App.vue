@@ -645,20 +645,19 @@ onMounted(() => {
   setTimeout(() => scrollToBottom(true), 100);
   window.addEventListener('keydown', handleGlobalKeydown);
 
-  // 🌟 主动消息：回访检测
+  // 🌟 主动消息：回访检测（diary 生成完后再弹未读日记）
   setTimeout(async () => {
     const sent = await activeMessage.checkAndSend(diary);
     if (sent) {
       await nextTick();
       scrollToBottom(true);
     }
-  }, 500);
-  // 自动弹出未读日记（🛡️ 设置面板已开时延后弹出，避免双弹窗）
-  setTimeout(() => {
+
+    // ✅ 必须在 checkAndSend 完成后再检查未读日记
+    // 原因：思念日记是异步 API 调用，800ms 固定延迟会错过刚生成的日记
     const unread = diary.getUnreadDiaries();
     if (unread.length > 0) {
       if (showSettings.value) {
-        // 设置面板正在显示，等待用户关闭后再弹日记
         const stopWatch = watch(showSettings, (val) => {
           if (!val) {
             diaryDisplayList.value = unread;
@@ -671,7 +670,7 @@ onMounted(() => {
         showDiaryModal.value = true;
       }
     }
-  }, 800);
+  }, 500);
 });
 
 onUnmounted(() => {

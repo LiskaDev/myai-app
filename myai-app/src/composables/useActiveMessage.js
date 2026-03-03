@@ -3,7 +3,7 @@
  * 用户离开 >2h 后回访时，角色主动发一条消息到聊天记录
  */
 export function useActiveMessage(appState) {
-    const { currentRole, globalSettings, showToast } = appState;
+    const { currentRole, messages, globalSettings, showToast } = appState;
 
     // 模板消息池（按风格分组）
     const TEMPLATES = {
@@ -44,8 +44,13 @@ export function useActiveMessage(appState) {
         if (localStorage.getItem(todayKey)) return false;
 
         // 3. 需要有聊天记录（空聊天不触发，让欢迎屏展示）
-        const messages = currentRole.value.chatHistory;
-        if (!messages || messages.length === 0) return false;
+        const msgs = messages.value;  // 分支感知版
+        if (!msgs || msgs.length === 0) {
+            console.log('[\u4e3b\u52a8\u6d88\u606f] 无聊天记录，跳过');
+            return false;
+        }
+
+        console.log(`[\u4e3b\u52a8\u6d88\u606f] 离开 ${hoursAway.toFixed(1)} 小时，角色: ${currentRole.value.name}，开始处理...`);
 
         // 💭 Step 0: 如果离开超过 8 小时，先自动生成一篇思念日记
         // 防重复：每个角色每天只生成一次
@@ -85,7 +90,7 @@ export function useActiveMessage(appState) {
         }
 
         // 5. 插入到聊天记录
-        messages.push({
+        msgs.push({
             role: 'assistant',
             content: content,
             rawContent: content,
