@@ -193,17 +193,18 @@ export function useMemory(appState) {
 ${rawContent}`;
 
             // 构建 API URL
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
             const apiUrl = `${baseUrl}/chat/completions`;
 
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                    'Authorization': `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
-                    model: 'deepseek-chat',
+                    model: globalSettings.bgModel || globalSettings.model || 'deepseek-chat',
                     messages: [{ role: 'user', content: refinePrompt }],
                     temperature: 0.3,
                     max_tokens: 200,
@@ -292,8 +293,7 @@ ${rawContent}`;
                 .join('\n');
 
             const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
-            const model = globalSettings.model?.includes('reasoner')
-                ? 'deepseek-chat' : (globalSettings.model || 'deepseek-chat');
+            const model = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
 
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
@@ -383,15 +383,15 @@ ${rawContent}`;
 
             if (!dialogueText.trim()) return;
 
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
-            const model = globalSettings.model?.includes('reasoner')
-                ? 'deepseek-chat' : (globalSettings.model || 'deepseek-chat');
+            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
+            const model = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
 
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                    'Authorization': `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
                     model,
@@ -493,8 +493,7 @@ ${dialogueText}`,
             const currentCardJSON = hasCard ? JSON.stringify(currentCard, null, 2) : '暂无';
 
             const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
-            const model = globalSettings.model?.includes('reasoner')
-                ? 'deepseek-chat' : (globalSettings.model || 'deepseek-chat');
+            const model = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
 
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',

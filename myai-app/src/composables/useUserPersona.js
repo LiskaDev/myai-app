@@ -103,18 +103,17 @@ category 只能是以下五种之一：preference / personality / fact / style /
 
         try {
             const bgTask = useBackgroundTasks().trackTask('用户画像');
-            const baseUrl = (apiConfig.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (apiConfig.bgBaseUrl || apiConfig.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const apiKey = apiConfig.bgApiKey || apiConfig.apiKey;
 
             // 使用便宜的模型做分析
-            const model = apiConfig.model?.includes('reasoner')
-                ? 'deepseek-chat'
-                : (apiConfig.model || 'deepseek-chat');
+            const model = apiConfig.bgModel || apiConfig.model || 'deepseek-chat';
 
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiConfig.apiKey}`,
+                    'Authorization': `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
                     model,
@@ -198,16 +197,15 @@ ${others.map((t, i) => `${i + 1}. [${t.category}] ${t.content}`).join('\n')}
 严格按 JSON 格式输出：{"refined": [{"category": "...", "content": "..."}]}`;
 
         try {
-            const baseUrl = (apiConfig.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
-            const model = apiConfig.model?.includes('reasoner')
-                ? 'deepseek-chat'
-                : (apiConfig.model || 'deepseek-chat');
+            const baseUrl = (apiConfig.bgBaseUrl || apiConfig.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const apiKey = apiConfig.bgApiKey || apiConfig.apiKey;
+            const model = apiConfig.bgModel || apiConfig.model || 'deepseek-chat';
 
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiConfig.apiKey}`,
+                    'Authorization': `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
                     model,

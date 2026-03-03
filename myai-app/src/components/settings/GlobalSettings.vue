@@ -207,6 +207,41 @@ function resetCustomStyle() {
         <p class="text-xs text-gray-500 mt-1">当前：{{ globalSettings.model || '未设置' }}</p>
       </div>
 
+      <!-- 后台任务模型 -->
+      <div>
+        <label class="block text-sm text-gray-300 mb-1">⚙️ 后台模型 <span class="text-xs text-gray-500">（摘要/记忆/画像分析用）</span></label>
+        <select v-model="globalSettings.bgModel"
+                class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition">
+          <option value="">🔄 跟随主模型</option>
+          <template v-for="group in MODEL_PRESETS" :key="'bg-'+group.group">
+            <optgroup :label="group.group">
+              <option v-for="m in group.models" :key="'bg-'+m.value" :value="m.value">
+                {{ m.label }} — {{ m.desc }}
+              </option>
+            </optgroup>
+          </template>
+        </select>
+        <!-- 后台独立 URL + Key（仅在选了后台模型时显示） -->
+        <div v-if="globalSettings.bgModel" class="mt-2 space-y-2 pl-3 border-l-2 border-white/10">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">后台 API 平台 <span class="text-gray-600">（留空跟随主设置）</span></label>
+            <select v-model="globalSettings.bgBaseUrl"
+                    class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-2 py-1.5 text-sm outline-none border border-white/10 focus:border-primary transition">
+              <option value="">🔄 跟随主设置</option>
+              <option value="https://api.deepseek.com">🔥 DeepSeek 官方</option>
+              <option value="https://api.siliconflow.cn/v1">🚀 硅基流动</option>
+              <option value="https://openrouter.ai/api/v1">🌐 OpenRouter</option>
+            </select>
+          </div>
+          <div v-if="globalSettings.bgBaseUrl">
+            <label class="block text-xs text-gray-400 mb-1">后台 API Key <span class="text-gray-600">（留空跟随主设置）</span></label>
+            <input v-model="globalSettings.bgApiKey" type="password" placeholder="留空则使用主 API Key"
+                   class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-2 py-1.5 text-sm outline-none border border-white/10 focus:border-primary transition">
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ globalSettings.bgModel ? '后台任务使用独立模型配置' : '后台任务跟随主模型' }}</p>
+      </div>
+
       <div>
         <label class="block text-sm text-gray-300 mb-2">👤 用户头像</label>
         <div class="flex items-center gap-4">

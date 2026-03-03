@@ -63,18 +63,19 @@ export function useAutoSummary(appState) {
             const summaryPrompt = buildSummaryPrompt(toSummarize, role, existingSummary);
 
             // 构建摘要请求
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                    'Authorization': `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
-                    model: 'deepseek-chat', // 用便宜的模型做摘要
+                    model: globalSettings.bgModel || globalSettings.model || 'deepseek-chat',
                     messages: [{ role: 'user', content: summaryPrompt }],
                     max_tokens: 500,
-                    temperature: 0.3, // 低温度保证一致性
+                    temperature: 0.3,
                 }),
             });
 
