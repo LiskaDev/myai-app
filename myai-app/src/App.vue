@@ -632,15 +632,8 @@ function exportData() {
 }
 
 // Lifecycle
-// 记录用户「离开时」的时间戳（供主动消息判断离开时长）
-function recordLeaveTime() {
-  localStorage.setItem('myai_lastVisitTime', Date.now().toString());
-}
-function handleVisibilityChange() {
-  if (document.visibilityState === 'hidden') {
-    recordLeaveTime();
-  }
-}
+// 💡 lastVisitTime 由 useChat.js 在用户每次发消息时更新
+// 不在页面 load/unload 时操作，避免 F5 刷新把时间覆写为"现在"导致永远 0 小时
 
 onMounted(() => {
   loadData();
@@ -654,9 +647,6 @@ onMounted(() => {
   // 延迟确保 DOM 完全渲染后再强制滚动到底部
   setTimeout(() => scrollToBottom(true), 100);
   window.addEventListener('keydown', handleGlobalKeydown);
-  // 🕐 用户离开时记录时间（visibilitychange 比 beforeunload 更可靠）
-  // ⚠️ 不使用 beforeunload：刷新页面时也会触发，会覆盖离开时间导致主动消息永远判定为 0 小时
-  document.addEventListener('visibilitychange', handleVisibilityChange);
 
   // 🌟 主动消息：回访检测（diary 生成完后再弹未读日记）
   setTimeout(async () => {
@@ -688,8 +678,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown);
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
-  recordLeaveTime(); // 组件卸载时记录一次（不包括刷新场景）
 });
 
 // 导入数据（从文件选择器获取解析后的数据）

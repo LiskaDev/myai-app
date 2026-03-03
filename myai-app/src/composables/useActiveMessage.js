@@ -30,6 +30,12 @@ export function useActiveMessage(appState) {
         const now = Date.now();
 
         // 1. 检查离开时长
+        // 🧪 调试模式：localStorage.setItem('myai_debug_activeMsg', '1') 后单位变为分钟（2分钟/8分钟）
+        const debugMode = !!localStorage.getItem('myai_debug_activeMsg');
+        const unit = debugMode ? 60000 : 3600000; // 分钟 or 小时
+        const threshold = debugMode ? 2 : 2;        // 触发阈值
+        const absenceThreshold = debugMode ? 8 : 8; // 思念日记阈值
+
         const lastVisit = parseInt(localStorage.getItem('myai_lastVisitTime') || '0');
         if (!lastVisit) {
             console.log('[主动消息] 首次访问，记录时间');
@@ -37,15 +43,18 @@ export function useActiveMessage(appState) {
             return false;
         }
 
-        const hoursAway = (now - lastVisit) / 3600000;
-        console.log(`[主动消息] 距上次访问 ${hoursAway.toFixed(2)} 小时`);
-        if (hoursAway < 2) {
-            console.log('[主动消息] 离开不足 2 小时，跳过');
+        const hoursAway = (now - lastVisit) / unit;
+        console.log(`[主动消息] 距上次访问 ${hoursAway.toFixed(2)} ${debugMode ? '分钟' : '小时'}${debugMode ? ' 【调试模式】' : ''}`);
+        if (hoursAway < threshold) {
+            console.log(`[主动消息] 离开不足 ${threshold} ${debugMode ? '分钟' : '小时'}，跳过`);
             return false;
         }
 
-        // 2. 防重复：每个角色每次回访只触发一次
-        const todayKey = `myai_activeMsg_${roleId}_${new Date().toDateString()}`;
+        // 2. 防重复：每个角色每次回访只触发一次（调试模式下每分钟可重触发）
+        const dedupeKey = debugMode
+            ? `${new Date().toDateString()}_${new Date().getHours()}h${new Date().getMinutes()}m`
+            : new Date().toDateString();
+        const todayKey = `myai_activeMsg_${roleId}_${dedupeKey}`;
         if (localStorage.getItem(todayKey)) {
             console.log('[主动消息] 今日已触发过，跳过');
             return false;
@@ -63,8 +72,8 @@ export function useActiveMessage(appState) {
 
         // 💭 Step 0: 如果离开超过 8 小时，先自动生成一篇思念日记
         // 防重复：每个角色每天只生成一次
-        if (hoursAway >= 8 && diary && globalSettings.apiKey) {
-            const absenceKey = `myai_absenceDiary_${roleId}_${new Date().toDateString()}`;
+        if (hoursAway >= absenceThreshold && diary && globalSettings.apiKey) {
+                const absenceKey = `myai_absenceDiary_${roleId}_${dedupeKey}`;
             if (!localStorage.getItem(absenceKey)) {
                 const absenceEntry = await diary.generateAbsenceDiary(currentRole.value, hoursAway);
                 if (absenceEntry) {
