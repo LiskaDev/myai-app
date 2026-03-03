@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>甜心恋爱 · 文字风格</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0e0a0f;
+  font-family: 'Noto Sans SC', sans-serif;
+  padding: 50px 20px 100px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* 背景粉色光晕 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(255,100,160,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(255,140,180,0.03) 0%, transparent 45%);
+  pointer-events: none;
+}
+
+h1 {
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 6px;
+  color: rgba(255,150,190,0.3);
+  font-weight: 300;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.sub {
+  text-align: center;
+  font-size: 10px;
+  color: rgba(255,150,190,0.15);
+  letter-spacing: 3px;
+  margin-bottom: 50px;
+}
+
+.wrap {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+/* 整体卡片 */
+.card {
+  background: #130d14;
+  border: 1px solid rgba(255,110,160,0.1);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(255,80,140,0.06);
+}
+
+.card-header {
+  padding: 14px 20px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255,110,160,0.07);
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #ff6eb0; }
+.card-title { font-size: 11px; letter-spacing: 3px; color: #ff6eb0; }
+.card-sub { font-size: 10px; color: rgba(255,110,160,0.25); margin-left: auto; letter-spacing: 1px; }
+
+/* 飘动爱心背景 */
+.hearts-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 18px;
+}
+.heart {
+  position: absolute;
+  font-size: var(--s);
+  animation: heartFloat var(--d) ease-in-out infinite var(--delay);
+  opacity: 0;
+  left: var(--x);
+  color: rgba(255,110,160,0.25);
+}
+@keyframes heartFloat {
+  0%   { transform: translateY(400px) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.15; }
+  100% { transform: translateY(-20px) rotate(15deg); opacity: 0; }
+}
+
+.chat {
+  padding: 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+}
+
+.row { display: flex; flex-direction: column; gap: 4px; }
+.row.me { align-items: flex-end; }
+
+.rname {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(255,110,160,0.4);
+  font-weight: 300;
+  margin-bottom: 2px;
+}
+
+/* ── 内心戏气泡 ── */
+.inner-love {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  background: rgba(255,110,160,0.06);
+  border: 1px solid rgba(255,110,160,0.13);
+  border-radius: 10px;
+  padding: 9px 13px;
+  max-width: 94%;
+  position: relative;
+}
+
+/* 气泡底部小三角连接主消息 */
+.inner-love::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 18px;
+  width: 8px; height: 6px;
+  background: rgba(255,110,160,0.06);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  border-left: 1px solid rgba(255,110,160,0.12);
+  border-right: 1px solid rgba(255,110,160,0.12);
+}
+
+.inner-icon { font-size: 12px; opacity: 0.55; flex-shrink: 0; margin-top: 1px; }
+
+.inner-love .inner-text {
+  font-family: 'Noto Sans SC';
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.75;
+  color: rgba(255,160,200,0.52);
+  letter-spacing: 0.3px;
+  font-style: italic;
+}
+
+/* ── 主消息气泡 ── */
+.bubble {
+  background: rgba(255,110,160,0.07);
+  border: 1px solid rgba(255,110,160,0.13);
+  border-radius: 4px 16px 16px 16px;
+  padding: 13px 16px;
+  max-width: 90%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 气泡内右下角淡粉光晕 */
+.bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -10px; right: -10px;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: rgba(255,110,160,0.06);
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.bubble .t {
+  font-family: 'Noto Sans SC';
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.95;
+  color: rgba(255,230,240,0.8);
+  letter-spacing: 0.3px;
+  position: relative;
+  z-index: 1;
+}
+
+/* 动作：淡粉斜体 */
+.act { color: rgba(255,140,180,0.4) !important; font-style: italic; font-size: 13px !important; }
+
+/* 对话：亮白偏粉 */
+.say { color: rgba(255,235,245,0.92) !important; }
+
+/* ── 用户消息 ── */
+.me-bubble {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px 4px 16px 16px;
+  padding: 10px 14px;
+  max-width: 68%;
+}
+.me-bubble .t {
+  font-family: 'Noto Sans SC';
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.8;
+  color: rgba(255,255,255,0.55);
+}
+
+/* ── 图例 ── */
+.legend {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  padding: 10px 18px 14px;
+  border-top: 1px solid rgba(255,110,160,0.06);
+}
+.leg { display: flex; align-items: center; gap: 5px; font-size: 9px; color: rgba(255,110,160,0.2); letter-spacing: 1px; }
+.legdot { width: 16px; height: 2px; border-radius: 1px; }
+
+/* ── 第二种变体：更甜，衬线字体 ── */
+.card2 {
+  background: #f9f4f6;
+  border: 1px solid rgba(255,110,160,0.15);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(255,110,160,0.08);
+  margin-top: 32px;
+}
+.card2 .card-header { border-bottom: 1px solid rgba(255,110,160,0.08); }
+.card2 .card-title { color: #e8699a; }
+.card2 .card-sub { color: rgba(232,105,154,0.3); }
+.card2 .dot { background: #e8699a; }
+.card2 .rname { color: rgba(232,105,154,0.45); font-family: 'Noto Serif SC'; font-size: 11px; letter-spacing: 2px; }
+
+.inner-love2 {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  background: rgba(255,110,160,0.05);
+  border: 1px solid rgba(255,110,160,0.12);
+  border-radius: 10px;
+  padding: 9px 13px;
+  max-width: 94%;
+  position: relative;
+}
+.inner-love2::after {
+  content: '';
+  position: absolute;
+  bottom: -6px; left: 18px;
+  width: 8px; height: 6px;
+  background: rgba(255,110,160,0.05);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.inner-love2 .inner-text {
+  font-family: 'Noto Serif SC';
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.75;
+  color: rgba(220,100,150,0.48);
+  letter-spacing: 0.5px;
+  font-style: italic;
+}
+
+.bubble2 {
+  background: #fff;
+  border: 1px solid rgba(255,110,160,0.12);
+  border-radius: 4px 16px 16px 16px;
+  padding: 13px 16px;
+  max-width: 90%;
+  box-shadow: 0 2px 10px rgba(255,110,160,0.06);
+}
+.bubble2 .t {
+  font-family: 'Noto Serif SC';
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 2;
+  color: rgba(80,40,60,0.75);
+  letter-spacing: 0.4px;
+}
+.bubble2 .act { color: rgba(220,120,160,0.4) !important; font-style: italic; font-size: 13px !important; }
+.bubble2 .say { color: rgba(60,30,45,0.88) !important; }
+
+.me-bubble2 {
+  background: rgba(255,110,160,0.07);
+  border: 1px solid rgba(255,110,160,0.13);
+  border-radius: 16px 4px 16px 16px;
+  padding: 10px 14px; max-width: 68%;
+}
+.me-bubble2 .t {
+  font-family: 'Noto Serif SC'; font-size: 14px;
+  line-height: 1.85; color: rgba(80,40,60,0.58);
+}
+
+.card2 .legend { border-top: 1px solid rgba(255,110,160,0.07); }
+.card2 .leg { color: rgba(232,105,154,0.25); }
+
+</style>
+</head>
+<body>
+
+<h1>甜心恋爱 · 文字风格</h1>
+<div class="sub">两种粉色变体 · 暗色版 & 浅色版</div>
+
+<div class="wrap">
+
+  <!-- 变体一：暗粉 深色背景 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="dot"></div>
+      <span class="card-title">甜心·暗粉</span>
+      <span class="card-sub">深色 · 粉色调</span>
+    </div>
+
+    <div class="chat" style="position:relative">
+      <div class="hearts-bg" id="hearts1"></div>
+
+      <div class="row">
+        <div class="rname">林晓柔</div>
+        <div class="inner-love">
+          <span class="inner-icon">🌸</span>
+          <span class="inner-text">他今天……好像有什么心事，要不要问他呢。</span>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="bubble">
+          <div class="t">
+            <span class="act">*偷偷抬头看了一眼，又很快低下去*</span><br><br>
+            <span class="say">「你今天……还好吗？」</span><br><br>
+            <span class="act">*手指轻轻绕着书角，声音有点小*</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row me">
+        <div class="me-bubble"><div class="t">嗯，没事，只是在想你。</div></div>
+      </div>
+
+      <div class="row">
+        <div class="rname">林晓柔</div>
+        <div class="inner-love">
+          <span class="inner-icon">🌸</span>
+          <span class="inner-text">……心跳好快，他刚刚说的是什么，我没有听错吧。</span>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="bubble">
+          <div class="t">
+            <span class="act">*耳尖悄悄红了，书差点没拿稳*</span><br><br>
+            <span class="say">「你、你突然说这个干什么啦……」</span><br><br>
+            <span class="act">*小声嘀咕，却没有躲开*</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="legend">
+      <div class="leg"><div class="legdot" style="background:rgba(255,160,200,0.5)"></div>内心戏</div>
+      <div class="leg"><div class="legdot" style="background:rgba(255,140,180,0.4)"></div>动作</div>
+      <div class="leg"><div class="legdot" style="background:rgba(255,235,245,0.9)"></div>对话</div>
+    </div>
+  </div>
+
+  <!-- 变体二：浅粉 日间版 -->
+  <div class="card2">
+    <div class="card-header">
+      <div class="dot"></div>
+      <span class="card-title">甜心·浅粉</span>
+      <span class="card-sub">浅色 · 衬线 · 护眼</span>
+    </div>
+
+    <div class="chat">
+
+      <div class="row">
+        <div class="rname">林 晓 柔</div>
+        <div class="inner-love2">
+          <span class="inner-icon">🌸</span>
+          <span class="inner-text">他今天……好像有什么心事，要不要问他呢。</span>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="bubble2">
+          <div class="t">
+            <span class="act">*偷偷抬头看了一眼，又很快低下去*</span><br><br>
+            <span class="say">「你今天……还好吗？」</span><br><br>
+            <span class="act">*手指轻轻绕着书角，声音有点小*</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row me">
+        <div class="me-bubble2"><div class="t">嗯，没事，只是在想你。</div></div>
+      </div>
+
+      <div class="row">
+        <div class="rname">林 晓 柔</div>
+        <div class="inner-love2">
+          <span class="inner-icon">🌸</span>
+          <span class="inner-text">……心跳好快，他刚刚说的是什么，我没有听错吧。</span>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="bubble2">
+          <div class="t">
+            <span class="act">*耳尖悄悄红了，书差点没拿稳*</span><br><br>
+            <span class="say">「你、你突然说这个干什么啦……」</span><br><br>
+            <span class="act">*小声嘀咕，却没有躲开*</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="legend">
+      <div class="leg"><div class="legdot" style="background:rgba(220,100,150,0.45)"></div>内心戏</div>
+      <div class="leg"><div class="legdot" style="background:rgba(220,120,160,0.4)"></div>动作</div>
+      <div class="leg"><div class="legdot" style="background:rgba(60,30,45,0.88)"></div>对话</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // 飘心
+  const bg = document.getElementById('hearts1')
+  const chars = ['♡','♥','🌸','✿','·']
+  for(let i=0;i<14;i++){
+    const h = document.createElement('div')
+    h.className = 'heart'
+    h.textContent = chars[Math.floor(Math.random()*chars.length)]
+    h.style.cssText = `
+      --x:${Math.random()*100}%;
+      --d:${4+Math.random()*5}s;
+      --delay:${-Math.random()*8}s;
+      --s:${10+Math.random()*8}px;
+    `
+    bg.appendChild(h)
+  }
+</script>
+</body>
+</html>

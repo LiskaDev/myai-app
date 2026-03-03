@@ -130,6 +130,24 @@ function resetCustomStyle() {
     };
   }
 }
+
+// 🧪 模拟思念日记测试
+const absenceTestDone = ref(false);
+function simulateAbsence() {
+  // 设置最后访问时间为 10 小时前
+  localStorage.setItem('myai_lastVisitTime', (Date.now() - 10 * 3600 * 1000).toString());
+  // 清除所有角色的今日触发记录
+  var d = new Date().toDateString();
+  var roles = JSON.parse(localStorage.getItem('myai_roles_v1') || '[]');
+  var count = 0;
+  for (var i = 0; i < roles.length; i++) {
+    localStorage.removeItem('myai_activeMsg_' + roles[i].id + '_' + d);
+    localStorage.removeItem('myai_absenceDiary_' + roles[i].id + '_' + d);
+    count++;
+  }
+  absenceTestDone.value = true;
+  emit('show-toast', '✅ 已模拟 10 小时未访问（' + count + ' 个角色已重置），请刷新页面！');
+}
 </script>
 
 <template>
@@ -467,6 +485,19 @@ function resetCustomStyle() {
           </div>
         </div>
       </div>
+
+      <!-- 🧪 测试工具 -->
+      <div class="pt-3 mt-3 border-t border-white/10">
+        <label class="block text-sm text-gray-300 mb-2">🧪 测试工具</label>
+        <button @click="simulateAbsence"
+                class="w-full px-4 py-2 rounded-lg text-sm transition"
+                :class="absenceTestDone ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/15 text-amber-300 hover:bg-amber-500/25'"
+                :disabled="absenceTestDone">
+          {{ absenceTestDone ? '✅ 已模拟，请刷新页面' : '💭 模拟思念日记（伪装 10h 未访问）' }}
+        </button>
+        <p class="text-[10px] text-gray-500 mt-1">点击后刷新页面将触发思念日记生成</p>
+      </div>
+
       </div><!-- end mt-3 space-y-0 -->
       </details><!-- end advanced settings -->
     </div><!-- end space-y-3 -->

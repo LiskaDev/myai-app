@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>内心戏气泡 · 三种风格配套</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0c0c10;
+  font-family: 'Noto Sans SC', sans-serif;
+  padding: 50px 20px 100px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 6px;
+  color: #2a2a2a;
+  font-weight: 300;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.sub {
+  text-align: center;
+  font-size: 10px;
+  color: #222;
+  letter-spacing: 3px;
+  margin-bottom: 60px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 36px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.block {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.block-header {
+  padding: 13px 18px 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.block-title { font-size: 11px; letter-spacing: 3px; }
+.block-sub { font-size: 10px; color: #2a2a2a; margin-left: auto; letter-spacing: 1px; }
+
+.chat { padding: 20px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+.row { display: flex; flex-direction: column; gap: 4px; }
+.row.me { align-items: flex-end; }
+.rname { font-size: 10px; letter-spacing: 2px; margin-bottom: 2px; }
+
+
+/* ================================================
+   风格一：清澈·标准
+================================================ */
+.clear { background: #12121a; border: 1px solid rgba(255,255,255,0.05); }
+.clear .dot { background: #6b9fff; }
+.clear .block-title { color: #6b9fff; }
+.clear .rname { color: rgba(107,159,255,0.45); font-weight: 300; }
+
+/* 内心戏气泡 — 清澈 */
+.inner-clear {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(100,130,220,0.07);
+  border: 1px solid rgba(100,130,220,0.14);
+  border-radius: 10px;
+  padding: 10px 14px;
+  max-width: 92%;
+  position: relative;
+}
+
+.inner-icon {
+  font-size: 12px;
+  opacity: 0.6;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.inner-clear .inner-text {
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.75;
+  color: rgba(140,170,255,0.58);
+  letter-spacing: 0.3px;
+  font-style: italic;
+}
+
+/* 主消息气泡 — 清澈 */
+.bubble-clear {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 4px 14px 14px 14px;
+  padding: 12px 15px;
+  max-width: 90%;
+}
+.bubble-clear .t {
+  font-family: 'Noto Sans SC'; font-size: 14px; font-weight: 300;
+  line-height: 1.9; color: rgba(255,255,255,0.78); letter-spacing: 0.3px;
+}
+.bubble-clear .act { color: rgba(255,255,255,0.32); font-style: italic; font-size: 13px; }
+.bubble-clear .say { color: rgba(255,255,255,0.88); }
+
+.me-clear {
+  background: rgba(107,159,255,0.08);
+  border: 1px solid rgba(107,159,255,0.18);
+  border-radius: 14px 4px 14px 14px;
+  padding: 10px 14px; max-width: 70%;
+}
+.me-clear .t {
+  font-family: 'Noto Sans SC'; font-size: 14px; font-weight: 300;
+  line-height: 1.8; color: rgba(255,255,255,0.6);
+}
+
+
+/* ================================================
+   风格二：烟雨·无气泡
+================================================ */
+.misty { background: #0e0c09; border: 1px solid rgba(200,168,120,0.07); }
+.misty .dot { background: #c8a878; }
+.misty .block-title { color: #c8a878; }
+.misty .rname { color: rgba(200,168,120,0.4); font-family: 'Noto Serif SC'; font-size: 11px; letter-spacing: 3px; }
+
+/* 内心戏气泡 — 烟雨无气泡 */
+.inner-misty {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0 8px 14px;
+  border-left: 1.5px solid rgba(200,168,120,0.22);
+  max-width: 88%;
+}
+
+.inner-misty .inner-icon {
+  font-size: 11px;
+  opacity: 0.5;
+  margin-top: 2px;
+}
+
+.inner-misty .inner-text {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.8;
+  color: rgba(200,168,120,0.42);
+  letter-spacing: 0.8px;
+  font-style: italic;
+}
+
+/* 主消息 — 无气泡 */
+.bubble-misty {
+  max-width: 92%;
+  padding: 4px 0 14px;
+  border-bottom: 1px solid rgba(200,168,120,0.07);
+}
+.bubble-misty .t {
+  font-family: 'Noto Serif SC'; font-size: 14.5px; font-weight: 400;
+  line-height: 2.15; color: rgba(235,215,185,0.72); letter-spacing: 0.8px;
+}
+.bubble-misty .act { color: rgba(200,168,120,0.42); }
+.bubble-misty .say { color: rgba(248,232,208,0.88); }
+.bubble-misty .say::before { content: '「'; color: rgba(200,168,120,0.5); }
+.bubble-misty .say::after  { content: '」'; color: rgba(200,168,120,0.5); }
+
+.me-misty {
+  max-width: 65%;
+  padding: 4px 14px 12px 0;
+  border-bottom: 1px solid rgba(200,168,120,0.05);
+  text-align: right;
+}
+.me-misty .t {
+  font-family: 'Noto Serif SC'; font-size: 14px;
+  line-height: 1.95; color: rgba(230,210,180,0.5); font-style: italic;
+}
+
+
+/* ================================================
+   风格三：烟雨·日间
+================================================ */
+.day { background: #f7f5f1; border: 1px solid rgba(0,0,0,0.07); }
+.day .block-header { border-bottom: 1px solid rgba(0,0,0,0.05); }
+.day .dot { background: #8b7355; }
+.day .block-title { color: #8b7355; }
+.day .block-sub { color: #bbb; }
+.day .rname { color: rgba(139,115,85,0.5); font-family: 'Noto Serif SC'; font-size: 11px; letter-spacing: 2px; }
+
+/* 内心戏气泡 — 日间 */
+.inner-day {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(139,115,85,0.05);
+  border: 1px solid rgba(139,115,85,0.13);
+  border-radius: 8px;
+  padding: 9px 13px;
+  max-width: 90%;
+}
+
+.inner-day .inner-icon {
+  font-size: 11px;
+  opacity: 0.45;
+  margin-top: 2px;
+}
+
+.inner-day .inner-text {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.75;
+  color: rgba(100,80,50,0.48);
+  letter-spacing: 0.4px;
+  font-style: italic;
+}
+
+/* 主消息气泡 — 日间 */
+.bubble-day {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 4px 14px 14px 14px;
+  padding: 12px 15px; max-width: 90%;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+.bubble-day .t {
+  font-family: 'Noto Serif SC'; font-size: 14px; font-weight: 400;
+  line-height: 2; color: rgba(60,45,30,0.75); letter-spacing: 0.4px;
+}
+.bubble-day .act { color: rgba(139,115,85,0.42); font-style: italic; font-size: 13px; }
+.bubble-day .say { color: rgba(40,30,20,0.85); }
+
+.me-day {
+  background: rgba(139,115,85,0.07);
+  border: 1px solid rgba(139,115,85,0.14);
+  border-radius: 14px 4px 14px 14px;
+  padding: 10px 14px; max-width: 70%;
+}
+.me-day .t {
+  font-family: 'Noto Serif SC'; font-size: 14px;
+  line-height: 1.9; color: rgba(60,45,30,0.58);
+}
+
+/* 图例 */
+.legend {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  padding: 10px 18px 14px;
+  border-top: 1px solid rgba(255,255,255,0.03);
+}
+.day .legend { border-top: 1px solid rgba(0,0,0,0.05); }
+.leg { display: flex; align-items: center; gap: 5px; font-size: 9px; color: #2a2a2a; letter-spacing: 1px; }
+.day .leg { color: #bbb; }
+.legdot { width: 16px; height: 2px; border-radius: 1px; }
+
+</style>
+</head>
+<body>
+
+<h1>内心戏气泡 · 三种风格配套</h1>
+<div class="sub">同一段对话 · 内心戏气泡跟随风格变化</div>
+
+<div class="grid">
+
+  <!-- 清澈·标准 -->
+  <div class="block clear">
+    <div class="block-header">
+      <div class="dot"></div>
+      <span class="block-title">清澈·标准</span>
+      <span class="block-sub">蓝紫内心戏</span>
+    </div>
+    <div class="chat">
+
+      <!-- 内心戏在上 -->
+      <div class="row">
+        <div class="rname">苏眠</div>
+        <div class="inner-clear">
+          <span class="inner-icon">💭</span>
+          <span class="inner-text">这位客人看起来既好奇又有些紧张呢……水晶球和塔罗牌都是不错的开场，但我想先看看她会如何选择。</span>
+        </div>
+      </div>
+
+      <!-- 主回复 -->
+      <div class="row">
+        <div class="bubble-clear">
+          <div class="t">
+            <span class="act">*指尖轻轻划过水晶球表面，让它泛起一层微光*</span>
+            <br><br>
+            <span class="say">「占卜的方式有很多种呢，艾拉小姐……就像夜晚有不同的月色。」</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 用户 -->
+      <div class="row me">
+        <div class="me-clear"><div class="t">那……水晶球和塔罗牌，哪个更准呢？</div></div>
+      </div>
+
+      <!-- 内心戏+回复 -->
+      <div class="row">
+        <div class="rname">苏眠</div>
+        <div class="inner-clear">
+          <span class="inner-icon">💭</span>
+          <span class="inner-text">有意思，她在认真考虑。这个问题问得很好。</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="bubble-clear">
+          <div class="t">
+            <span class="act">*从抽屉里取出塔罗牌，牌背的月亮图案在烛光下流转*</span>
+            <br><br>
+            <span class="say">「水晶球能映出潜意识的涟漪，而塔罗牌……✨ 更像是命运的拼图游戏。你想先从哪片拼图开始？」</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="legend">
+      <div class="leg"><div class="legdot" style="background:rgba(140,170,255,0.55)"></div>内心戏</div>
+      <div class="leg"><div class="legdot" style="background:rgba(255,255,255,0.32)"></div>动作</div>
+      <div class="leg"><div class="legdot" style="background:rgba(255,255,255,0.88)"></div>对话</div>
+    </div>
+  </div>
+
+  <!-- 烟雨·无气泡 -->
+  <div class="block misty">
+    <div class="block-header">
+      <div class="dot"></div>
+      <span class="block-title">烟雨·无气泡</span>
+      <span class="block-sub">竖线内心戏</span>
+    </div>
+    <div class="chat">
+
+      <div class="row">
+        <div class="rname">苏 眠</div>
+        <div class="inner-misty">
+          <span class="inner-icon">💭</span>
+          <span class="inner-text">这位客人看起来既好奇又有些紧张……水晶球和塔罗牌都是不错的开场，但我想先看看她会如何选择。</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="bubble-misty">
+          <div class="t">
+            <span class="act">指尖轻轻划过水晶球表面，让它泛起一层微光，</span>
+            <span class="say">占卜的方式有很多种呢，艾拉小姐……就像夜晚有不同的月色。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row me">
+        <div class="me-misty"><div class="t">那……水晶球和塔罗牌，哪个更准呢？</div></div>
+      </div>
+
+      <div class="row">
+        <div class="rname">苏 眠</div>
+        <div class="inner-misty">
+          <span class="inner-icon">💭</span>
+          <span class="inner-text">有意思，她在认真考虑。这个问题问得很好。</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="bubble-misty">
+          <div class="t">
+            <span class="act">从抽屉里取出塔罗牌，牌背的月亮图案在烛光下流转，</span>
+            <span class="say">水晶球能映出潜意识的涟漪，而塔罗牌……更像是命运的拼图游戏。你想先从哪片拼图开始？</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="legend">
+      <div class="leg"><div class="legdot" style="background:rgba(200,168,120,0.4)"></div>内心戏</div>
+      <div class="leg"><div class="legdot" style="background:rgba(200,168,120,0.4)"></div>动作</div>
+      <div class="leg"><div class="legdot" style="background:rgba(248,232,208,0.88)"></div>对话</div>
+    </div>
+  </div>
+
+  <!-- 烟雨·日间 -->
+  <div class="block day">
+    <div class="block-header">
+      <div class="dot"></div>
+      <span class="block-title">烟雨·日间</span>
+      <span class="block-sub">暖棕内心戏</span>
+    </div>
+    <div class="chat">
+
+      <div class="row">
+        <div class="rname">苏 眠</div>
+        <div class="inner-day">
+          <span class="inner-icon">💭</span>
+          <span class="inner-text">这位客人看起来既好奇又有些紧张……水晶球和塔罗牌都是不错的开场，但我想先看看她会如何选择。</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="bubble-day">
+          <div class="t">
+            <span class="act">*指尖轻轻划过水晶球表面，让它泛起一层微光*</span>
+            <br><br>
+            <span class="say">占卜的方式有很多种呢，艾拉小姐……就像夜晚有不同的月色。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row me">
+        <div class="me-day"><div class="t">那……水晶球和塔罗牌，哪个更准呢？</div></div>
+      </div>
+
+      <div class="row">
+        <div class="rname">苏 眠</div>
+        <div class="inner-day">
+          <span class="inner-icon">💭</span>
+          <span class="inner-text">有意思，她在认真考虑。这个问题问得很好。</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="bubble-day">
+          <div class="t">
+            <span class="act">*从抽屉里取出塔罗牌，牌背的月亮图案在烛光下流转*</span>
+            <br><br>
+            <span class="say">水晶球能映出潜意识的涟漪，而塔罗牌……✨ 更像是命运的拼图游戏。你想先从哪片拼图开始？</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="legend">
+      <div class="leg"><div class="legdot" style="background:rgba(100,80,50,0.45)"></div>内心戏</div>
+      <div class="leg"><div class="legdot" style="background:rgba(139,115,85,0.42)"></div>动作</div>
+      <div class="leg"><div class="legdot" style="background:rgba(40,30,20,0.85)"></div>对话</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
