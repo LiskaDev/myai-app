@@ -113,6 +113,14 @@ footer {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
+/* 浅色主题（day / loveLight）：取消暗色 text-shadow，避免文字重影 */
+.chrome-style-day .text-shadow,
+.chrome-style-day .text-shadow-light,
+.chrome-style-loveLight .text-shadow,
+.chrome-style-loveLight .text-shadow-light {
+  text-shadow: none;
+}
+
 /* ============== 滚动条美化 ============== */
 ::-webkit-scrollbar {
   width: 6px;
