@@ -117,6 +117,15 @@ npm run build     # 生成 dist/ 目录
 npm run preview   # 本地预览生产构建
 ```
 
+### 🌐 在线访问
+
+| 平台 | 链接 | 适用 |
+|------|------|------|
+| **Cloudflare Pages** | [myai-app.pages.dev](https://myai-app.pages.dev) | 🇨🇳 国内访问 |
+| **Vercel** | [myai-app-eight.vercel.app](https://myai-app-eight.vercel.app) | 🌍 海外访问 |
+
+> 两个平台内容完全相同，代码推送到 GitHub 后会自动同步部署。
+
 ---
 
 ## ⚠️ 安全提示
@@ -133,6 +142,19 @@ npm run preview   # 本地预览生产构建
 > 1. **仅本地使用** — 在自己电脑上 `npm run dev`，最安全
 > 2. **反向代理** — 使用 Nginx/Cloudflare Worker 做 API 代理，Key 存在服务端环境变量中
 > 3. **私有部署** — 部署在内网或设置访问密码
+
+---
+
+## 📜 免责声明
+
+> [!NOTE]
+> 本工具仅提供对话界面，**不提供任何 AI 模型服务**。
+> 
+> - AI 回复内容由用户自行接入的第三方 API（DeepSeek、硅基流动等）生成
+> - 本工具不存储、不传输、不审核任何用户对话内容
+> - 所有数据仅保存在用户本地浏览器的 `localStorage` 中
+> - 用户需自行遵守所在地区法律法规及 API 服务商的使用条款
+> - 开发者对用户使用本工具产生的任何内容不承担责任
 
 ---
 
@@ -201,7 +223,7 @@ npm run test:coverage     # 生成覆盖率报告
 | 测试 | Vitest + Vue Test Utils |
 | 安全 | DOMPurify (XSS 防护) |
 | AI API | DeepSeek / Qwen / Kimi / GLM（兼容 OpenAI 格式） |
-| 部署 | Vercel |
+| 部署 | Vercel + Cloudflare Pages（双平台自动同步） |
 | PWA | Service Worker + Manifest |
 
 ---
