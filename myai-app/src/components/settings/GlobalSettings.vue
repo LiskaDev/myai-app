@@ -134,17 +134,28 @@ function resetCustomStyle() {
 // 🧪 模拟思念日记测试
 const absenceTestDone = ref(false);
 function simulateAbsence() {
+  console.log('[🧪 测试按钮] 开始模拟...');
   // 设置最后访问时间为 10 小时前
-  localStorage.setItem('myai_lastVisitTime', (Date.now() - 10 * 3600 * 1000).toString());
+  var fakeTime = Date.now() - 10 * 3600 * 1000;
+  localStorage.setItem('myai_lastVisitTime', fakeTime.toString());
+  console.log('[🧪 测试按钮] 设置 myai_lastVisitTime =', fakeTime, '（', new Date(fakeTime).toLocaleString(), '）');
   // 清除所有角色的今日触发记录
   var d = new Date().toDateString();
   var roles = JSON.parse(localStorage.getItem('myai_roles_v1') || '[]');
+  console.log('[🧪 测试按钮] 找到', roles.length, '个角色');
   var count = 0;
   for (var i = 0; i < roles.length; i++) {
-    localStorage.removeItem('myai_activeMsg_' + roles[i].id + '_' + d);
-    localStorage.removeItem('myai_absenceDiary_' + roles[i].id + '_' + d);
+    var k1 = 'myai_activeMsg_' + roles[i].id + '_' + d;
+    var k2 = 'myai_absenceDiary_' + roles[i].id + '_' + d;
+    localStorage.removeItem(k1);
+    localStorage.removeItem(k2);
+    console.log('[🧪 测试按钮] 清除:', roles[i].name, '(' + roles[i].id + ')');
     count++;
   }
+  // 验证设置成功
+  var verify = localStorage.getItem('myai_lastVisitTime');
+  console.log('[🧪 测试按钮] ✅ 完成! 验证 lastVisitTime =', verify, '  角色数:', count);
+  console.log('[🧪 测试按钮] 👉 现在请刷新页面 (F5)，然后看 Console 中 [主动消息] 开头的日志');
   absenceTestDone.value = true;
   emit('show-toast', '✅ 已模拟 10 小时未访问（' + count + ' 个角色已重置），请刷新页面！');
 }
