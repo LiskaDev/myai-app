@@ -44,7 +44,7 @@ const filledCount = computed(() =>
           </div>
         </div>
         <textarea v-model="currentRole.speakingStyle" rows="2" 
-                  placeholder="例如：语气略带嘲讽，喜欢用「哦？」开头，偶尔冒出一两句英文..."
+                  placeholder="例如：语气略带嘲讽，喜欢用「哦？」开头，句尾常加「...」表示意犹未尽..."
                   class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-rose-500/50 transition resize-none text-shadow-light text-sm"></textarea>
       </div>
 

@@ -125,7 +125,7 @@ export function useChat(appState) {
 3. Jump IMMEDIATELY to drafting the plot and character reaction.
 4. IMPORTANT: Use <inner>character's internal monologue here</inner> tags for the character's thoughts and feelings.
 5. Actions in *asterisks*, dialogue normally.
-6. 你必须全程使用中文回复（除非角色设定要求使用其他语言）。
+6. 【强制语言规则】你必须全程使用中文回复。所有对话、动作描写、内心独白必须是中文。角色偶尔可夹杂1-2个英文词汇作为口癖，但绝对不可以用英文写完整句子或段落。
 Example format:
 <think>brief strategy</think>
 <inner>What the character is thinking...</inner>
@@ -137,7 +137,7 @@ Example format:
 2. IMPORTANT: Start with <inner>character's internal monologue</inner> for character thoughts.
 3. Then write actions in *asterisks* and dialogue normally.
 4. Never pretend to have a thinking process.
-5. 你必须全程使用中文回复（除非角色设定要求使用其他语言）。
+5. 【强制语言规则】你必须全程使用中文回复。所有对话、动作描写、内心独白必须是中文。角色偶尔可夹杂1-2个英文词汇作为口癖，但绝对不可以用英文写完整句子或段落。
 Example format:
 <inner>What the character is thinking...</inner>
 *action* "dialogue"`;
