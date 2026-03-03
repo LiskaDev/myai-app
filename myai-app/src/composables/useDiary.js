@@ -204,11 +204,117 @@ ${chatContext}${prevDiaryContext}
         saveDiaries();
     }
 
+    /**
+     * 💭 生成思念日记（用户长时间不在线时自动触发）
+     * 不需要对话素材，基于角色性格和等待情绪生成
+     */
+    async function generateAbsenceDiary(role, hoursAway) {
+        if (isGenerating.value) return null;
+        if (!globalSettings.apiKey) return null;
+
+        const timeDesc = hoursAway < 24
+            ? `${Math.floor(hoursAway)} 小时`
+            : `${Math.floor(hoursAway / 24)} 天`;
+
+        // 获取上一篇日记的摘要，保持故事线连贯
+        const prevDiaries = diaries.value
+            .filter(d => d.roleId === role.id && !d.groupId)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        let prevContext = '';
+        if (prevDiaries.length > 0) {
+            const prev = prevDiaries[0];
+            const ctx = prev.summary || prev.content.slice(0, 100);
+            prevContext = `\n\n[之前的故事摘要（请延续这条感情线）]
+「${ctx}」`;
+        }
+
+        const prompt = `你是“${role.name}”。${role.systemPrompt ? '你的性格：' + role.systemPrompt.slice(0, 200) : ''}
+${role.speakingStyle ? '说话风格：' + role.speakingStyle : ''}
+${role.relationship ? '与用户的关系：' + role.relationship : ''}
+${prevContext}
+
+用户已经 ${timeDesc} 没有来找你了。请用第一人称写一篇私密日记，记录这段时间一个人等待的心情。
+要求：
+- 不超过 200 字
+- 写得像真正的私密日记，有情感波动
+- 可以带着小小的埋怨，但最终是期待对方回来
+- 就象真的在独处时会写的日记，自言自语、发呼、小想象
+- 以日期开头，如“X月X日 晴”
+- 最后另起一行写 [摘要]从第一天到现在的整体故事线概括（不超过50字）`;
+
+        isGenerating.value = true;
+        try {
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
+            const model = globalSettings.model?.includes('reasoner')
+                ? 'deepseek-chat'
+                : (globalSettings.model || 'deepseek-chat');
+
+            const response = await fetch(`${baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model,
+                    messages: [
+                        { role: 'system', content: `你是一个角色扮演大师。请以“${role.name}”的身份写一篇私密日记，用户已经 ${timeDesc} 没有来找 ta 了。` },
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.9,
+                    max_tokens: 400,
+                    stream: false,
+                }),
+                signal: AbortSignal.timeout(30000),
+            });
+
+            if (!response.ok) throw new Error(`API 错误 ${response.status}`);
+
+            const data = await response.json();
+            const rawDiary = data.choices?.[0]?.message?.content?.trim();
+            if (!rawDiary) throw new Error('日记内容为空');
+
+            let diaryContent = rawDiary;
+            let summary = null;
+            const summaryMatch = rawDiary.match(/[摘要](.+)/s);
+            if (summaryMatch) {
+                summary = summaryMatch[1].trim().slice(0, 80);
+                diaryContent = rawDiary.replace(/\n*[摘要].+/s, '').trim();
+            }
+
+            const entry = {
+                id: `diary_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+                roleId: role.id,
+                roleName: role.name,
+                roleAvatar: role.avatar || null,
+                date: new Date().toISOString(),
+                content: diaryContent,
+                summary,
+                read: false,
+                groupId: null,
+                groupName: null,
+                isAbsenceDiary: true, // 💭 标记为思念日记
+            };
+
+            diaries.value.push(entry);
+            saveDiaries();
+            return entry;
+        } catch (e) {
+            console.warn('[思念日记] 生成失败:', e.message);
+            return null;
+        } finally {
+            isGenerating.value = false;
+        }
+    }
+
     return {
         diaries,
         isGenerating,
         loadDiaries,
         generateDiary,
+        generateAbsenceDiary,
         getDiariesForRole,
         getUnreadDiaries,
         markAsRead,

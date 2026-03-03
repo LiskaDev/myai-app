@@ -76,6 +76,10 @@ function handleClose() {
                                 <div>
                                     <div class="diary-author-name">{{ currentDiary.roleName }} 的日记</div>
                                     <div class="diary-date">{{ formatDate(currentDiary.date) }}</div>
+                                    <!-- 思念日记标签 -->
+                                    <div v-if="currentDiary.isAbsenceDiary" class="diary-absence-badge">
+                                        💭 写于你不在的时候
+                                    </div>
                                 </div>
                             </div>
 
@@ -266,6 +270,19 @@ function handleClose() {
     font-size: 0.75rem;
     color: #a08060;
     margin-top: 2px;
+}
+
+.diary-absence-badge {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 0.7rem;
+    color: #9b7ba0;
+    background: rgba(155, 123, 160, 0.12);
+    border: 1px solid rgba(155, 123, 160, 0.25);
+    border-radius: 20px;
+    padding: 1px 8px;
+    font-style: italic;
+    letter-spacing: 0.3px;
 }
 
 .diary-divider {

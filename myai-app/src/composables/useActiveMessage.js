@@ -47,6 +47,19 @@ export function useActiveMessage(appState) {
         const messages = currentRole.value.chatHistory;
         if (!messages || messages.length === 0) return false;
 
+        // 💭 Step 0: 如果离开超过 8 小时，先自动生成一篇思念日记
+        // 防重复：每个角色每天只生成一次
+        if (hoursAway >= 8 && diary && globalSettings.apiKey) {
+            const absenceKey = `myai_absenceDiary_${roleId}_${new Date().toDateString()}`;
+            if (!localStorage.getItem(absenceKey)) {
+                const absenceEntry = await diary.generateAbsenceDiary(currentRole.value, hoursAway);
+                if (absenceEntry) {
+                    localStorage.setItem(absenceKey, '1');
+                    console.log(`[思念日记] 已为 ${currentRole.value.name} 生成思念日记`);
+                }
+            }
+        }
+
         // 4. 生成消息内容
         let content = '';
         const roleName = currentRole.value.name || 'AI';
