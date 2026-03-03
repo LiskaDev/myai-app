@@ -956,6 +956,7 @@ function handleAvatarError(type, roleId) {
         @rename-branch="branchFunctions.renameBranch"
         @delete-branch="branchFunctions.deleteBranch"
         @send-suggestion="handleSendSuggestion"
+        @open-diary="openDiaryHistory"
       />
 
       <!-- 底部输入区域（单聊） -->

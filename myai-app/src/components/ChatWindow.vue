@@ -46,7 +46,8 @@ const emit = defineEmits([
   'switch-branch',
   'rename-branch',
   'delete-branch',
-  'send-suggestion'
+  'send-suggestion',
+  'open-diary'
 ]);
 
 const containerRef = ref(null);
@@ -566,7 +567,12 @@ function isCurrentMatch(originalIndex) {
               <div class="w-full max-w-[80%] message-wrapper">
                 <div class="role-name-label">{{ currentRole.name }}</div>
                 <!-- 🌟 主动消息标记 -->
-                <div v-if="msg.isActiveMessage" class="active-message-badge">✨ 主动找你</div>
+                <div v-if="msg.isActiveMessage" 
+                     class="active-message-badge"
+                     :class="{ 'has-diary': (msg.content || '').includes('📔') }"
+                     @click.stop="(msg.content || '').includes('📔') && $emit('open-diary')"
+                     :title="(msg.content || '').includes('📔') ? '点击查看日记' : ''"
+                >✨ 主动找你</div>
                 <!-- Layer 0: R1 Reasoning (折叠图标: ✨ 思考中, 💡 思考完成) -->
                 <details v-if="globalSettings.showLogic && parsedMessages[visibleIndex]?.thought" class="reasoning-block">
                   <summary>
@@ -585,9 +591,9 @@ function isCurrentMatch(originalIndex) {
                   <span class="inner-text">{{ parsedMessages[visibleIndex].inner }}</span>
                 </div>
 
-                <div @click.stop="$emit('toggle-select', getOriginalIndex(visibleIndex))"
+                <div @click.stop="msg.isActiveMessage && (msg.content || '').includes('\ud83d\udcd4') ? $emit('open-diary') : $emit('toggle-select', getOriginalIndex(visibleIndex))"
                      class="speech-bubble cursor-pointer"
-                     :class="['style-' + globalSettings.rpTextStyle, { 'selected': activeMessageIndex === getOriginalIndex(visibleIndex) }]">
+                     :class="['style-' + globalSettings.rpTextStyle, { 'selected': activeMessageIndex === getOriginalIndex(visibleIndex), 'diary-clickable': msg.isActiveMessage && (msg.content || '').includes('\ud83d\udcd4') }]">
                   <div class="message-body vn-body message-content"
                        :class="{ 'typing-cursor': isStreaming && getOriginalIndex(visibleIndex) === messages.length - 1 }"
                        v-html="parsedMessages[visibleIndex]?.bodyHtml"></div>
