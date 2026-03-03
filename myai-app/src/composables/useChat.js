@@ -118,26 +118,26 @@ export function useChat(appState) {
         let modelSpecificPrompt = '';
 
         if (isReasoner) {
-            // === R1 Configuration ===
-            // Anti-verbosity: Tell R1 not to repeat persona in <think>
-            modelSpecificPrompt = `\n\n[System Rule: DeepSeek-R1 Mode]
-1. Output logic traces in <think> tags.
+            // === 推理模型配置（R1 / QwQ / Kimi 等） ===
+            modelSpecificPrompt = `\n\n[System Rule: Reasoning Model]
+1. You may use <think> tags for internal reasoning.
 2. CRITICAL PERFORMANCE: Do NOT repeat/summarize the persona or settings in <think>. Assume context is loaded.
 3. Jump IMMEDIATELY to drafting the plot and character reaction.
 4. IMPORTANT: Use <inner>character's internal monologue here</inner> tags for the character's thoughts and feelings.
 5. Actions in *asterisks*, dialogue normally.
+6. 你必须全程使用中文回复（除非角色设定要求使用其他语言）。
 Example format:
 <think>brief strategy</think>
 <inner>What the character is thinking...</inner>
 *action* "dialogue"`;
         } else {
-            // === V3 Configuration ===
-            // Explicitly forbid V3 from mimicking R1's <think> tags
-            modelSpecificPrompt = `\n\n[System Rule: DeepSeek-V3 Mode]
+            // === 标准模型配置（V3 / Qwen / GLM 等） ===
+            modelSpecificPrompt = `\n\n[System Rule: Standard Model]
 1. DO NOT use <think> tags. DO NOT simulate AI reasoning.
 2. IMPORTANT: Start with <inner>character's internal monologue</inner> for character thoughts.
 3. Then write actions in *asterisks* and dialogue normally.
 4. Never pretend to have a thinking process.
+5. 你必须全程使用中文回复（除非角色设定要求使用其他语言）。
 Example format:
 <inner>What the character is thinking...</inner>
 *action* "dialogue"`;

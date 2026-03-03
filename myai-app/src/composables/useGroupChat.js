@@ -438,17 +438,19 @@ export function useGroupChat(appState) {
         // v5.9.3: 模型特定提示注入 — 告诉 AI 使用 <inner>/<think> 标签
         let modelSpecificPrompt = '';
         if (isReasoner) {
-            modelSpecificPrompt = `\n\n[System Rule: DeepSeek-R1 Mode]
-1. Output logic traces in <think> tags.
+            modelSpecificPrompt = `\n\n[System Rule: Reasoning Model]
+1. You may use <think> tags for internal reasoning.
 2. CRITICAL: Do NOT repeat/summarize the persona in <think>. Jump to drafting.
 3. IMPORTANT: Use <inner>character's internal monologue here</inner> for thoughts.
 4. Actions in *asterisks*, dialogue normally.
+5. 你必须全程使用中文回复。
 Example: <think>brief strategy</think><inner>What I'm thinking...</inner>*action* "dialogue"`;
         } else {
-            modelSpecificPrompt = `\n\n[System Rule: DeepSeek-V3 Mode]
+            modelSpecificPrompt = `\n\n[System Rule: Standard Model]
 1. DO NOT use <think> tags. DO NOT simulate AI reasoning.
 2. IMPORTANT: Start with <inner>character's internal monologue</inner> for thoughts.
 3. Then write actions in *asterisks* and dialogue normally.
+4. 你必须全程使用中文回复。
 Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
         }
 
@@ -994,6 +996,7 @@ You are participating in a multi-character group chat. Stay in character as "${t
 Never break character. Use *asterisks* for actions, "quotes" for dialogue.${frameworkLengthHint}
 Your personality and speaking style MUST be consistent with your character settings. Do NOT become generic or polite if your character is not.
 Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/surprise/scared/smirk/neutral)
+你必须全程使用中文回复。严格使用角色名称原文「${targetRole.name}」，不可写错字。
 [/ROLEPLAY FRAMEWORK]`,
         });
 
