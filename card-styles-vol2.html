@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>角色卡 · 极限风格</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Noto+Serif+SC:wght@300;400;600;700&family=Orbitron:wght@400;700;900&family=Caveat:wght@400;600&family=Special+Elite&family=Share+Tech+Mono&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0c0c0c;
+  color: #fff;
+  font-family: 'Noto Serif SC', serif;
+  padding: 50px 20px 100px;
+}
+
+.page-title {
+  text-align: center;
+  margin-bottom: 70px;
+}
+.page-title h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 8px;
+  color: #444;
+  text-transform: uppercase;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 70px 40px;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.card-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.style-label {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 5px;
+  color: #3a3a3a;
+  text-transform: uppercase;
+}
+
+.card {
+  width: 260px;
+  height: 390px;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+
+/* ==============================
+   1. 故障艺术 Glitch Art
+============================== */
+.card-glitch {
+  background: #000;
+  border: 1px solid #fff;
+}
+
+.card-glitch:hover .glitch-layer { animation-play-state: running; }
+.card-glitch:hover .glitch-emoji { animation-play-state: running; }
+
+.glitch-base {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.glitch-top {
+  flex: 0 0 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #111;
+  position: relative;
+  overflow: hidden;
+}
+
+/* RGB 分离层 */
+.glitch-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 90px;
+  animation: glitchShift 0.08s steps(1) infinite;
+  animation-play-state: paused;
+}
+.glitch-layer-r { color: rgba(255,0,80,0.7); mix-blend-mode: screen; animation-delay: 0s; }
+.glitch-layer-g { color: rgba(0,255,120,0.7); mix-blend-mode: screen; animation-delay: 0.03s; }
+.glitch-layer-b { color: rgba(0,120,255,0.7); mix-blend-mode: screen; animation-delay: 0.06s; }
+
+@keyframes glitchShift {
+  0%   { transform: translate(0,0); clip-path: inset(0 0 85% 0); }
+  10%  { transform: translate(-4px, 2px); clip-path: inset(30% 0 50% 0); }
+  20%  { transform: translate(4px, -1px); clip-path: inset(60% 0 20% 0); }
+  30%  { transform: translate(-2px, 3px); clip-path: inset(10% 0 75% 0); }
+  40%  { transform: translate(3px, 0); clip-path: inset(80% 0 5% 0); }
+  50%  { transform: translate(0, -2px); clip-path: inset(45% 0 40% 0); }
+  100% { transform: translate(0,0); clip-path: inset(0 0 100% 0); }
+}
+
+.glitch-emoji {
+  font-size: 90px;
+  position: relative;
+  z-index: 2;
+  animation: mainGlitch 3s steps(1) infinite;
+  animation-play-state: paused;
+}
+
+@keyframes mainGlitch {
+  0%, 89%, 100% { transform: translate(0,0); filter: none; }
+  90% { transform: translate(-3px, 0); filter: hue-rotate(90deg); }
+  91% { transform: translate(3px, 1px); }
+  92% { transform: translate(0, 0); filter: invert(0.3); }
+  95% { transform: translate(-2px, -1px); }
+}
+
+/* 横向撕裂条 */
+.glitch-tear {
+  position: absolute;
+  left: 0; right: 0;
+  height: var(--h);
+  top: var(--t);
+  background: inherit;
+  animation: tearAnim 4s steps(1) infinite var(--delay);
+  mix-blend-mode: difference;
+}
+
+@keyframes tearAnim {
+  0%, 88%, 100% { transform: translateX(0); opacity: 0; }
+  89% { transform: translateX(-8px); opacity: 1; }
+  90% { transform: translateX(6px); opacity: 1; }
+  91% { opacity: 0; }
+}
+
+.glitch-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, transparent 1px, transparent 3px);
+  pointer-events: none;
+}
+
+.glitch-content {
+  padding: 16px 18px;
+  background: #000;
+  flex: 1;
+  border-top: 1px solid #333;
+  position: relative;
+}
+
+.glitch-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: #ff0050;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+.glitch-name {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+  letter-spacing: 3px;
+  position: relative;
+}
+
+.glitch-name::before {
+  content: attr(data-text);
+  position: absolute;
+  left: 2px; top: 0;
+  color: #ff0050;
+  clip-path: inset(30% 0 50% 0);
+  animation: nameGlitch 4s steps(1) infinite;
+}
+
+@keyframes nameGlitch {
+  0%, 85%, 100% { clip-path: inset(0 0 100% 0); }
+  86% { clip-path: inset(20% 0 60% 0); transform: translateX(-3px); }
+  87% { clip-path: inset(60% 0 20% 0); transform: translateX(3px); }
+  88% { clip-path: inset(0 0 100% 0); }
+}
+
+.glitch-desc {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: #555;
+  line-height: 1.6;
+  letter-spacing: 1px;
+}
+
+.glitch-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #222;
+}
+
+.glitch-export {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: #ff0050;
+  border: 1px solid #ff0050;
+  background: transparent;
+  padding: 5px 10px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.1s;
+}
+.glitch-export:hover {
+  background: #ff0050;
+  color: #000;
+}
+
+
+/* ==============================
+   2. 老式胶片 Vintage Film
+============================== */
+.card-film {
+  background: #1a1008;
+  border: none;
+  box-shadow: 0 10px 50px rgba(0,0,0,0.8);
+}
+
+.card-film:hover { transform: rotate(-1deg) translateY(-6px); }
+
+/* 胶片齿孔 */
+.film-sprocket {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 22px;
+  background: #0d0800;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px 0;
+  z-index: 2;
+}
+.film-sprocket.left { left: 0; }
+.film-sprocket.right { right: 0; }
+
+.sprocket-hole {
+  width: 10px;
+  height: 8px;
+  background: #2a1a08;
+  border-radius: 2px;
+  border: 1px solid #3a2a10;
+}
+
+.film-main {
+  position: absolute;
+  left: 22px; right: 22px;
+  top: 0; bottom: 0;
+  overflow: hidden;
+}
+
+/* 老照片颜色 */
+.film-photo {
+  height: 200px;
+  background: linear-gradient(160deg, #3a2a10 0%, #2a1a08 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 胶片颗粒 */
+.film-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 150px;
+  mix-blend-mode: overlay;
+  animation: grainAnim 0.15s steps(1) infinite;
+}
+
+@keyframes grainAnim {
+  0%   { background-position: 0 0; }
+  25%  { background-position: -50px -30px; }
+  50%  { background-position: 30px -50px; }
+  75%  { background-position: -20px 40px; }
+  100% { background-position: 40px 20px; }
+}
+
+.film-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%);
+}
+
+.film-emoji {
+  font-size: 80px;
+  position: relative;
+  z-index: 1;
+  filter: sepia(0.5) contrast(0.9) brightness(0.85);
+}
+
+/* 时间戳 */
+.film-timestamp {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  font-family: 'Special Elite', serif;
+  font-size: 10px;
+  color: rgba(255,160,50,0.7);
+  letter-spacing: 1px;
+  z-index: 2;
+}
+
+.film-content {
+  padding: 14px 16px 16px;
+}
+
+.film-reel {
+  font-family: 'Special Elite', serif;
+  font-size: 9px;
+  color: rgba(200,160,80,0.5);
+  letter-spacing: 3px;
+  margin-bottom: 8px;
+}
+
+.film-name {
+  font-family: 'Special Elite', serif;
+  font-size: 22px;
+  color: rgba(240,210,150,0.9);
+  margin-bottom: 6px;
+  letter-spacing: 2px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.film-desc {
+  font-family: 'Special Elite', serif;
+  font-size: 11px;
+  color: rgba(180,150,80,0.5);
+  line-height: 1.7;
+  font-style: italic;
+}
+
+.film-strip {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(200,160,80,0.1);
+}
+
+.film-frame {
+  flex: 1;
+  height: 30px;
+  background: rgba(200,160,80,0.05);
+  border: 1px solid rgba(200,160,80,0.15);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  filter: sepia(0.3);
+}
+
+.film-export {
+  display: block;
+  margin-top: 10px;
+  padding: 6px;
+  text-align: center;
+  font-family: 'Special Elite', serif;
+  font-size: 10px;
+  color: rgba(200,160,80,0.5);
+  border: 1px solid rgba(200,160,80,0.2);
+  background: transparent;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+}
+.film-export:hover {
+  background: rgba(200,160,80,0.08);
+  color: rgba(200,160,80,0.8);
+}
+
+/* 划痕 */
+.film-scratch {
+  position: absolute;
+  width: 1px;
+  top: 0; bottom: 0;
+  background: linear-gradient(transparent, rgba(255,220,120,0.15), rgba(255,220,120,0.08), transparent);
+  animation: scratchFlash 5s ease-in-out infinite;
+}
+.film-scratch-1 { left: 35%; animation-delay: 0s; }
+.film-scratch-2 { left: 65%; animation-delay: 2.5s; }
+
+@keyframes scratchFlash {
+  0%, 40%, 100% { opacity: 0; }
+  45%, 55% { opacity: 1; }
+  60% { opacity: 0; }
+}
+
+
+/* ==============================
+   3. 极简主义 Ultra Minimal
+============================== */
+.card-minimal {
+  background: #fafafa;
+  border: none;
+  border-radius: 4px;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.card-minimal:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+}
+
+.min-top-bar {
+  height: 3px;
+  background: #000;
+  transition: transform 0.4s cubic-bezier(0.2,0,0.2,1);
+  transform-origin: left;
+}
+.card-minimal:hover .min-top-bar {
+  transform: scaleX(0.4);
+}
+
+.min-avatar {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.min-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 1.5px solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50px;
+  position: relative;
+  transition: transform 0.6s cubic-bezier(0.2,0,0.2,1);
+}
+
+.card-minimal:hover .min-circle {
+  transform: scale(1.1);
+}
+
+/* 轨道圆 */
+.min-orbit {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.08);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  animation: orbitSpin 8s linear infinite;
+}
+.min-orbit-1 { width: 130px; height: 130px; }
+.min-orbit-2 { width: 160px; height: 160px; animation-direction: reverse; animation-duration: 12s; }
+
+@keyframes orbitSpin {
+  from { transform: translate(-50%,-50%) rotate(0deg); }
+  to   { transform: translate(-50%,-50%) rotate(360deg); }
+}
+
+.min-orbit-dot {
+  position: absolute;
+  width: 4px; height: 4px;
+  background: #000;
+  border-radius: 50%;
+  top: -2px; left: 50%;
+  transform: translateX(-50%);
+}
+
+.min-content {
+  padding: 0 28px 24px;
+}
+
+.min-number {
+  font-size: 9px;
+  color: #ccc;
+  letter-spacing: 3px;
+  margin-bottom: 20px;
+}
+
+.min-name {
+  font-size: 28px;
+  font-weight: 300;
+  color: #111;
+  letter-spacing: -1px;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+
+.min-line {
+  height: 1px;
+  background: #000;
+  width: 30px;
+  margin-bottom: 12px;
+  transition: width 0.4s;
+}
+.card-minimal:hover .min-line { width: 60px; }
+
+.min-desc {
+  font-size: 11px;
+  color: #999;
+  line-height: 1.8;
+  letter-spacing: 0.3px;
+}
+
+.min-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.min-export {
+  font-size: 9px;
+  color: #000;
+  border: 1px solid #000;
+  background: transparent;
+  padding: 6px 14px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.min-export:hover {
+  background: #000;
+  color: #fff;
+}
+
+.min-arrow {
+  font-size: 18px;
+  color: #ddd;
+  transition: transform 0.3s, color 0.3s;
+}
+.card-minimal:hover .min-arrow {
+  transform: translateX(4px);
+  color: #000;
+}
+
+
+/* ==============================
+   4. 液态渐变 Liquid Aurora
+============================== */
+.card-aurora {
+  background: #05050f;
+  border: none;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.card-aurora:hover .aurora-blob { animation-play-state: running; }
+.card-aurora:hover { transform: translateY(-6px); }
+
+.aurora-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  animation: blobMove var(--d) ease-in-out infinite alternate;
+  animation-play-state: paused;
+  opacity: 0.6;
+}
+
+@keyframes blobMove {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(var(--tx), var(--ty)) scale(1.2); }
+  100% { transform: translate(calc(var(--tx) * -0.5), calc(var(--ty) * 1.5)) scale(0.9); }
+}
+
+.aurora-blob-1 { width: 200px; height: 200px; background: #7c3aed; top: -40px; left: -40px; --d:4s; --tx:60px; --ty:40px; }
+.aurora-blob-2 { width: 180px; height: 180px; background: #0ea5e9; top: 60px; right: -30px; --d:5s; --tx:-40px; --ty:30px; }
+.aurora-blob-3 { width: 150px; height: 150px; background: #10b981; bottom: 40px; left: 20px; --d:3.5s; --tx:30px; --ty:-40px; }
+.aurora-blob-4 { width: 120px; height: 120px; background: #f59e0b; bottom: -20px; right: 30px; --d:4.5s; --tx:-50px; --ty:-20px; }
+
+.aurora-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5,5,15,0.4);
+  backdrop-filter: blur(0px);
+}
+
+/* 玻璃质感面板 */
+.aurora-glass {
+  position: absolute;
+  inset: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(2px);
+}
+
+.aurora-avatar {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.aurora-ring {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 30px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.aurora-emoji {
+  font-size: 60px;
+  filter: drop-shadow(0 0 20px rgba(124,58,237,0.8));
+  animation: auroraGlow 3s ease-in-out infinite;
+}
+
+@keyframes auroraGlow {
+  0%, 100% { filter: drop-shadow(0 0 15px rgba(124,58,237,0.6)); }
+  33% { filter: drop-shadow(0 0 20px rgba(14,165,233,0.7)); }
+  66% { filter: drop-shadow(0 0 20px rgba(16,185,129,0.6)); }
+}
+
+/* 浮动粒子 */
+.aurora-particle {
+  position: absolute;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  animation: particleFloat var(--d) ease-in-out infinite var(--delay);
+}
+
+@keyframes particleFloat {
+  0%, 100% { transform: translate(0,0); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 0.5; }
+  100% { transform: translate(var(--dx), -80px); opacity: 0; }
+}
+
+.aurora-content {
+  padding: 14px 22px 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.aurora-subtitle {
+  font-size: 9px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 4px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.aurora-name {
+  font-size: 24px;
+  font-weight: 300;
+  color: #fff;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+  text-shadow: 0 0 30px rgba(124,58,237,0.5);
+}
+
+.aurora-desc {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.7;
+}
+
+.aurora-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.aurora-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.aurora-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+
+.aurora-export {
+  font-size: 9px;
+  color: rgba(255,255,255,0.4);
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05);
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+  backdrop-filter: blur(4px);
+}
+.aurora-export:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+
+/* ==============================
+   5. 手账剪贴 Scrapbook
+============================== */
+.card-scrap {
+  background: #f5f0e8;
+  transform: rotate(-1.5deg);
+  box-shadow: 3px 5px 20px rgba(0,0,0,0.25), -1px -1px 10px rgba(0,0,0,0.05);
+  border-radius: 3px;
+}
+
+.card-scrap:hover {
+  transform: rotate(0deg) translateY(-8px) scale(1.02);
+  box-shadow: 6px 12px 40px rgba(0,0,0,0.3);
+}
+
+/* 纸张边缘撕裂感 */
+.scrap-torn {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 12px;
+  background: linear-gradient(
+    90deg,
+    #f5f0e8 0%, #f5f0e8 10%,
+    transparent 10%, transparent 12%,
+    #f5f0e8 12%, #f5f0e8 25%,
+    transparent 25%, transparent 28%,
+    #f5f0e8 28%, #f5f0e8 45%,
+    transparent 45%, transparent 47%,
+    #f5f0e8 47%, #f5f0e8 65%,
+    transparent 65%, transparent 67%,
+    #f5f0e8 67%, #f5f0e8 80%,
+    transparent 80%, transparent 82%,
+    #f5f0e8 82%, #f5f0e8 100%
+  );
+  z-index: 3;
+}
+
+/* 胶带 */
+.tape {
+  position: absolute;
+  background: rgba(255,230,100,0.5);
+  border: 1px solid rgba(200,180,80,0.3);
+  transform-origin: center;
+  z-index: 4;
+}
+.tape-1 { width: 60px; height: 18px; top: -5px; left: 30px; transform: rotate(-3deg); }
+.tape-2 { width: 50px; height: 16px; top: -4px; right: 40px; transform: rotate(4deg); }
+.tape-3 { width: 55px; height: 16px; bottom: -4px; left: 50%; transform: translateX(-50%) rotate(-2deg); }
+
+/* 便利贴 */
+.sticky-note {
+  position: absolute;
+  background: rgba(255,240,80,0.85);
+  padding: 6px 8px;
+  font-family: 'Caveat', cursive;
+  font-size: 10px;
+  color: #555;
+  transform: rotate(8deg);
+  box-shadow: 1px 2px 6px rgba(0,0,0,0.1);
+  z-index: 3;
+  line-height: 1.4;
+}
+.sticky-1 { top: 20px; right: -10px; }
+
+.scrap-photo {
+  height: 200px;
+  background: linear-gradient(160deg, #e8dcc8 0%, #ddd0b8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-bottom: 2px solid rgba(0,0,0,0.06);
+  margin: 12px 10px 0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+/* 照片白边 */
+.scrap-photo::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 3px solid rgba(255,255,255,0.8);
+  pointer-events: none;
+}
+
+.scrap-emoji { font-size: 80px; position: relative; z-index: 1; }
+
+/* 日期戳 */
+.photo-date {
+  position: absolute;
+  bottom: 14px; right: 14px;
+  font-family: 'Special Elite', serif;
+  font-size: 9px;
+  color: rgba(0,0,0,0.25);
+  letter-spacing: 1px;
+}
+
+.scrap-content {
+  padding: 12px 16px 16px;
+  position: relative;
+}
+
+.scrap-sticker {
+  position: absolute;
+  top: -14px; left: 16px;
+  font-size: 20px;
+  transform: rotate(-10deg);
+}
+
+.scrap-name {
+  font-family: 'Caveat', cursive;
+  font-size: 26px;
+  color: #3a2a1a;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+
+.scrap-underline {
+  height: 2px;
+  background: repeating-linear-gradient(90deg, #c87030 0px, #c87030 6px, transparent 6px, transparent 10px);
+  width: 80px;
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+
+.scrap-desc {
+  font-family: 'Caveat', cursive;
+  font-size: 13px;
+  color: rgba(80,50,20,0.6);
+  line-height: 1.6;
+}
+
+.scrap-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.scrap-hearts { font-size: 14px; letter-spacing: 2px; }
+
+.scrap-export {
+  font-family: 'Caveat', cursive;
+  font-size: 12px;
+  color: #c87030;
+  border: 1.5px solid #c87030;
+  background: transparent;
+  padding: 4px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.scrap-export:hover {
+  background: rgba(200,112,48,0.1);
+}
+
+/* 铅笔线条 */
+.pencil-line {
+  position: absolute;
+  height: 1px;
+  background: rgba(0,0,0,0.08);
+  left: 16px; right: 16px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="page-title">
+  <h1>Character Card · Extreme Edition · Vol.2</h1>
+</div>
+
+<div class="grid">
+
+  <!-- 1. 故障艺术 -->
+  <div class="card-wrapper">
+    <div class="style-label">⚡ 故障艺术 · Glitch</div>
+    <div class="card card-glitch">
+      <div class="glitch-base">
+        <div class="glitch-top">
+          <div class="glitch-scanlines"></div>
+          <div class="glitch-layer glitch-layer-r">👾</div>
+          <div class="glitch-layer glitch-layer-g">👾</div>
+          <div class="glitch-layer glitch-layer-b">👾</div>
+          <div class="glitch-emoji">👾</div>
+          <div class="glitch-tear" style="--h:4px; --t:60px; --delay:0s;"></div>
+          <div class="glitch-tear" style="--h:2px; --t:120px; --delay:1.5s;"></div>
+          <div class="glitch-tear" style="--h:6px; --t:160px; --delay:3s;"></div>
+        </div>
+        <div class="glitch-content">
+          <div class="glitch-tag">ERR_404 · UNDEFINED</div>
+          <div class="glitch-name" data-text="PIXEL">PIXEL</div>
+          <div class="glitch-desc">来自数据洪流的残影，每次对话都可能触发未知的程序异常……</div>
+          <div class="glitch-footer">
+            <span style="font-family:'Share Tech Mono';font-size:8px;color:#333">0xFF · ACTIVE</span>
+            <button class="glitch-export">DUMP.EXE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#333;letter-spacing:2px">悬停触发故障效果</div>
+  </div>
+
+  <!-- 2. 老式胶片 -->
+  <div class="card-wrapper">
+    <div class="style-label">🎞 老式胶片 · Vintage</div>
+    <div class="card card-film">
+      <div class="film-sprocket left" id="left-sprocket"></div>
+      <div class="film-sprocket right" id="right-sprocket"></div>
+      <div class="film-scratch film-scratch-1"></div>
+      <div class="film-scratch film-scratch-2"></div>
+      <div class="film-main">
+        <div class="film-photo">
+          <div class="film-grain"></div>
+          <div class="film-vignette"></div>
+          <div class="film-emoji">🎭</div>
+          <div class="film-timestamp">1987 · 09 · 14</div>
+        </div>
+        <div class="film-content">
+          <div class="film-reel">ROLL 07 · FRAME 23</div>
+          <div class="film-name">Margot</div>
+          <div class="film-desc">她出现在每一张旧照片的边缘，却从来没有人记得她的名字……</div>
+          <div class="film-strip">
+            <div class="film-frame">🌅</div>
+            <div class="film-frame">🚂</div>
+            <div class="film-frame">☕</div>
+            <div class="film-frame">🌧</div>
+          </div>
+          <button class="film-export">DEVELOP · EXPORT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 极简主义 -->
+  <div class="card-wrapper">
+    <div class="style-label">○ 极简主义 · Minimal</div>
+    <div class="card card-minimal">
+      <div class="min-top-bar"></div>
+      <div class="min-avatar">
+        <div class="min-orbit min-orbit-1"><div class="min-orbit-dot"></div></div>
+        <div class="min-orbit min-orbit-2"><div class="min-orbit-dot"></div></div>
+        <div class="min-circle">🧊</div>
+      </div>
+      <div class="min-content">
+        <div class="min-number">No. 001</div>
+        <div class="min-name">Sora</div>
+        <div class="min-line"></div>
+        <div class="min-desc">话不多，但每句话都有重量。沉默比言语更能表达一切。</div>
+        <div class="min-footer">
+          <button class="min-export">Export</button>
+          <span class="min-arrow">→</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 液态极光 -->
+  <div class="card-wrapper">
+    <div class="style-label">🌊 液态极光 · Aurora</div>
+    <div class="card card-aurora">
+      <div class="aurora-bg" id="aurora-bg">
+        <div class="aurora-blob aurora-blob-1"></div>
+        <div class="aurora-blob aurora-blob-2"></div>
+        <div class="aurora-blob aurora-blob-3"></div>
+        <div class="aurora-blob aurora-blob-4"></div>
+      </div>
+      <div class="aurora-overlay"></div>
+      <div class="aurora-glass"></div>
+      <div class="aurora-avatar" id="aurora-avatar">
+        <div class="aurora-ring">
+          <div class="aurora-emoji">🔮</div>
+        </div>
+      </div>
+      <div class="aurora-content">
+        <div class="aurora-subtitle">Mystic · Class S</div>
+        <div class="aurora-name">Aurora</div>
+        <div class="aurora-desc">在梦境与现实之间游走的占卜师，每次凝视水晶球都能看见不同的未来……</div>
+        <div class="aurora-footer">
+          <div class="aurora-dots">
+            <div class="aurora-dot" style="background:#7c3aed"></div>
+            <div class="aurora-dot" style="background:#0ea5e9"></div>
+            <div class="aurora-dot" style="background:#10b981"></div>
+          </div>
+          <button class="aurora-export">导出角色</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 手账剪贴 -->
+  <div class="card-wrapper">
+    <div class="style-label">✂ 手账剪贴 · Scrapbook</div>
+    <div class="card card-scrap">
+      <div class="scrap-torn"></div>
+      <div class="tape tape-1"></div>
+      <div class="tape tape-2"></div>
+      <div class="tape tape-3"></div>
+      <div class="sticky-note sticky-1">最喜欢的角色♡<br>记得回来找她！</div>
+      <div class="scrap-photo">
+        <div class="scrap-emoji">🌻</div>
+        <div class="photo-date">2024.03.15</div>
+      </div>
+      <div class="scrap-content">
+        <div class="scrap-sticker">🌟</div>
+        <div class="pencil-line" style="top:30px"></div>
+        <div class="scrap-name">小向日葵</div>
+        <div class="scrap-underline"></div>
+        <div class="scrap-desc">总是笑着出现，把温暖带给每一个遇见她的人……</div>
+        <div class="scrap-row">
+          <div class="scrap-hearts">♡ ♡ ♡</div>
+          <button class="scrap-export">剪下来 ✂</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // 胶片齿孔
+  ['left-sprocket','right-sprocket'].forEach(id => {
+    const el = document.getElementById(id);
+    for(let i=0;i<10;i++){
+      const h = document.createElement('div');
+      h.className='sprocket-hole';
+      el.appendChild(h);
+    }
+  });
+
+  // 极光粒子
+  const auroraAvatar = document.getElementById('aurora-avatar');
+  for(let i=0;i<12;i++){
+    const p = document.createElement('div');
+    p.className = 'aurora-particle';
+    p.style.cssText = `
+      left:${20+Math.random()*60}%;
+      top:${30+Math.random()*50}%;
+      --d:${2+Math.random()*3}s;
+      --delay:${-Math.random()*4}s;
+      --dx:${(Math.random()-0.5)*60}px;
+      background:${['rgba(124,58,237,0.7)','rgba(14,165,233,0.7)','rgba(16,185,129,0.7)','rgba(255,255,255,0.5)'][Math.floor(Math.random()*4)]};
+    `;
+    auroraAvatar.appendChild(p);
+  }
+
+  // 悬停时极光blobs动起来
+  const auroraCard = document.querySelector('.card-aurora');
+  auroraCard.addEventListener('mouseenter', () => {
+    document.querySelectorAll('.aurora-blob').forEach(b => b.style.animationPlayState = 'running');
+  });
+  auroraCard.addEventListener('mouseleave', () => {
+    document.querySelectorAll('.aurora-blob').forEach(b => b.style.animationPlayState = 'paused');
+  });
+</script>
+</body>
+</html>

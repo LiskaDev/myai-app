@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>角色卡风格展示</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Noto+Serif+SC:wght@300;400;600;700&family=Orbitron:wght@400;700;900&family=Caveat:wght@400;600&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --pink: #ff6eb0;
+  --rose: #ffb3d1;
+  --gold: #c8a96e;
+  --ink: #1a0a00;
+  --cyber-green: #00ff9f;
+  --cyber-purple: #bf00ff;
+  --dark-red: #8b0000;
+  --bone: #e8dcc8;
+}
+
+body {
+  background: #080810;
+  color: #fff;
+  font-family: 'Noto Serif SC', serif;
+  padding: 40px 20px 80px;
+}
+
+.page-title {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.page-title h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  letter-spacing: 6px;
+  color: #555;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.page-title p {
+  font-size: 12px;
+  color: #333;
+  letter-spacing: 2px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 60px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.card-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.style-name {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: #444;
+  text-transform: uppercase;
+}
+
+/* ===== 通用卡片尺寸 ===== */
+.card {
+  width: 260px;
+  height: 390px;
+  border-radius: 18px;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.2,0,0.2,1);
+}
+
+/* ==================== 
+   1. 甜心恋爱风 
+==================== */
+.card-love {
+  background: linear-gradient(160deg, #fff0f6 0%, #ffe4f0 50%, #ffd6e8 100%);
+  border: 1.5px solid rgba(255,110,176,0.3);
+  box-shadow: 0 8px 40px rgba(255,110,176,0.2), inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.card-love:hover {
+  transform: translateY(-8px) rotate(1deg);
+  box-shadow: 0 20px 60px rgba(255,110,176,0.35);
+}
+
+.love-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* 飘动的心形 */
+.love-heart {
+  position: absolute;
+  font-size: var(--s);
+  animation: heartFloat var(--d) ease-in-out infinite var(--delay);
+  opacity: 0;
+  left: var(--x);
+}
+
+@keyframes heartFloat {
+  0% { transform: translateY(420px) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.2; }
+  100% { transform: translateY(-40px) rotate(20deg); opacity: 0; }
+}
+
+/* 柔光圆 */
+.love-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+}
+.love-glow-1 { width: 150px; height: 150px; background: rgba(255,110,176,0.25); top: -30px; right: -20px; }
+.love-glow-2 { width: 120px; height: 120px; background: rgba(255,180,210,0.2); bottom: 60px; left: -20px; }
+
+.love-avatar {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.love-emoji {
+  font-size: 90px;
+  filter: drop-shadow(0 4px 20px rgba(255,110,176,0.4));
+  animation: loveBounce 2s ease-in-out infinite;
+}
+
+@keyframes loveBounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.05); }
+}
+
+.love-ribbon {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--pink), transparent);
+  opacity: 0.5;
+}
+
+.love-content {
+  padding: 0 22px 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.love-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--pink);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.love-name {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #cc4488;
+  text-shadow: 0 2px 10px rgba(255,110,176,0.3);
+  margin-bottom: 6px;
+}
+
+.love-desc {
+  font-size: 12px;
+  color: #aa6688;
+  line-height: 1.7;
+  letter-spacing: 0.5px;
+}
+
+.love-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255,110,176,0.3);
+}
+
+.love-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.love-stat {
+  text-align: center;
+}
+
+.love-stat-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pink);
+}
+
+.love-stat-label {
+  font-size: 9px;
+  color: #cc88aa;
+  margin-top: 1px;
+}
+
+.love-export {
+  font-size: 10px;
+  color: var(--pink);
+  border: 1px solid rgba(255,110,176,0.4);
+  background: rgba(255,110,176,0.08);
+  padding: 5px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+
+.love-export:hover {
+  background: rgba(255,110,176,0.15);
+}
+
+/* 角落蕾丝装饰 */
+.love-corner {
+  position: absolute;
+  width: 30px; height: 30px;
+  opacity: 0.4;
+  font-size: 18px;
+}
+.love-corner.tl { top: 6px; left: 8px; }
+.love-corner.tr { top: 6px; right: 8px; transform: scaleX(-1); }
+.love-corner.bl { bottom: 6px; left: 8px; transform: scaleY(-1); }
+.love-corner.br { bottom: 6px; right: 8px; transform: scale(-1); }
+
+/* ==================== 
+   2. 国风水墨 
+==================== */
+.card-ink {
+  background: #f5efe0;
+  border: none;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+
+.card-ink:hover {
+  transform: translateY(-8px) rotate(-1deg);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+
+.ink-texture {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(ellipse at 20% 20%, rgba(180,160,120,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(140,120,80,0.1) 0%, transparent 40%);
+}
+
+/* 竖排纹 */
+.ink-lines {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 30px,
+    rgba(180,160,120,0.08) 30px,
+    rgba(180,160,120,0.08) 31px
+  );
+}
+
+.ink-seal {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(180,40,40,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: rgba(180,40,40,0.8);
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 700;
+  letter-spacing: -1px;
+  animation: sealPulse 3s ease-in-out infinite;
+}
+
+@keyframes sealPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(180,40,40,0.3); }
+  50% { box-shadow: 0 0 12px rgba(180,40,40,0.4); }
+}
+
+.ink-avatar {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* 水墨晕染 */
+.ink-splash {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(20px);
+  opacity: 0.15;
+}
+.ink-splash-1 { width: 120px; height: 120px; background: #1a0a00; top: 20px; left: 50%; transform: translateX(-60px); }
+.ink-splash-2 { width: 80px; height: 60px; background: #3a1a00; top: 60px; left: 30px; }
+
+.ink-emoji {
+  font-size: 85px;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+  position: relative;
+  z-index: 1;
+}
+
+.ink-divider {
+  height: 1px;
+  margin: 0 20px;
+  background: linear-gradient(90deg, transparent, rgba(26,10,0,0.3), transparent);
+  position: relative;
+  z-index: 1;
+}
+
+.ink-content {
+  padding: 14px 22px 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.ink-subtitle {
+  font-size: 10px;
+  color: rgba(180,40,40,0.7);
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+}
+
+.ink-name {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 4px;
+  margin-bottom: 8px;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.1);
+}
+
+.ink-desc {
+  font-size: 11px;
+  color: rgba(26,10,0,0.55);
+  line-height: 1.9;
+  letter-spacing: 1.5px;
+}
+
+.ink-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(26,10,0,0.1);
+}
+
+.ink-id {
+  font-size: 9px;
+  color: rgba(26,10,0,0.3);
+  letter-spacing: 2px;
+}
+
+.ink-export {
+  font-size: 10px;
+  color: rgba(180,40,40,0.7);
+  border: 1px solid rgba(180,40,40,0.3);
+  background: transparent;
+  padding: 5px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+}
+
+.ink-export:hover {
+  background: rgba(180,40,40,0.08);
+}
+
+/* 边框装饰 */
+.ink-border {
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(26,10,0,0.12);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+/* ==================== 
+   3. 暗黑哥特 
+==================== */
+.card-dark {
+  background: linear-gradient(160deg, #0d0005 0%, #150010 50%, #0a000a 100%);
+  border: 1px solid rgba(139,0,0,0.4);
+  box-shadow: 0 8px 40px rgba(139,0,0,0.15), inset 0 1px 0 rgba(139,0,0,0.2);
+}
+
+.card-dark:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 60px rgba(139,0,0,0.3);
+}
+
+/* 裂纹纹理 */
+.dark-crack {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image:
+    linear-gradient(23deg, transparent 40%, rgba(255,255,255,0.8) 40.5%, transparent 41%),
+    linear-gradient(67deg, transparent 55%, rgba(255,255,255,0.6) 55.5%, transparent 56%),
+    linear-gradient(-15deg, transparent 30%, rgba(255,255,255,0.5) 30.5%, transparent 31%);
+}
+
+.dark-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+}
+
+/* 血红光晕 */
+.dark-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+}
+.dark-glow-1 { width: 160px; height: 100px; background: rgba(139,0,0,0.25); top: 60px; left: 50%; transform: translateX(-80px); }
+.dark-glow-2 { width: 80px; height: 80px; background: rgba(80,0,80,0.2); bottom: 80px; right: 20px; }
+
+.dark-avatar {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.dark-emoji {
+  font-size: 85px;
+  filter: drop-shadow(0 0 20px rgba(139,0,0,0.6)) drop-shadow(0 0 40px rgba(80,0,80,0.3));
+  animation: darkBreath 3s ease-in-out infinite;
+}
+
+@keyframes darkBreath {
+  0%, 100% { filter: drop-shadow(0 0 15px rgba(139,0,0,0.5)) drop-shadow(0 0 30px rgba(80,0,80,0.2)); }
+  50% { filter: drop-shadow(0 0 30px rgba(139,0,0,0.8)) drop-shadow(0 0 60px rgba(80,0,80,0.4)); }
+}
+
+/* 滴血装饰 */
+.drip {
+  position: absolute;
+  bottom: -1px;
+  width: 8px;
+  background: rgba(139,0,0,0.6);
+  border-radius: 0 0 6px 6px;
+}
+
+.dark-content {
+  padding: 14px 22px 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.dark-runes {
+  font-size: 9px;
+  color: rgba(139,0,0,0.5);
+  letter-spacing: 4px;
+  margin-bottom: 8px;
+  font-family: 'Cinzel', serif;
+}
+
+.dark-name {
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--bone);
+  text-shadow: 0 0 20px rgba(139,0,0,0.5), 0 2px 4px rgba(0,0,0,0.8);
+  margin-bottom: 6px;
+  letter-spacing: 2px;
+}
+
+.dark-desc {
+  font-size: 11px;
+  color: rgba(232,220,200,0.4);
+  line-height: 1.7;
+  letter-spacing: 0.5px;
+  font-style: italic;
+}
+
+.dark-divider {
+  height: 1px;
+  margin: 12px 0;
+  background: linear-gradient(90deg, transparent, rgba(139,0,0,0.4), transparent);
+  position: relative;
+}
+
+.dark-divider::before {
+  content: '✦';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: rgba(139,0,0,0.6);
+  background: #150010;
+  padding: 0 6px;
+}
+
+.dark-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dark-curse {
+  font-family: 'Cinzel', serif;
+  font-size: 8px;
+  color: rgba(139,0,0,0.4);
+  letter-spacing: 2px;
+}
+
+.dark-export {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  color: rgba(232,220,200,0.5);
+  border: 1px solid rgba(139,0,0,0.4);
+  background: rgba(139,0,0,0.08);
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+
+.dark-export:hover {
+  background: rgba(139,0,0,0.15);
+  color: var(--bone);
+}
+
+/* 哥特角落 */
+.dark-corner {
+  position: absolute;
+  font-size: 14px;
+  color: rgba(139,0,0,0.4);
+}
+.dark-corner.tl { top: 6px; left: 8px; }
+.dark-corner.tr { top: 6px; right: 8px; }
+.dark-corner.bl { bottom: 6px; left: 8px; }
+.dark-corner.br { bottom: 6px; right: 8px; }
+
+/* ==================== 
+   4. 赛博朋克 
+==================== */
+.card-cyber {
+  background: #020815;
+  border: 1px solid rgba(0,255,159,0.2);
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+  border-radius: 0;
+}
+
+.card-cyber:hover {
+  transform: translateY(-6px);
+  border-color: rgba(0,255,159,0.5);
+}
+
+/* 扫描线 */
+.cyber-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,255,159,0.015) 2px,
+    rgba(0,255,159,0.015) 4px
+  );
+  pointer-events: none;
+}
+
+/* 故障色块 */
+.cyber-glitch {
+  position: absolute;
+  left: 0; right: 0;
+  height: 3px;
+  background: rgba(0,255,159,0.3);
+  animation: glitchScan 4s linear infinite;
+  box-shadow: 0 0 10px rgba(0,255,159,0.5);
+}
+
+@keyframes glitchScan {
+  0% { top: -10px; opacity: 0; }
+  5% { opacity: 1; }
+  95% { opacity: 0.5; }
+  100% { top: 410px; opacity: 0; }
+}
+
+.cyber-corner-cut {
+  position: absolute;
+  top: 0; right: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 30px 30px 0;
+  border-color: transparent rgba(0,255,159,0.4) transparent transparent;
+}
+
+.cyber-corner-cut-bl {
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 30px 0 0 30px;
+  border-color: transparent transparent transparent rgba(0,255,159,0.25);
+}
+
+/* 网格背景 */
+.cyber-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,255,159,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,159,0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.cyber-avatar {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.cyber-emoji {
+  font-size: 85px;
+  filter: drop-shadow(0 0 15px rgba(0,255,159,0.7)) drop-shadow(0 0 30px rgba(191,0,255,0.4));
+  animation: cyberPulse 2s ease-in-out infinite;
+  position: relative;
+}
+
+.cyber-emoji::before {
+  content: attr(data-char);
+  position: absolute;
+  left: 2px; top: 0;
+  color: rgba(191,0,255,0.5);
+  filter: blur(2px);
+  animation: rgbShift 0.1s linear infinite;
+}
+
+@keyframes cyberPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+@keyframes rgbShift {
+  0%, 100% { left: 2px; }
+  50% { left: -2px; }
+}
+
+/* HUD框 */
+.cyber-hud {
+  position: absolute;
+  top: 12px; left: 12px;
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  color: rgba(0,255,159,0.5);
+  letter-spacing: 1px;
+}
+
+.cyber-hud-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
+.cyber-hud-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--cyber-green);
+  animation: hudBlink 1s ease-in-out infinite;
+}
+
+@keyframes hudBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.cyber-content {
+  padding: 12px 18px 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.cyber-id {
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  color: rgba(0,255,159,0.4);
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+}
+
+.cyber-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--cyber-green);
+  text-shadow: 0 0 15px rgba(0,255,159,0.6), 0 0 30px rgba(0,255,159,0.3);
+  margin-bottom: 8px;
+  letter-spacing: 2px;
+}
+
+.cyber-bar-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  color: rgba(0,255,159,0.4);
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+.cyber-bar {
+  height: 3px;
+  background: rgba(0,255,159,0.1);
+  border-radius: 2px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.cyber-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyber-green), var(--cyber-purple));
+  box-shadow: 0 0 8px var(--cyber-green);
+  border-radius: 2px;
+  animation: barLoad 2s ease-out forwards;
+  width: 0;
+}
+
+@keyframes barLoad {
+  to { width: var(--w); }
+}
+
+.cyber-desc {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  color: rgba(0,255,159,0.35);
+  line-height: 1.6;
+  letter-spacing: 1px;
+}
+
+.cyber-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0,255,159,0.1);
+}
+
+.cyber-export {
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  color: rgba(0,255,159,0.7);
+  border: 1px solid rgba(0,255,159,0.3);
+  background: rgba(0,255,159,0.05);
+  padding: 5px 10px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+}
+
+.cyber-export:hover {
+  background: rgba(0,255,159,0.12);
+  color: var(--cyber-green);
+  box-shadow: 0 0 10px rgba(0,255,159,0.2);
+}
+
+/* ==================== 
+   5. 冒险热血 
+==================== */
+.card-adventure {
+  background: linear-gradient(160deg, #1a0500 0%, #2a0800 50%, #1a0300 100%);
+  border: 1px solid rgba(255,140,0,0.3);
+  box-shadow: 0 8px 40px rgba(255,80,0,0.15);
+}
+
+.card-adventure:hover {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 20px 60px rgba(255,80,0,0.3);
+}
+
+/* 火焰光晕 */
+.adv-fire-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+}
+.adv-fire-glow-1 { width: 200px; height: 150px; background: rgba(255,80,0,0.2); top: 40px; left: 50%; transform: translateX(-100px); }
+.adv-fire-glow-2 { width: 100px; height: 80px; background: rgba(255,200,0,0.1); top: 80px; left: 50%; transform: translateX(-50px); }
+
+/* 对角线纹理 */
+.adv-lines {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 20px,
+    rgba(255,140,0,0.03) 20px,
+    rgba(255,140,0,0.03) 21px
+  );
+}
+
+.adv-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: linear-gradient(135deg, #ff6000, #ff9000);
+  color: #fff;
+  font-family: 'Cinzel', serif;
+  font-size: 8px;
+  letter-spacing: 2px;
+  padding: 4px 8px;
+  clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%);
+  text-transform: uppercase;
+}
+
+.adv-avatar {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.adv-emoji {
+  font-size: 85px;
+  filter: drop-shadow(0 0 20px rgba(255,140,0,0.7)) drop-shadow(0 0 40px rgba(255,60,0,0.4));
+  animation: advShake 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes advShake {
+  0% { transform: rotate(-1deg) scale(1); }
+  100% { transform: rotate(1deg) scale(1.02); }
+}
+
+/* 战痕斜线 */
+.adv-slash {
+  position: absolute;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255,200,100,0.6), transparent);
+  transform-origin: left center;
+}
+.adv-slash-1 { width: 80px; top: 80px; left: 80px; transform: rotate(-25deg); }
+.adv-slash-2 { width: 50px; top: 110px; left: 100px; transform: rotate(-20deg); opacity: 0.5; }
+
+.adv-content {
+  padding: 14px 22px 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.adv-rank {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  color: rgba(255,140,0,0.7);
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.adv-name {
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(255,140,0,0.5), 2px 2px 0 rgba(0,0,0,0.5);
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+
+.adv-desc {
+  font-size: 11px;
+  color: rgba(255,200,150,0.5);
+  line-height: 1.7;
+  letter-spacing: 0.5px;
+}
+
+.adv-stats {
+  display: flex;
+  gap: 0;
+  margin-top: 12px;
+}
+
+.adv-stat {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  border-right: 1px solid rgba(255,140,0,0.15);
+}
+.adv-stat:last-child { border-right: none; }
+
+.adv-stat-val {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255,160,50,0.9);
+}
+
+.adv-stat-label {
+  font-size: 8px;
+  color: rgba(255,140,0,0.4);
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+.adv-export {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 8px;
+  background: linear-gradient(135deg, rgba(255,100,0,0.15), rgba(255,60,0,0.1));
+  border: 1px solid rgba(255,140,0,0.3);
+  color: rgba(255,160,80,0.8);
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  text-transform: uppercase;
+}
+
+.adv-export:hover {
+  background: linear-gradient(135deg, rgba(255,100,0,0.25), rgba(255,60,0,0.2));
+  color: rgba(255,200,120,1);
+}
+
+/* ==================== 
+   6. 治愈日常 
+==================== */
+.card-cozy {
+  background: linear-gradient(160deg, #fdfaf5 0%, #f8f4ec 100%);
+  border: 1.5px solid rgba(180,150,100,0.2);
+  box-shadow: 0 8px 30px rgba(150,120,80,0.12);
+}
+
+.card-cozy:hover {
+  transform: translateY(-6px) rotate(0.5deg);
+  box-shadow: 0 16px 40px rgba(150,120,80,0.2);
+}
+
+/* 纸张纹理 */
+.cozy-paper {
+  position: absolute;
+  inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Ccircle cx='1' cy='1' r='0.5' fill='rgba(180,150,100,0.08)'/%3E%3C/svg%3E");
+}
+
+.cozy-avatar {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(160deg, #f0e8d8 0%, #e8dcc8 100%);
+}
+
+.cozy-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fff8f0, #f5e8d0);
+  border: 2px dashed rgba(180,150,100,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60px;
+  box-shadow: 0 4px 20px rgba(150,120,80,0.15);
+  animation: cozyFloat 3s ease-in-out infinite;
+}
+
+@keyframes cozyFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* 小装饰 */
+.cozy-deco {
+  position: absolute;
+  font-size: 18px;
+  animation: cozySpin 8s linear infinite;
+}
+.cozy-deco-1 { top: 20px; left: 20px; --s: 1; animation-direction: normal; }
+.cozy-deco-2 { top: 20px; right: 20px; --s: -1; animation-direction: reverse; }
+.cozy-deco-3 { bottom: 20px; left: 30px; animation-delay: -3s; }
+
+@keyframes cozySpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.cozy-content {
+  padding: 16px 22px 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.cozy-label {
+  font-family: 'Caveat', cursive;
+  font-size: 13px;
+  color: rgba(150,120,80,0.6);
+  margin-bottom: 4px;
+}
+
+.cozy-name {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: #5a4030;
+  margin-bottom: 6px;
+  letter-spacing: 2px;
+}
+
+.cozy-desc {
+  font-family: 'Caveat', cursive;
+  font-size: 14px;
+  color: rgba(120,90,60,0.6);
+  line-height: 1.6;
+}
+
+.cozy-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.cozy-tag {
+  font-family: 'Caveat', cursive;
+  font-size: 11px;
+  color: rgba(150,120,80,0.7);
+  background: rgba(180,150,100,0.1);
+  border: 1px solid rgba(180,150,100,0.2);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.cozy-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(180,150,100,0.15);
+}
+
+.cozy-date {
+  font-family: 'Caveat', cursive;
+  font-size: 12px;
+  color: rgba(150,120,80,0.4);
+}
+
+.cozy-export {
+  font-family: 'Caveat', cursive;
+  font-size: 12px;
+  color: rgba(150,120,80,0.7);
+  border: 1px solid rgba(180,150,100,0.3);
+  background: rgba(180,150,100,0.08);
+  padding: 4px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cozy-export:hover {
+  background: rgba(180,150,100,0.15);
+}
+
+/* 手绘边框 */
+.cozy-border {
+  position: absolute;
+  inset: 6px;
+  border: 1.5px solid rgba(180,150,100,0.15);
+  border-radius: 14px;
+  pointer-events: none;
+}
+
+</style>
+</head>
+<body>
+
+<div class="page-title">
+  <h1>Character Card · Style Gallery</h1>
+  <p>六种风格 · 悬停查看交互效果</p>
+</div>
+
+<div class="grid">
+
+  <!-- 1. 甜心恋爱 -->
+  <div class="card-wrapper">
+    <div class="style-name">💕 甜心恋爱</div>
+    <div class="card card-love">
+      <div class="love-corner tl">🌸</div>
+      <div class="love-corner tr">🌸</div>
+      <div class="love-corner bl">🌸</div>
+      <div class="love-corner br">🌸</div>
+      <div class="love-bg" id="love-bg">
+        <div class="love-glow love-glow-1"></div>
+        <div class="love-glow love-glow-2"></div>
+      </div>
+      <div class="love-avatar">
+        <div class="love-emoji">🌸</div>
+      </div>
+      <div class="love-ribbon"></div>
+      <div class="love-content">
+        <div class="love-tag">♡ 青梅竹马 · 温柔系</div>
+        <div class="love-name">林晓柔</div>
+        <div class="love-desc">总是带着浅浅微笑的图书馆女孩，偶尔会把心事藏在书签里……</div>
+        <div class="love-footer">
+          <div class="love-stats">
+            <div class="love-stat">
+              <div class="love-stat-val">47</div>
+              <div class="love-stat-label">温柔值</div>
+            </div>
+            <div class="love-stat">
+              <div class="love-stat-val">♡12</div>
+              <div class="love-stat-label">心动记录</div>
+            </div>
+          </div>
+          <button class="love-export">导出</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 国风水墨 -->
+  <div class="card-wrapper">
+    <div class="style-name">🏮 国风水墨</div>
+    <div class="card card-ink">
+      <div class="ink-texture"></div>
+      <div class="ink-lines"></div>
+      <div class="ink-border"></div>
+      <div class="ink-seal">云</div>
+      <div class="ink-avatar">
+        <div class="ink-splash ink-splash-1"></div>
+        <div class="ink-splash ink-splash-2"></div>
+        <div class="ink-emoji">🪷</div>
+      </div>
+      <div class="ink-divider"></div>
+      <div class="ink-content">
+        <div class="ink-subtitle">· 仙剑奇缘 ·</div>
+        <div class="ink-name">云 澜</div>
+        <div class="ink-desc">千年修行，一朝入梦。踏雪无痕，言笑晏晏。</div>
+        <div class="ink-footer">
+          <div class="ink-id">CHAR · 云 · 001</div>
+          <button class="ink-export">导出角色</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 暗黑哥特 -->
+  <div class="card-wrapper">
+    <div class="style-name">💀 暗黑哥特</div>
+    <div class="card card-dark">
+      <div class="dark-corner tl">✦</div>
+      <div class="dark-corner tr">✦</div>
+      <div class="dark-corner bl">✦</div>
+      <div class="dark-corner br">✦</div>
+      <div class="dark-crack"></div>
+      <div class="dark-vignette"></div>
+      <div class="dark-glow dark-glow-1"></div>
+      <div class="dark-glow dark-glow-2"></div>
+      <div class="dark-avatar">
+        <div class="dark-emoji">💀</div>
+        <!-- 滴血 -->
+        <div class="drip" style="left:60px; height:18px; bottom:-1px;"></div>
+        <div class="drip" style="left:120px; height:12px; bottom:-1px;"></div>
+        <div class="drip" style="left:170px; height:22px; bottom:-1px;"></div>
+        <div class="drip" style="right:50px; height:15px; bottom:-1px;"></div>
+      </div>
+      <div class="dark-content">
+        <div class="dark-runes">☽ CURSED SOUL · IV ☾</div>
+        <div class="dark-name">暗之使徒</div>
+        <div class="dark-desc">从深渊归来的游魂，每一句话都像是最后的遗言……</div>
+        <div class="dark-divider"></div>
+        <div class="dark-footer">
+          <div class="dark-curse">CONDEMNED · 666</div>
+          <button class="dark-export">封印导出</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 赛博朋克 -->
+  <div class="card-wrapper">
+    <div class="style-name">⚡ 赛博朋克</div>
+    <div class="card card-cyber">
+      <div class="cyber-scanlines"></div>
+      <div class="cyber-grid"></div>
+      <div class="cyber-glitch"></div>
+      <div class="cyber-corner-cut"></div>
+      <div class="cyber-corner-cut-bl"></div>
+      <div class="cyber-avatar">
+        <div class="cyber-hud">
+          <div class="cyber-hud-line"><div class="cyber-hud-dot"></div>ONLINE</div>
+          <div class="cyber-hud-line">SYS:OK</div>
+        </div>
+        <div class="cyber-emoji" data-char="🤖">🤖</div>
+      </div>
+      <div class="cyber-content">
+        <div class="cyber-id">ID:// NX-7749-GHOST</div>
+        <div class="cyber-name">GHOST</div>
+        <div class="cyber-bar-label">SYNC RATE</div>
+        <div class="cyber-bar"><div class="cyber-bar-fill" style="--w:87%"></div></div>
+        <div class="cyber-bar-label">THREAT LVL</div>
+        <div class="cyber-bar"><div class="cyber-bar-fill" style="--w:64%; animation-delay:0.3s"></div></div>
+        <div class="cyber-desc">街头黑客，赛博空间的幽灵。永远不知道它下一步要做什么……</div>
+        <div class="cyber-footer">
+          <span style="font-family:Orbitron;font-size:8px;color:rgba(0,255,159,0.3)">v2.0.49</span>
+          <button class="cyber-export">EXPORT.DAT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 冒险热血 -->
+  <div class="card-wrapper">
+    <div class="style-name">🔥 冒险热血</div>
+    <div class="card card-adventure">
+      <div class="adv-lines"></div>
+      <div class="adv-fire-glow adv-fire-glow-1"></div>
+      <div class="adv-fire-glow adv-fire-glow-2"></div>
+      <div class="adv-badge">S · RANK</div>
+      <div class="adv-avatar">
+        <div class="adv-slash adv-slash-1"></div>
+        <div class="adv-slash adv-slash-2"></div>
+        <div class="adv-emoji">⚔️</div>
+      </div>
+      <div class="adv-content">
+        <div class="adv-rank">★ 传奇战士 · 无双境</div>
+        <div class="adv-name">烈焰</div>
+        <div class="adv-desc">身经百战的战士，每一道疤都是勋章。从不后退，哪怕面对神明……</div>
+        <div class="adv-stats">
+          <div class="adv-stat">
+            <div class="adv-stat-val">999</div>
+            <div class="adv-stat-label">战斗力</div>
+          </div>
+          <div class="adv-stat">
+            <div class="adv-stat-val">∞</div>
+            <div class="adv-stat-label">意志</div>
+          </div>
+          <div class="adv-stat">
+            <div class="adv-stat-val">0</div>
+            <div class="adv-stat-label">退路</div>
+          </div>
+        </div>
+        <button class="adv-export">导出角色卡</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. 治愈日常 -->
+  <div class="card-wrapper">
+    <div class="style-name">☕ 治愈日常</div>
+    <div class="card card-cozy">
+      <div class="cozy-paper"></div>
+      <div class="cozy-border"></div>
+      <div class="cozy-avatar">
+        <div class="cozy-deco cozy-deco-1">🍃</div>
+        <div class="cozy-deco cozy-deco-2">✿</div>
+        <div class="cozy-deco cozy-deco-3">🌼</div>
+        <div class="cozy-circle">☕</div>
+      </div>
+      <div class="cozy-content">
+        <div class="cozy-label">今天的角色是→</div>
+        <div class="cozy-name">田中 咲</div>
+        <div class="cozy-desc">小镇咖啡馆的店主，总记得每位常客喜欢喝什么，也记得你上次说的心事……</div>
+        <div class="cozy-tags">
+          <span class="cozy-tag">☁️ 温柔</span>
+          <span class="cozy-tag">🍵 治愈</span>
+          <span class="cozy-tag">📖 倾听者</span>
+        </div>
+        <div class="cozy-footer">
+          <div class="cozy-date">已陪伴 28 天</div>
+          <button class="cozy-export">导出角色卡 ✿</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // 爱心飘动
+  const loveBg = document.getElementById('love-bg');
+  const hearts = ['♡','♥','💕','🌸','✿'];
+  for(let i = 0; i < 12; i++) {
+    const h = document.createElement('div');
+    h.className = 'love-heart';
+    h.textContent = hearts[Math.floor(Math.random() * hearts.length)];
+    h.style.cssText = `
+      --x: ${Math.random() * 100}%;
+      --d: ${3 + Math.random() * 4}s;
+      --delay: ${-Math.random() * 6}s;
+      --s: ${12 + Math.random() * 10}px;
+      color: rgba(255,110,176,${0.3 + Math.random() * 0.4});
+    `;
+    loveBg.appendChild(h);
+  }
+</script>
+</body>
+</html>
