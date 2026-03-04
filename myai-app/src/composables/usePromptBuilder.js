@@ -60,6 +60,40 @@ export function usePromptBuilder(appState) {
      *   Step 7: 对话窗口（近期全文）
      *   Step 8: 用户画像
      */
+
+    function getAffectionLevel(score) {
+        if (score >= 90) return '非常亲密';
+        if (score >= 70) return '亲密';
+        if (score >= 50) return '友好';
+        if (score >= 30) return '普通';
+        return '疏远';
+    }
+
+    function buildDynamicStatus(role) {
+        const now = Date.now();
+        const daysSinceLast = role.lastChatTime
+            ? Math.floor((now - role.lastChatTime) / (1000 * 60 * 60 * 24))
+            : 0;
+
+        let absenceNote = '';
+        if (daysSinceLast >= 7)      absenceNote = `（玩家已经${daysSinceLast}天没有登录）`;
+        else if (daysSinceLast >= 3) absenceNote = `（玩家${daysSinceLast}天没来了）`;
+        else if (daysSinceLast === 0) absenceNote = `（今天第一次开口）`;
+
+        const score = role.affectionScore ?? 50;
+        const affectionLevel = getAffectionLevel(score);
+        const recentKeyMoment = role.keyMoments?.slice(-1)[0]?.text || null;
+
+        const lines = [
+            `情绪：${role.currentEmotion || '平静'}${absenceNote}`,
+            `好感：${score}/100（${affectionLevel}）`,
+            `关系阶段：${role.relationshipStage || '普通朋友'}`,
+            recentKeyMoment ? `最近记住的事：${recentKeyMoment}` : null,
+        ].filter(Boolean).join('\n');
+
+        return `[当前状态]\n${lines}\n[/当前状态]`;
+    }
+
     function constructPrompt() {
         const apiMessages = [];
         const role = currentRole.value;
@@ -175,6 +209,9 @@ RESPONSE FORMAT:
                 content: formatSummaryForPrompt(summary),
             });
         }
+
+        // Step 5.1: 当前状态（动态计算：离线时长、好感等级、最近记忆）
+        apiMessages.push({ role: 'system', content: buildDynamicStatus(role) });
 
         // Step 5.5: 时间线
         const { buildTimelineForPrompt } = useTimeline(appState);

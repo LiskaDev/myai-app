@@ -34,20 +34,20 @@ export function buildSummaryPrompt(messages, role, existingSummary = '') {
         return `${speaker}: ${content}`;
     }).join('\n\n');
 
-    const prompt = `你是一个专业的故事摘要助手。请将以下角色扮演对话压缩成简洁的叙事摘要。
+    const prompt = `请将以下对话压缩成摘要，用JSON格式输出，不要有任何多余文字：
 
-${existingSummary ? `【已有历史摘要】\n${existingSummary}\n\n` : ''}【需要压缩的新对话】
-${dialogueText}
+{
+  "narrative": "第三人称叙事，200字以内，整合旧摘要与新对话，使用"${userName}与${roleName}..."开头",
+  "emotion": "角色当前情绪，从以下选一个：开心/平静/思念/低落/警惕/愤怒/害羞",
+  "affectionDelta": 本次对话好感变化，整数，范围-10到+10，没有明显变化填0,
+  "relationshipStage": "当前关系阶段，从以下选一个：陌生/普通朋友/亲密朋友/暧昧/恋人",
+  "keyMoment": "本次对话最重要的一件事，没有则填null"
+}
 
-【摘要要求】
-1. 使用第三人称叙述（如"${userName}与${roleName}..."）
-2. 保留关键情节转折和重要决策
-3. 记录角色关系变化和情感发展
-4. 提及重要物品、地点、人物
-5. 控制在 200 字以内
-6. 如果有已有历史摘要，将新内容整合进去
-
-请直接输出摘要，不要加任何前缀或解释：`;
+旧摘要：${existingSummary || '无'}
+角色名：${roleName}
+新对话：
+${dialogueText}`;
 
     return prompt;
 }

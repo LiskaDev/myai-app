@@ -77,6 +77,7 @@ export function useAutoSummary(appState) {
                     messages: [{ role: 'user', content: summaryPrompt }],
                     max_tokens: 500,
                     temperature: 0.3,
+                    response_format: { type: 'json_object' },
                 }),
             });
 
@@ -88,8 +89,30 @@ export function useAutoSummary(appState) {
             const newSummary = data.choices?.[0]?.message?.content?.trim();
 
             if (newSummary) {
-                // 更新角色的自动摘要
-                role.autoSummary = newSummary;
+                // 解析 JSON 格式的摘要，降级到纯文本
+                try {
+                    const parsed = JSON.parse(newSummary);
+                    role.autoSummary = parsed.narrative || newSummary;
+                    if (parsed.emotion)           role.currentEmotion    = parsed.emotion;
+                    if (parsed.affectionDelta !== undefined) {
+                        role.affectionDelta = parsed.affectionDelta;
+                        // 累计好感值，初始 50，范围 0-100
+                        role.affectionScore = Math.max(0, Math.min(100,
+                            (role.affectionScore ?? 50) + (parsed.affectionDelta || 0)
+                        ));
+                    }
+                    if (parsed.relationshipStage) role.relationshipStage = parsed.relationshipStage;
+                    if (parsed.keyMoment) {
+                        role.keyMoments = [
+                            ...(role.keyMoments || []),
+                            { text: parsed.keyMoment, timestamp: Date.now() },
+                        ];
+                    }
+                } catch (e) {
+                    // JSON 解析失败（旧模型/非 JSON 模式），直接当文本用
+                    console.warn('[Summary] JSON 解析失败，降级为纯文本摘要');
+                    role.autoSummary = newSummary;
+                }
 
                 // v5.9: 不删消息！只更新索引
                 role.summarizedUpTo = newSummarizedUpTo;

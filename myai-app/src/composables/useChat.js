@@ -78,6 +78,8 @@ export function useChat(appState) {
         // 🕐 记录用户上次活跃时间（供主动消息判断离开时长）
         // 在此处更新而非页面 load/unload，避免 F5 刷新把时间覆写为"现在"
         localStorage.setItem('myai_lastVisitTime', msgTimestamp.toString());
+        // 🕐 记录角色维度的上次对话时间（供 buildDynamicStatus 计算离线天数）
+        if (currentRole.value) currentRole.value.lastChatTime = msgTimestamp;
         userInput.value = '';
 
         // 🧠 用户画像：后台静默分析
