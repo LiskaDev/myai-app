@@ -211,6 +211,7 @@ ${rawContent}`;
                     max_tokens: 200,
                     stream: true,
                 }),
+                signal: AbortSignal.timeout(20000), // 🛡️ 20s 超时，防止网络卡死时 isRefining 锁永久占用
             });
 
             if (!response.ok) {

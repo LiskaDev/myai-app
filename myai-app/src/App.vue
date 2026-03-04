@@ -62,10 +62,16 @@ const diaryDisplayList = ref([]);
 // 🌙 结束今天 — 生成日记 + 自动开启新的一天
 async function handleEndDay() {
     if (groupChat.isGroupMode.value) {
-        // 群聊：为所有参与角色生成日记
+        // 群聊：提前校验是否有足够的消息
+        const msgs = groupChat.groupMessages.value;
+        const realMsgs = msgs.filter(m => m.role === 'user' || m.role === 'assistant' || m.role === 'director');
+        if (realMsgs.length < 3) {
+            showToast('对话还不够丰富，再聊几句再来写日记吧 📝');
+            return;
+        }
+
         diaryDisplayList.value = [];
         showDiaryModal.value = true;
-        const msgs = groupChat.groupMessages.value;
         const groupId = groupChat.currentGroupId.value;
         const groupName = groupChat.currentGroup.value?.name || '群聊';
         const participants = groupChat.participants.value;
@@ -91,11 +97,17 @@ async function handleEndDay() {
             showDiaryModal.value = false;
         }
     } else {
-        // 单聊：直接生成，先弹出加载界面
+        // 单聊：提前校验消息数量，避免白等 30 秒后才提示
+        const msgs = appState.messages.value;
+        const realMsgs = msgs.filter(m => m.role === 'user' || m.role === 'assistant');
+        if (realMsgs.length < 3) {
+            showToast('对话还不够丰富，再聊几句再来写日记吧 📝');
+            return;
+        }
+
         diaryDisplayList.value = [];
         showDiaryModal.value = true;
         const role = appState.currentRole.value;
-        const msgs = appState.messages.value;
         const entry = await diary.generateDiary(role, msgs);
         if (entry) {
             diaryDisplayList.value = [entry];
@@ -649,6 +661,8 @@ onMounted(() => {
   window.addEventListener('keydown', handleGlobalKeydown);
 
   // 🌟 主动消息：回访检测（diary 生成完后再弹未读日记）
+  // 延迟 1000ms：确保「无 API Key 时自动打开设置面板」（800ms）已执行完，
+  // 避免日记弹窗和设置面板同时出现叠叠乐
   setTimeout(async () => {
     const sent = await activeMessage.checkAndSend(diary);
     if (sent) {
@@ -660,6 +674,7 @@ onMounted(() => {
     // 原因：思念日记是异步 API 调用，800ms 固定延迟会错过刚生成的日记
     const unread = diary.getUnreadDiaries();
     if (unread.length > 0) {
+      // 🛡️ 如果设置面板已经打开（无 API Key 场景），等它关闭再弹日记
       if (showSettings.value) {
         const stopWatch = watch(showSettings, (val) => {
           if (!val) {
@@ -673,7 +688,7 @@ onMounted(() => {
         showDiaryModal.value = true;
       }
     }
-  }, 500);
+  }, 1000);
 });
 
 onUnmounted(() => {
@@ -758,17 +773,27 @@ function confirmClearAll() {
     title: '清除所有数据',
     message: '确定要清除所有数据吗？\n\n这将删除所有角色、聊天记录和设置！此操作无法恢复！',
     isDangerous: true,
-    onConfirm: () => {
+    onConfirm: async () => {
       localStorage.clear();
-      // 🛡️ 清除 Service Worker 缓存
+      // 🛡️ 等待 Service Worker 注销 + 缓存清除都完成后再 reload，
+      // 避免 reload 时 SW 还在服务旧缓存内容
+      const cleanupTasks = [];
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-          regs.forEach(reg => reg.unregister());
-        });
-        if ('caches' in window) {
-          caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
-        }
+        cleanupTasks.push(
+          navigator.serviceWorker.getRegistrations().then(regs =>
+            Promise.all(regs.map(reg => reg.unregister()))
+          )
+        );
       }
+      if ('caches' in window) {
+        cleanupTasks.push(
+          caches.keys().then(keys =>
+            Promise.all(keys.map(k => caches.delete(k)))
+          )
+        );
+      }
+      // 等所有清理完成，再重新加载页面
+      await Promise.all(cleanupTasks).catch(() => {});
       location.reload();
     }
   });

@@ -5,7 +5,7 @@ import { generateUUID } from '../utils/uuid';
  * 分支管理 composable — 在任意消息处分叉、切换、重命名、删除分支
  */
 export function useBranch(appState) {
-    const { currentRole, roleList, currentRoleId, showToast, saveData } = appState;
+    const { currentRole, roleList, currentRoleId, showToast, saveData, isStreaming } = appState;
 
     // 当前角色的所有分支
     const branchList = computed(() => {
@@ -24,6 +24,12 @@ export function useBranch(appState) {
      * 在指定消息索引处分叉 — 复制 0~messageIndex 的消息到新分支
      */
     function forkAtMessage(messageIndex) {
+        // 🛡️ 流式输出时禁止分叉，避免把空白的 AI 占位消息复制进新分支
+        if (isStreaming.value) {
+            showToast('请等待 AI 回复完成后再分叉', 'error');
+            return null;
+        }
+
         const role = getRoleRef();
         if (!role) return null;
 
