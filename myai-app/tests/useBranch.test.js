@@ -41,6 +41,7 @@ function createMockAppState() {
         currentRole: computed(() => roleList.value.find(r => r.id === currentRoleId.value)),
         showToast: vi.fn(),
         saveData: vi.fn(),
+        isStreaming: ref(false),
     };
 }
 
