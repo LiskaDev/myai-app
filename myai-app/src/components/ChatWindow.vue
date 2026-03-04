@@ -47,7 +47,8 @@ const emit = defineEmits([
   'rename-branch',
   'delete-branch',
   'send-suggestion',
-  'open-diary'
+  'open-diary',
+  'set-reaction'
 ]);
 
 const containerRef = ref(null);
@@ -616,6 +617,17 @@ function isCurrentMatch(originalIndex) {
                     <button class="toolbar-btn regenerate" @click.stop="$emit('regenerate', getOriginalIndex(visibleIndex))">
                       🔄 重写
                     </button>
+                    <!-- 😊 表情反应按钮组 -->
+                    <div class="reaction-picker">
+                      <template v-for="emoji in ['❤️','👍','🔥','👎']" :key="emoji">
+                        <button
+                          class="reaction-btn"
+                          :class="{ 'active': msg.reaction === emoji }"
+                          @click.stop="$emit('set-reaction', getOriginalIndex(visibleIndex), msg.reaction === emoji ? null : emoji)"
+                          :title="emoji === '👎' ? '不喜欢这条' : '喜欢这条'"
+                        >{{ emoji }}</button>
+                      </template>
+                    </div>
                     <button class="toolbar-btn more-btn" @click.stop="moreMenuIndex = moreMenuIndex === getOriginalIndex(visibleIndex) ? null : getOriginalIndex(visibleIndex)">
                       ···
                     </button>
@@ -637,6 +649,10 @@ function isCurrentMatch(originalIndex) {
                       </button>
                     </div>
                   </Transition>
+                </div>
+                <!-- 反应 pill（有反应时显示在气泡右下角） -->
+                <div v-if="msg.reaction" class="reaction-pill" @click.stop="$emit('set-reaction', getOriginalIndex(visibleIndex), null)" title="点击取消">
+                  {{ msg.reaction }}
                 </div>
               </div>
             </div>
@@ -684,6 +700,49 @@ function isCurrentMatch(originalIndex) {
 </template>
 
 <style scoped>
+/* 😊 表情反应 */
+.reaction-picker {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.reaction-btn {
+  font-size: 0.85rem;
+  padding: 3px 4px;
+  border-radius: 8px;
+  line-height: 1;
+  transition: transform 0.12s, background 0.12s;
+  background: transparent;
+  opacity: 0.55;
+}
+.reaction-btn:hover {
+  transform: scale(1.25);
+  background: rgba(255,255,255,0.1);
+  opacity: 1;
+}
+.reaction-btn.active {
+  background: rgba(99, 102, 241, 0.25);
+  opacity: 1;
+  transform: scale(1.15);
+}
+.reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 4px;
+  margin-left: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  user-select: none;
+}
+.reaction-pill:hover {
+  background: rgba(255,255,255,0.14);
+}
+
 .tts-wave {
   display: flex;
   align-items: center;

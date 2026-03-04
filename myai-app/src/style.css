@@ -2336,9 +2336,9 @@ details.reasoning-block[open]>summary {
 /* ============== 📱 触屏设备适配（hover: none） ============== */
 @media (hover: none) {
 
-  /* 角色删除按钮：在触屏上始终可见（低透明度） */
+  /* 角色操作按钮：在触屏上始终完全可见 */
   .delete-btn {
-    opacity: 0.5 !important;
+    opacity: 1 !important;
   }
 
   /* 逻辑标签 tooltip：点击/触摸触发（通过 focus-within） */

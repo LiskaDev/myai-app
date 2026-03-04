@@ -768,6 +768,41 @@ function executeImport(data, stats) {
   }
 }
 
+// 😊 设置消息表情反应
+function setReaction(messageIndex, emoji) {
+  const msg = messages.value[messageIndex];
+  if (!msg) return;
+  msg.reaction = emoji; // null = 取消，否则设置表情
+  saveData();
+}
+
+// 📤 导出单个角色（含全部分支聊天记录 + 日记）
+function exportSingleRole(roleId) {
+  const role = roleList.value.find(r => r.id === roleId);
+  if (!role) return;
+
+  // 收集该角色的日记（diaries 是 ref([])，直接 filter）
+  const roleDiaries = (diary.diaries?.value || []).filter(d => d.roleId === roleId);
+
+  const payload = {
+    version: 'single-role-v1',
+    exportedAt: new Date().toISOString(),
+    role: JSON.parse(JSON.stringify(role)), // 深拷贝，含所有分支
+    diaries: roleDiaries,
+  };
+
+  const safeName = (role.name || 'role').replace(/[\\/:*?"<>|]/g, '_');
+  const filename = `${safeName}_${new Date().toISOString().slice(0, 10)}.json`;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`📤 已导出「${role.name}」`);
+}
+
 function confirmClearAll() {
   showConfirmModal({
     title: '清除所有数据',
@@ -940,6 +975,7 @@ function handleAvatarError(type, roleId) {
       @create-role="createNewRole"
       @ai-create-role="() => { createNewRole(); pendingAiRoleId = currentRole.id; showSidebar = false; showSettings = true; }"
       @delete-role="confirmDeleteRole"
+      @export-role="exportSingleRole"
       @close="showSidebar = false"
       @avatar-error="handleAvatarError"
       @switch-group="groupChat.switchToGroup"
@@ -982,6 +1018,7 @@ function handleAvatarError(type, roleId) {
         @delete-branch="branchFunctions.deleteBranch"
         @send-suggestion="handleSendSuggestion"
         @open-diary="openDiaryHistory"
+        @set-reaction="setReaction"
       />
 
       <!-- 底部输入区域（单聊） -->
@@ -1040,7 +1077,7 @@ function handleAvatarError(type, roleId) {
           <div v-if="showStylePanel" class="fixed inset-0 z-30" @click="showStylePanel = false"></div>
         </div>
 
-        <form @submit.prevent="sendMessageWithSound" class="flex items-end space-x-2">
+        <form @submit.prevent="sendMessageWithSound" class="flex items-center space-x-2">
           <!-- 🎨 风格调整按钮 -->
           <button type="button" @click="showStylePanel = !showStylePanel"
                   class="style-adjust-btn flex-shrink-0"

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useAppState } from '../../composables/useAppState';
+import AvatarCropper from '../AvatarCropper.vue';
 
 // 模型预设列表（按平台分组）
 const MODEL_PRESETS = [
@@ -63,6 +64,7 @@ const storageColor = computed(() => {
 
 const userFileInputRef = ref(null);
 const isUserAvatarProcessing = ref(false);
+const cropperSrc = ref(null);  // 有值时弹裁剪器
 const useCustomBaseUrl = ref(false);
 
 function triggerUserFilePicker() {
@@ -72,42 +74,35 @@ function triggerUserFilePicker() {
 async function handleUserFileSelect(event) {
   const file = event.target.files?.[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { emit('show-toast', '图片不能超过 5MB', 'error'); return; }
+  if (file.size > 10 * 1024 * 1024) { emit('show-toast', '图片不能超过 10MB', 'error'); return; }
   isUserAvatarProcessing.value = true;
   try {
-    const dataUrl = await compressImage(file, 256);
-    props.globalSettings.userAvatar = dataUrl;
+    cropperSrc.value = await readFile(file);
   } catch (err) {
-    emit('show-toast', '图片处理失败: ' + err.message, 'error');
+    emit('show-toast', '图片读取失败: ' + err.message, 'error');
   } finally {
     isUserAvatarProcessing.value = false;
     event.target.value = '';
   }
 }
 
-function compressImage(file, maxSize) {
+function readFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let w = img.width, h = img.height;
-        if (w > maxSize || h > maxSize) {
-          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
-          else { w = Math.round(w * maxSize / h); h = maxSize; }
-        }
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
-      };
-      img.onerror = () => reject(new Error('图片加载失败'));
-      img.src = e.target.result;
-    };
+    reader.onload = (e) => resolve(e.target.result);
     reader.onerror = () => reject(new Error('文件读取失败'));
     reader.readAsDataURL(file);
   });
+}
+
+function onCropConfirm(dataUrl) {
+  props.globalSettings.userAvatar = dataUrl;
+  cropperSrc.value = null;
+  emit('show-toast', '头像已更新 ✓', 'success');
+}
+
+function onCropCancel() {
+  cropperSrc.value = null;
 }
 
 function clearUserAvatar() {
@@ -133,6 +128,14 @@ function resetCustomStyle() {
 </script>
 
 <template>
+  <!-- 用户头像裁剪器弹层 -->
+  <AvatarCropper
+    v-if="cropperSrc"
+    :image-src="cropperSrc"
+    @confirm="onCropConfirm"
+    @cancel="onCropCancel"
+  />
+
   <section class="glass bg-glass-message rounded-xl p-4 space-y-4">
     <h3 class="font-semibold text-primary flex items-center text-shadow">
       <span class="mr-2">🌐</span> 全局设置

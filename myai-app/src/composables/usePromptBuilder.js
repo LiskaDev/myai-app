@@ -76,7 +76,7 @@ export function usePromptBuilder(appState) {
             : 0;
 
         let absenceNote = '';
-        if (daysSinceLast >= 7)      absenceNote = `（玩家已经${daysSinceLast}天没有登录）`;
+        if (daysSinceLast >= 7) absenceNote = `（玩家已经${daysSinceLast}天没有登录）`;
         else if (daysSinceLast >= 3) absenceNote = `（玩家${daysSinceLast}天没来了）`;
         else if (daysSinceLast === 0) absenceNote = `（今天第一次开口）`;
 
@@ -198,6 +198,48 @@ RESPONSE FORMAT:
             apiMessages.push({
                 role: 'system',
                 content: chapterText,
+            });
+        }
+
+        // Step 4.5: 😊 用户反应风格学习（❤️/👍/🔥 = 喜欢，👎 = 不喜欢）
+        const POSITIVE_REACTIONS = new Set(['❤️', '👍', '🔥']);
+        const allMsgs = messages.value;
+        const liked = allMsgs
+            .filter(m => m.role === 'assistant' && POSITIVE_REACTIONS.has(m.reaction))
+            .slice(-3); // 最近 3 条
+        const disliked = allMsgs
+            .filter(m => m.role === 'assistant' && m.reaction === '👎')
+            .slice(-2); // 最近 2 条
+
+        if (liked.length >= 2) {
+            const samples = liked.map((m, i) => {
+                const raw = m.rawContent || m.content || '';
+                const cleaned = raw
+                    .replace(/<think>[\s\S]*?<\/think>/g, '')
+                    .replace(/<inner>[\s\S]*?<\/inner>/g, '')
+                    .replace(/<expr:[^>]+>/g, '')
+                    .trim();
+                return `${i + 1}. ${cleaned.slice(0, 100)}${cleaned.length > 100 ? '…' : ''}`;
+            }).join('\n');
+            apiMessages.push({
+                role: 'system',
+                content: `[User Style Preferences — the user especially enjoyed these responses, try to emulate this tone and style]\n${samples}`,
+            });
+        }
+
+        if (disliked.length >= 1) {
+            const avoidSamples = disliked.map((m, i) => {
+                const raw = m.rawContent || m.content || '';
+                const cleaned = raw
+                    .replace(/<think>[\s\S]*?<\/think>/g, '')
+                    .replace(/<inner>[\s\S]*?<\/inner>/g, '')
+                    .replace(/<expr:[^>]+>/g, '')
+                    .trim();
+                return `${i + 1}. ${cleaned.slice(0, 80)}…`;
+            }).join('\n');
+            apiMessages.push({
+                role: 'system',
+                content: `[User Dislikes — the user disliked these responses, avoid this style]\n${avoidSamples}`,
             });
         }
 
