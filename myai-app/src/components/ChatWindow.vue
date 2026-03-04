@@ -546,7 +546,7 @@ function isCurrentMatch(originalIndex) {
 
         <template v-else-if="msg.role === 'assistant'">
           <div class="message-bubble flex flex-col items-start"
-               v-memo="[parsedMessages[visibleIndex]?.content, parsedMessages[visibleIndex]?.thought, parsedMessages[visibleIndex]?.inner, activeMessageIndex === getOriginalIndex(visibleIndex), isCurrentMatch(getOriginalIndex(visibleIndex)), isStreaming && getOriginalIndex(visibleIndex) === messages.length - 1, globalSettings.showLogic, globalSettings.showInner, globalSettings.showTokens, searchResults.length]"
+               v-memo="[parsedMessages[visibleIndex]?.content, parsedMessages[visibleIndex]?.thought, parsedMessages[visibleIndex]?.inner, activeMessageIndex === getOriginalIndex(visibleIndex), isCurrentMatch(getOriginalIndex(visibleIndex)), isStreaming && getOriginalIndex(visibleIndex) === messages.length - 1, globalSettings.showLogic, globalSettings.showInner, globalSettings.showTokens, searchResults.length, msg.isActiveMessage]"
                :data-msg-index="getOriginalIndex(visibleIndex)"
                :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }"
                @touchstart="(e) => longPress.onTouchStart(e, getOriginalIndex(visibleIndex))"

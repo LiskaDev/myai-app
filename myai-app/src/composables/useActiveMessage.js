@@ -73,7 +73,7 @@ export function useActiveMessage(appState) {
         // 💭 Step 0: 如果离开超过 8 小时，先自动生成一篇思念日记
         // 防重复：每个角色每天只生成一次
         if (hoursAway >= absenceThreshold && diary && globalSettings.apiKey) {
-                const absenceKey = `myai_absenceDiary_${roleId}_${dedupeKey}`;
+            const absenceKey = `myai_absenceDiary_${roleId}_${dedupeKey}`;
             if (!localStorage.getItem(absenceKey)) {
                 const absenceEntry = await diary.generateAbsenceDiary(currentRole.value, hoursAway);
                 if (absenceEntry) {
@@ -107,7 +107,14 @@ export function useActiveMessage(appState) {
             content = pool[Math.floor(Math.random() * pool.length)];
         }
 
-        // 5. 插入到聊天记录
+        // 5. 插入到聊天记录（防重复：如果最后一条已经是主动消息就跳过）
+        const lastMsg = msgs[msgs.length - 1];
+        if (lastMsg && lastMsg.isActiveMessage) {
+            console.log('[主动消息] 最后一条已是主动消息，跳过插入');
+            localStorage.setItem(todayKey, '1');
+            localStorage.setItem('myai_lastVisitTime', now.toString());
+            return false;
+        }
         msgs.push({
             role: 'assistant',
             content: content,
