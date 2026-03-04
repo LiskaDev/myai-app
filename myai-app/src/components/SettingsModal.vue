@@ -78,6 +78,29 @@ function removeTimelineItem(idx) {
     props.currentRole.timeline.splice(idx, 1);
   }
 }
+
+// 时间线内联编辑
+const editingTimelineIdx = ref(-1);
+const editingTimelineText = ref('');
+
+function startEditTimeline(idx) {
+  editingTimelineIdx.value = idx;
+  editingTimelineText.value = timelineSource.value[idx]?.event || '';
+}
+
+function saveTimelineEdit() {
+  const idx = editingTimelineIdx.value;
+  if (idx >= 0 && editingTimelineText.value.trim() && timelineSource.value[idx]) {
+    timelineSource.value[idx].event = editingTimelineText.value.trim();
+  }
+  editingTimelineIdx.value = -1;
+  editingTimelineText.value = '';
+}
+
+function cancelTimelineEdit() {
+  editingTimelineIdx.value = -1;
+  editingTimelineText.value = '';
+}
 </script>
 
 <template>
@@ -107,9 +130,28 @@ function removeTimelineItem(idx) {
 
       <!-- ========== 角色 Tab ========== -->
       <template v-if="activeTab === 'role' && !isGroupMode">
+
+        <!-- 分组：基础设定 -->
+        <div class="flex items-center gap-3 px-1 pt-1">
+          <span class="text-sm font-semibold text-gray-400 whitespace-nowrap">🎭 基础设定</span>
+          <div class="flex-1 h-px bg-white/10"></div>
+        </div>
         <RoleBasicSettings :currentRole="currentRole" :globalSettings="globalSettings" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
-        <RoleAdvancedSettings :currentRole="currentRole" :availableVoices="availableVoices" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
+
+        <!-- 分组：角色深度 -->
+        <div class="flex items-center gap-3 px-1 pt-2">
+          <span class="text-sm font-semibold text-gray-400 whitespace-nowrap">✨ 角色深度</span>
+          <div class="flex-1 h-px bg-white/10"></div>
+        </div>
         <CharacterDepthSettings :currentRole="currentRole" />
+
+        <!-- 分组：外观与参数 -->
+        <div class="flex items-center gap-3 px-1 pt-2">
+          <span class="text-sm font-semibold text-gray-400 whitespace-nowrap">🔧 外观与参数</span>
+          <div class="flex-1 h-px bg-white/10"></div>
+        </div>
+        <RoleAdvancedSettings :currentRole="currentRole" :availableVoices="availableVoices" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
+
       </template>
 
       <!-- ========== 记忆 Tab ========== -->
@@ -166,17 +208,45 @@ function removeTimelineItem(idx) {
               <span class="flex-shrink-0 mt-0.5 text-sm">
                 {{ event.importance === 'high' ? '⚡' : event.importance === 'medium' ? '📌' : '·' }}
               </span>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm text-gray-200 leading-relaxed">{{ event.event }}</div>
-                <div class="text-xs text-gray-600 mt-1" v-if="event.timestamp">
-                  {{ new Date(event.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+              <!-- 编辑模式 -->
+              <template v-if="editingTimelineIdx === idx">
+                <div class="flex-1 min-w-0 space-y-2">
+                  <textarea v-model="editingTimelineText"
+                            class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 text-sm outline-none border border-primary/50 resize-none leading-relaxed"
+                            rows="2" @keydown.enter.ctrl="saveTimelineEdit" @keydown.esc="cancelTimelineEdit" />
+                  <div class="flex gap-2">
+                    <button @click="saveTimelineEdit"
+                            class="text-xs px-3 py-1 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 transition">
+                      保存
+                    </button>
+                    <button @click="cancelTimelineEdit"
+                            class="text-xs px-3 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">
+                      取消
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <button @click="removeTimelineItem(idx)" class="opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-red-500/20 transition flex-shrink-0" title="删除">
-                <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
+              </template>
+              <!-- 展示模式 -->
+              <template v-else>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-gray-200 leading-relaxed">{{ event.event }}</div>
+                  <div class="text-xs text-gray-600 mt-1" v-if="event.timestamp">
+                    {{ new Date(event.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                  </div>
+                </div>
+                <div class="opacity-0 group-hover:opacity-100 flex gap-1 flex-shrink-0">
+                  <button @click="startEditTimeline(idx)" class="p-1 rounded-full hover:bg-white/10 transition" title="编辑">
+                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                  </button>
+                  <button @click="removeTimelineItem(idx)" class="p-1 rounded-full hover:bg-red-500/20 transition" title="删除">
+                    <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              </template>
             </div>
           </div>
 
@@ -223,7 +293,7 @@ function removeTimelineItem(idx) {
                 </div>
               </div>
             </div>
-            <p class="text-xs text-gray-500 mt-2">💡 点击右上角 ✏️ 编辑按钮可修改群名和成员</p>
+            <p class="text-xs text-gray-500 mt-2">群名和成员可在关闭设置后，通过聊天窗口顶部的 ✏️ 按钮修改。</p>
           </div>
         </section>
 
@@ -257,12 +327,12 @@ function removeTimelineItem(idx) {
           <div class="grid grid-cols-2 gap-3">
             <button @click="$emit('export-data')"
                     class="glass bg-glass-message text-gray-300 rounded-xl px-4 py-3 text-center hover:bg-glass-light transition flex flex-col items-center justify-center space-y-1">
-              <span class="text-xl">📥</span>
+              <span class="text-xl">�</span>
               <span class="text-sm">导出备份</span>
             </button>
             <button @click="$emit('show-import-modal')"
                     class="glass bg-glass-message text-gray-300 rounded-xl px-4 py-3 text-center hover:bg-glass-light transition flex flex-col items-center justify-center space-y-1">
-              <span class="text-xl">📤</span>
+              <span class="text-xl">📥</span>
               <span class="text-sm">恢复数据</span>
             </button>
           </div>

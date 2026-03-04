@@ -207,6 +207,15 @@ function resetCustomStyle() {
         <input v-else v-model="globalSettings.model" type="text" placeholder="输入模型 ID，如 Qwen/Qwen2.5-72B-Instruct"
                class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light">
         <p class="text-xs text-gray-500 mt-1">当前：{{ globalSettings.model || '未设置' }}</p>
+        <details class="mt-2">
+          <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-400 select-none">🔑 哪个平台用哪个 Key？</summary>
+          <div class="mt-2 space-y-1.5 pl-3 border-l-2 border-white/8 text-xs text-gray-400 leading-relaxed">
+            <div><span class="text-gray-300">🔥 DeepSeek 官方</span> → <a href="https://platform.deepseek.com" target="_blank" class="text-indigo-400 hover:underline">platform.deepseek.com</a> 申请 Key</div>
+            <div><span class="text-gray-300">🚀 硅基流动</span>（Qwen / DeepSeek / Kimi / GLM）→ <a href="https://cloud.siliconflow.cn" target="_blank" class="text-indigo-400 hover:underline">cloud.siliconflow.cn</a> 申请同一个 Key</div>
+            <div><span class="text-gray-300">🌐 OpenRouter</span>（Claude / Gemini / GPT）→ <a href="https://openrouter.ai/keys" target="_blank" class="text-indigo-400 hover:underline">openrouter.ai</a> 申请 Key，模型 ID 手动输入</div>
+            <div class="text-gray-500 pt-0.5">💡 API 平台 和 Key 要配套，混用会报 401</div>
+          </div>
+        </details>
       </div>
 
       <!-- 后台任务模型 -->
