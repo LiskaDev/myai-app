@@ -201,19 +201,103 @@ async function exportCardWithData() {
 
 // ── Save to Library ───────────────────────────────
 const LIBRARY_KEY = 'myai_card_library_v1'
+
+// 每个模板的实际底色（供 html2canvas backgroundColor 使用，
+// 必须是实色而非 gradient，浅色模板传白/米色，深色传黑）
+const TEMPLATE_BG_COLORS = {
+  love:    '#ffe4f0',
+  ink:     '#f5efe0',
+  dark:    '#100008',
+  cyber:   '#020815',
+  flame:   '#1a0800',
+  cozy:    '#fdfaf5',
+  glitch:  '#000000',
+  film:    '#1a1008',
+  minimal: '#fafafa',
+  aurora:  '#05050f',
+  scrap:   '#f5f0e8',
+}
+
 async function saveToLibrary() {
   if (!cardRef.value) return
   try {
     const html2canvas = (await import('html2canvas')).default
-    const canvas = await html2canvas(cardRef.value, { scale: 0.5, useCORS: true, logging: false })
-    const entry = { id: crypto.randomUUID(), savedAt: new Date().toISOString(), roleName: props.role.name, roleId: props.role.id, theme: theme.value, thumbnailDataUrl: canvas.toDataURL('image/jpeg', 0.7) }
-    const lib = JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]')
+
+    // 取当前模板的底色
+    const bgColor = TEMPLATE_BG_COLORS[activeTemplate.value] || '#0e0e1f'
+
+    // ── 克隆卡片到一个干净、离屏的容器中，避免父层深色背景渗透 ──
+    const container = document.createElement('div')
+    container.style.cssText = `
+      position:fixed; left:-9999px; top:0;
+      width:260px; height:390px;
+      background:${bgColor};
+      z-index:-1; overflow:hidden;
+    `
+    const clone = cardRef.value.cloneNode(true)
+
+    // ── 内联降级：html2canvas 不支持 filter:blur / backdrop-filter ──
+    // 对克隆节点直接改 style，不需要全局 CSS
+    clone.style.boxShadow = 'none'
+    clone.style.transform = 'none'
+
+    // 隐藏/降级有问题的子元素
+    const rules = [
+      // Aurora：blob 改渐变
+      ['.aurora-blob',   el => { el.style.display = 'none' }],
+      ['.aurora-bg',     el => { el.style.background = 'linear-gradient(135deg,rgba(124,58,237,0.9),rgba(14,165,233,0.7) 35%,rgba(16,185,129,0.6) 65%,rgba(245,158,11,0.5))' }],
+      ['.aurora-overlay', el => { el.style.display = 'none' }],
+      ['.aurora-glass',   el => { el.style.backdropFilter = 'none'; el.style.background = 'rgba(255,255,255,0.05)' }],
+      ['.aurora-ring',    el => { el.style.backdropFilter = 'none'; el.style.background = 'rgba(255,255,255,0.08)' }],
+      // 暗层
+      ['.dark-vignette',  el => { el.style.display = 'none' }],
+      ['.film-vignette',  el => { el.style.display = 'none' }],
+      ['.dark-crack',     el => { el.style.display = 'none' }],
+      // Glow / blur 元素 → 隐藏
+      ['.love-glow',      el => { el.style.display = 'none' }],
+      ['.dark-glow',      el => { el.style.display = 'none' }],
+      ['.adv-fire-glow',  el => { el.style.display = 'none' }],
+      ['.ink-splash',     el => { el.style.display = 'none' }],
+      // 噪点
+      ['.film-grain',     el => { el.style.display = 'none' }],
+      // Cyber 扫描线
+      ['.cyber-glitch',   el => { el.style.display = 'none' }],
+      ['.glitch-scanlines', el => { el.style.display = 'none' }],
+    ]
+    for (const [sel, fn] of rules) {
+      clone.querySelectorAll(sel).forEach(fn)
+    }
+
+    document.body.appendChild(container)
+    container.appendChild(clone)
+
+    const canvas = await html2canvas(clone, {
+      scale:           1,
+      useCORS:         true,
+      allowTaint:      true,
+      logging:         false,
+      backgroundColor: bgColor,
+    })
+
+    document.body.removeChild(container)
+
+    const entry = {
+      id:               crypto.randomUUID(),
+      savedAt:          new Date().toISOString(),
+      roleName:         props.role.name,
+      roleId:           props.role.id,
+      theme:            theme.value,
+      thumbnailDataUrl: canvas.toDataURL('image/jpeg', 0.8),
+    }
+    const lib      = JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]')
     const filtered = lib.filter(e => !(e.roleId === entry.roleId && e.theme?.template === entry.theme?.template))
     filtered.unshift(entry)
     localStorage.setItem(LIBRARY_KEY, JSON.stringify(filtered.slice(0, 50)))
     showLocalToast('✅ 已保存到卡片库')
   } catch (e) { console.error(e); showLocalToast('❌ 保存失败') }
 }
+
+
 
 // ── Editable fields ───────────────────────────────
 function onTaglineInput(e) { editTagline.value = e.target.innerText.trim() }
