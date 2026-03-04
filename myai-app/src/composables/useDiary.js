@@ -1,10 +1,17 @@
 import { ref } from 'vue';
 import { STORAGE_KEYS } from '../utils/storage';
+import { detectRejection } from './modelAdapter.js';
 
 /**
  * 角色私密日记 composable
  * 生成、存储、读取角色日记
  */
+
+/** 日记生成被 AI 拒绝时的占位内容（比静默失败更好的体验） */
+function generatePlaceholderDiary(roleName) {
+    return `今天……有些事情让我一时不知道该怎么说。\n也许明天会好一些。\n——${roleName}`;
+}
+
 export function useDiary(appState) {
     const { globalSettings, showToast } = appState;
     const isGenerating = ref(false);
@@ -160,6 +167,10 @@ ${chatContext}${prevDiaryContext}
             if (!rawDiary) {
                 throw new Error('日记内容为空');
             }
+            const { rejected: diaryRejected } = detectRejection(rawDiary);
+            if (diaryRejected) {
+                throw new Error('AI 拒绝生成日记内容');
+            }
 
             // 📜 解析摘要：从 AI 返回中分离日记正文和【摘要】
             let diaryContent = rawDiary;
@@ -190,6 +201,22 @@ ${chatContext}${prevDiaryContext}
             return entry;
 
         } catch (e) {
+            if (e.message?.includes('拒绝')) {
+                // 生成占位日记，而非静默失败（玩家不会困惑日记消失了）
+                console.warn('[Diary] AI 拒绝，生成占位日记');
+                const placeholder = generatePlaceholderDiary(role.name);
+                const entry = {
+                    id: `diary_${Date.now()}_placeholder`,
+                    roleId: role.id, roleName: role.name, roleAvatar: role.avatar || null,
+                    date: new Date().toISOString(),
+                    content: placeholder, summary: null, read: false,
+                    groupId: options.groupId || null, groupName: options.groupName || null,
+                };
+                diaries.value.push(entry);
+                saveDiaries();
+                showToast?.(`📔 ${role.name}今天的日记有些短`);
+                return entry;
+            }
             console.error('生成日记失败:', e);
             showToast?.(`日记生成失败: ${e.message}`);
             return null;
@@ -275,6 +302,8 @@ ${prevContext}
             const data = await response.json();
             const rawDiary = data.choices?.[0]?.message?.content?.trim();
             if (!rawDiary) throw new Error('日记内容为空');
+            const { rejected: absenceRejected } = detectRejection(rawDiary);
+            if (absenceRejected) throw new Error('AI 拒绝生成思念日记');
 
             let diaryContent = rawDiary;
             let summary = null;
@@ -302,6 +331,20 @@ ${prevContext}
             saveDiaries();
             return entry;
         } catch (e) {
+            if (e.message?.includes('拒绝')) {
+                console.warn('[思念日记] AI 拒绝，生成占位日记');
+                const placeholder = generatePlaceholderDiary(role.name);
+                const entry = {
+                    id: `diary_${Date.now()}_placeholder`,
+                    roleId: role.id, roleName: role.name, roleAvatar: role.avatar || null,
+                    date: new Date().toISOString(),
+                    content: placeholder, summary: null, read: false,
+                    groupId: null, groupName: null, isAbsenceDiary: true,
+                };
+                diaries.value.push(entry);
+                saveDiaries();
+                return entry;
+            }
             console.warn('[思念日记] 生成失败:', e.message);
             return null;
         } finally {
