@@ -29,24 +29,30 @@ function formatTime(ts) {
 
 <template>
   <!-- 💫 当前关系状态（AI 自动感知，无数字，只呈现叙事感知） -->
-  <section v-if="currentRole.currentEmotion || currentRole.relationshipStage || currentRole.keyMoments?.length"
-           class="glass bg-glass-message rounded-xl p-4 space-y-3">
+  <section class="glass bg-glass-message rounded-xl p-4 space-y-3">
     <h3 class="font-semibold text-purple-300 flex items-center text-shadow text-sm">
       <span class="mr-2">💫</span> 与角色的当前状态
       <span class="ml-auto text-[10px] font-normal text-gray-500">AI 自动感知</span>
     </h3>
     <div class="space-y-2 text-sm">
-      <div v-if="currentRole.currentEmotion" class="flex items-center gap-2">
+      <div class="flex items-center gap-2">
         <span class="text-gray-500 w-14 flex-shrink-0">情绪</span>
-        <span class="text-gray-200">{{ currentRole.currentEmotion }}</span>
+        <span :class="currentRole.currentEmotion ? 'text-gray-200' : 'text-gray-600 italic'">
+          {{ currentRole.currentEmotion || '尚未感知' }}
+        </span>
       </div>
-      <div v-if="currentRole.relationshipStage" class="flex items-center gap-2">
+      <div class="flex items-center gap-2">
         <span class="text-gray-500 w-14 flex-shrink-0">关系</span>
-        <span class="text-gray-200">{{ currentRole.relationshipStage }}</span>
+        <span :class="currentRole.relationshipStage ? 'text-gray-200' : 'text-gray-600 italic'">
+          {{ currentRole.relationshipStage || '尚未感知' }}
+        </span>
       </div>
-      <div v-if="currentRole.keyMoments?.length" class="flex items-start gap-2">
+      <div class="flex items-start gap-2">
         <span class="text-gray-500 w-14 flex-shrink-0 pt-0.5">记住的事</span>
-        <span class="text-gray-300 leading-relaxed">{{ currentRole.keyMoments.slice(-1)[0].text }}</span>
+        <span v-if="currentRole.keyMoments?.length" class="text-gray-300 leading-relaxed">
+          {{ currentRole.keyMoments.slice(-1)[0].text }}
+        </span>
+        <span v-else class="text-gray-600 italic">尚未感知</span>
       </div>
     </div>
     <p class="text-[10px] text-gray-600 leading-relaxed pt-1 border-t border-white/5">

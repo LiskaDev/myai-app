@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, computed } from 'vue';
 import GlobalSettings from './settings/GlobalSettings.vue';
 import RoleBasicSettings from './settings/RoleBasicSettings.vue';
@@ -138,18 +138,8 @@ function cancelTimelineEdit() {
         </div>
         <RoleBasicSettings :currentRole="currentRole" :globalSettings="globalSettings" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
 
-        <!-- 分组：角色深度 -->
-        <div class="flex items-center gap-3 px-1 pt-2">
-          <span class="text-sm font-semibold text-gray-400 whitespace-nowrap">✨ 角色深度</span>
-          <div class="flex-1 h-px bg-white/10"></div>
-        </div>
         <CharacterDepthSettings :currentRole="currentRole" />
 
-        <!-- 分组：外观与参数 -->
-        <div class="flex items-center gap-3 px-1 pt-2">
-          <span class="text-sm font-semibold text-gray-400 whitespace-nowrap">🔧 外观与参数</span>
-          <div class="flex-1 h-px bg-white/10"></div>
-        </div>
         <RoleAdvancedSettings :currentRole="currentRole" :availableVoices="availableVoices" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
 
       </template>
@@ -327,7 +317,7 @@ function cancelTimelineEdit() {
           <div class="grid grid-cols-2 gap-3">
             <button @click="$emit('export-data')"
                     class="glass bg-glass-message text-gray-300 rounded-xl px-4 py-3 text-center hover:bg-glass-light transition flex flex-col items-center justify-center space-y-1">
-              <span class="text-xl">�</span>
+              <span class="text-xl">📤</span>
               <span class="text-sm">导出备份</span>
             </button>
             <button @click="$emit('show-import-modal')"
