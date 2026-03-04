@@ -26,6 +26,8 @@ import EditGroupModal from './components/EditGroupModal.vue';
 import DiaryModal from './components/DiaryModal.vue';
 import StoryExportModal from './components/StoryExportModal.vue';
 import OnboardingOverlay from './components/OnboardingOverlay.vue';
+import RoleCardGenerator from './components/RoleCardGenerator.vue';
+import CardLibraryModal from './components/CardLibraryModal.vue';
 
 // Initialize State
 const appState = useAppState();
@@ -58,6 +60,33 @@ const showDiaryRolePicker = ref(false);
 const showMoonMenu = ref(false);
 const showStoryExport = ref(false);
 const diaryDisplayList = ref([]);
+
+// 🃏 角色卡生成器
+const cardTargetRoleId = ref(null)
+const cardSavedTheme   = ref(null)
+const showCardLibrary  = ref(false)
+
+const cardTargetRole = computed(() =>
+  roleList.value.find(r => r.id === cardTargetRoleId.value) || null
+)
+
+const cardTargetMessages = computed(() => {
+  if (!cardTargetRole.value) return []
+  const activeBranchId = cardTargetRole.value.activeBranchId || 'branch-main'
+  const branch = (cardTargetRole.value.branches || []).find(b => b.id === activeBranchId)
+  return branch?.messages || cardTargetRole.value.chatHistory || []
+})
+
+function handleReopenCard(entry) {
+  const role = roleList.value.find(r => r.id === entry.roleId)
+  if (!role) {
+    showToast('原角色已被删除，无法重新打开', 'error')
+    return
+  }
+  showCardLibrary.value  = false
+  cardTargetRoleId.value = entry.roleId
+  cardSavedTheme.value   = entry.theme
+}
 
 // 🌙 结束今天 — 生成日记 + 自动开启新的一天
 async function handleEndDay() {
@@ -976,6 +1005,8 @@ function handleAvatarError(type, roleId) {
       @ai-create-role="() => { createNewRole(); pendingAiRoleId = currentRole.id; showSidebar = false; showSettings = true; }"
       @delete-role="confirmDeleteRole"
       @export-role="exportSingleRole"
+      @generate-card="(id) => { cardSavedTheme = null; cardTargetRoleId = id; showSidebar = false; }"
+      @open-card-library="showCardLibrary = true"
       @close="showSidebar = false"
       @avatar-error="handleAvatarError"
       @switch-group="groupChat.switchToGroup"
@@ -1260,6 +1291,29 @@ function handleAvatarError(type, roleId) {
         </div>
       </div>
     </Transition>
+
+    <!-- 🃏 角色卡生成器 Modal -->
+    <Teleport to="body">
+      <div v-if="cardTargetRoleId && cardTargetRole" class="modal-overlay" @click.self="cardTargetRoleId = null">
+        <RoleCardGenerator
+          :role="cardTargetRole"
+          :messages="cardTargetMessages"
+          :global-settings="globalSettings"
+          :saved-theme="cardSavedTheme"
+          @close="cardTargetRoleId = null; cardSavedTheme = null;"
+        />
+      </div>
+    </Teleport>
+
+    <!-- 🃏 卡片库 Modal -->
+    <Teleport to="body">
+      <div v-if="showCardLibrary" class="modal-overlay" @click.self="showCardLibrary = false">
+        <CardLibraryModal
+          @close="showCardLibrary = false"
+          @reopen-card="handleReopenCard"
+        />
+      </div>
+    </Teleport>
 
     <!-- 🌟 新手引导 -->
     <OnboardingOverlay v-if="showOnboarding" @close="showOnboarding = false" />

@@ -84,12 +84,22 @@ defineEmits([
   'ai-create-role',
   'delete-role',
   'export-role',
+  'generate-card',
+  'open-card-library',
   'close',
   'avatar-error',
   'switch-group',
   'delete-group',
   'create-group',
 ]);
+
+// 🃏 卡片库计数
+const libraryCount = computed(() => {
+  try {
+    return JSON.parse(localStorage.getItem('myai_card_library_v1') || '[]').length
+  } catch { return 0 }
+})
+
 </script>
 
 <template>
@@ -138,6 +148,10 @@ defineEmits([
               <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
               </svg>
+            </button>
+            <!-- 🃏 角色卡按钮 -->
+            <button @click.stop="$emit('generate-card', role.id)" class="delete-btn p-1 rounded-full hover:bg-purple-500/20 transition" title="生成角色卡">
+              <span class="text-base leading-none">🃏</span>
             </button>
             <!-- 删除按钮 -->
             <button @click.stop="$emit('delete-role', role.id)" class="delete-btn p-1 rounded-full hover:bg-red-500/20 transition" title="删除角色">
@@ -195,6 +209,13 @@ defineEmits([
         <button @click="$emit('create-group')" class="w-full text-gray-300 rounded-xl px-4 py-3 text-center hover:bg-glass-light transition border border-dashed border-white/20" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(236, 72, 153, 0.06));">
           👥 创建群聊
         </button>
+      </div>
+
+      <!-- 🃏 我的卡片库 入口 -->
+      <div class="card-library-entry" @click="$emit('open-card-library')">
+        <span class="card-library-icon">🃏</span>
+        <span class="card-library-label">我的卡片库</span>
+        <span class="card-library-count" v-if="libraryCount > 0">{{ libraryCount }}</span>
       </div>
     </div>
   </div>

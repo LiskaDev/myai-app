@@ -3274,3 +3274,50 @@ details.reasoning-block[open]>summary {
 .reasoning-content {
   font-size: calc(var(--chat-font-size, 1) * 1em) !important;
 }
+
+/* ============== 🃏 角色卡 Modal Overlay ============== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  padding: 16px;
+}
+
+/* ============== 🃏 卡片库侧边栏入口 ============== */
+.card-library-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 8px;
+  transition: background 0.15s;
+}
+
+.card-library-entry:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.card-library-icon {
+  font-size: 16px;
+}
+
+.card-library-label {
+  font-size: 13px;
+  color: #9ca3af;
+  flex: 1;
+}
+
+.card-library-count {
+  font-size: 11px;
+  background: rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+  padding: 1px 7px;
+  border-radius: 999px;
+}
