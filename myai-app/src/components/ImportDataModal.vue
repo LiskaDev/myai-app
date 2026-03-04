@@ -5,44 +5,76 @@ const props = defineProps({
   importJson: String
 });
 
-const emit = defineEmits(['import', 'close', 'update:importJson']);
+const emit = defineEmits(['import', 'close', 'update:importJson', 'rolecard-detected']);
 
-const preview = ref(null);
-const error = ref('');
+const preview  = ref(null);
+const error    = ref('');
 const fileName = ref('');
 
+// ── PNG 角色卡检测 ───────────────────────────────────
+const ROLECARD_MAGIC = '###MYAI_ROLECARD###'
+
+async function extractRolecardFromPNG(file) {
+  const buf   = await file.arrayBuffer()
+  const bytes = new Uint8Array(buf)
+  // 将尾部最多 2MB 转成文本寻找 magic
+  const tail  = bytes.slice(Math.max(0, bytes.length - 2 * 1024 * 1024))
+  const text  = new TextDecoder('utf-8', { fatal: false }).decode(tail)
+  const idx   = text.indexOf(ROLECARD_MAGIC)
+  if (idx === -1) return null
+  const jsonStr = text.slice(idx + ROLECARD_MAGIC.length).trim()
+  return JSON.parse(jsonStr)            // { version, role, messages, theme, ... }
+}
+
+// ── 文件选择 ─────────────────────────────────────────
 function handleFileSelect(event) {
   const file = event.target.files[0];
   if (!file) return;
 
   fileName.value = file.name;
-  error.value = '';
-  preview.value = null;
+  error.value    = '';
+  preview.value  = null;
 
+  // PNG → 检测角色卡
+  if (file.type === 'image/png' || file.name.toLowerCase().endsWith('.png')) {
+    extractRolecardFromPNG(file)
+      .then(data => {
+        if (data && data.version === 'rolecard-v1' && data.role) {
+          // 命中！通知 App.vue 接管
+          emit('rolecard-detected', { data, file })
+          emit('close')
+        } else {
+          error.value = '这张图片不包含角色卡数据'
+        }
+      })
+      .catch(() => {
+        error.value = '无法读取 PNG 数据'
+      })
+    return
+  }
+
+  // JSON → 原有流程
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
       const text = e.target.result;
       const data = JSON.parse(text);
 
-      // 校验基本格式
       if (!data.globalSettings || !Array.isArray(data.roleList)) {
         throw new Error('缺少必要字段 (globalSettings / roleList)');
       }
 
-      // 生成预览
       const totalMessages = data.roleList.reduce((sum, r) => sum + (r.messages?.length || 0), 0);
       preview.value = {
-        version: data.version || '未知',
+        version:    data.version    || '未知',
         exportTime: data.exportTime ? new Date(data.exportTime).toLocaleString('zh-CN') : '未知',
-        roles: data.roleList.length,
-        messages: totalMessages,
-        groups: data.groups?.length || 0,
-        diaries: data.diaries?.length || 0,
-        persona: data.persona?.traits?.length || 0,
+        roles:      data.roleList.length,
+        messages:   totalMessages,
+        groups:     data.groups?.length  || 0,
+        diaries:    data.diaries?.length || 0,
+        persona:    data.persona?.traits?.length || 0,
       };
 
-      // 传递 JSON 文本给父组件
       emit('update:importJson', text);
     } catch (err) {
       error.value = err.message;
@@ -53,7 +85,7 @@ function handleFileSelect(event) {
 }
 
 function handlePaste() {
-  error.value = '';
+  error.value   = '';
   preview.value = null;
 
   try {
@@ -67,13 +99,13 @@ function handlePaste() {
 
     const totalMessages = data.roleList.reduce((sum, r) => sum + (r.messages?.length || 0), 0);
     preview.value = {
-      version: data.version || '未知',
+      version:    data.version    || '未知',
       exportTime: data.exportTime ? new Date(data.exportTime).toLocaleString('zh-CN') : '未知',
-      roles: data.roleList.length,
-      messages: totalMessages,
-      groups: data.groups?.length || 0,
-      diaries: data.diaries?.length || 0,
-      persona: data.persona?.traits?.length || 0,
+      roles:      data.roleList.length,
+      messages:   totalMessages,
+      groups:     data.groups?.length  || 0,
+      diaries:    data.diaries?.length || 0,
+      persona:    data.persona?.traits?.length || 0,
     };
     fileName.value = '粘贴数据';
   } catch (err) {
@@ -101,11 +133,11 @@ function handlePaste() {
           <label class="block w-full cursor-pointer">
             <div class="glass bg-glass-message rounded-xl border-2 border-dashed border-white/20 hover:border-primary/50 transition p-6 text-center">
               <div class="text-3xl mb-2">📁</div>
-              <div class="text-sm text-gray-300" v-if="!fileName">点击选择备份文件 (.json)</div>
+              <div class="text-sm text-gray-300" v-if="!fileName">点击选择备份文件 (.json) 或角色卡 (.png)</div>
               <div class="text-sm text-green-400" v-else>✅ {{ fileName }}</div>
               <div class="text-xs text-gray-500 mt-1">或将文件拖到此处</div>
             </div>
-            <input type="file" accept=".json" @change="handleFileSelect" class="hidden" />
+            <input type="file" accept=".json,.png,image/png" @change="handleFileSelect" class="hidden" />
           </label>
         </div>
 
@@ -116,7 +148,7 @@ function handlePaste() {
           <hr class="flex-1 border-white/10">
         </div>
 
-        <!-- 粘贴区域（折叠式） -->
+        <!-- 粘贴区域 -->
         <div>
           <textarea :value="importJson"
                     @input="$emit('update:importJson', $event.target.value)"

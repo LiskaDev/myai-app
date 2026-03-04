@@ -88,6 +88,61 @@ function handleReopenCard(entry) {
   cardSavedTheme.value   = entry.theme
 }
 
+// 🃏 PNG 角色卡导入确认
+const pendingRolecard = ref(null)  // { data, file }
+
+function handleRolecardDetected({ data, file }) {
+  showImportModal.value = false
+  pendingRolecard.value = { data, file }
+}
+
+function confirmRolecardImport() {
+  const { data } = pendingRolecard.value
+  if (!data?.role) return
+
+  const incoming = data.role
+  // 检查是否已存在同名角色
+  const existing = roleList.value.find(r => r.name === incoming.name)
+
+  if (existing) {
+    // 更新已有角色的设定（保留历史消息）
+    Object.assign(existing, {
+      description:    incoming.description,
+      systemPrompt:   incoming.systemPrompt,
+      avatar:         incoming.avatar,
+      tags:           incoming.tags,
+      speakingStyle:  incoming.speakingStyle,
+      relationship:   incoming.relationship,
+      writingStyle:   incoming.writingStyle,
+      styleDirectives:incoming.styleDirectives,
+      firstMessage:   incoming.firstMessage,
+    })
+    saveData()
+    switchRole(existing.id)
+    showToast('✅ 角色定开已更新！')
+  } else {
+    // 创建新角色
+    const newRole = {
+      ...incoming,
+      id:          crypto.randomUUID(),
+      chatHistory: data.messages || [],
+      createdAt:   Date.now(),
+    }
+    roleList.value.push(newRole)
+    saveData()
+    switchRole(newRole.id)
+    showToast('✅ 角色卡导入成功！')
+  }
+
+  // 如果卡片自带主题，直接展示角色卡生成器
+  if (data.theme) {
+    cardSavedTheme.value   = data.theme
+    cardTargetRoleId.value = roleList.value.find(r => r.name === incoming.name)?.id || null
+  }
+
+  pendingRolecard.value = null
+}
+
 // 🌙 结束今天 — 生成日记 + 自动开启新的一天
 async function handleEndDay() {
     if (groupChat.isGroupMode.value) {
@@ -1236,7 +1291,37 @@ function handleAvatarError(type, roleId) {
       @update:importJson="importJson = $event"
       @import="handleImport"
       @close="showImportModal = false"
+      @rolecard-detected="handleRolecardDetected"
     />
+
+    <!-- 🃏 角色卡导入确认弹窗 -->
+    <div v-if="pendingRolecard" class="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="pendingRolecard = null"></div>
+      <div class="relative glass bg-glass-dark rounded-2xl max-w-sm w-full p-6 border border-white/10 shadow-2xl">
+        <!-- 角色卡预览 -->
+        <div class="flex items-center gap-4 mb-5">
+          <div class="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-indigo-500/20 flex items-center justify-center">
+            <img v-if="pendingRolecard.data.role?.avatar" :src="pendingRolecard.data.role.avatar" class="w-full h-full object-cover" />
+            <span v-else class="text-2xl">🎭</span>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white">{{ pendingRolecard.data.role?.name || '未知角色' }}</h3>
+            <p class="text-sm text-gray-400 mt-0.5">🃏 角色卡检测到！</p>
+            <p class="text-xs text-indigo-300 mt-1">
+              {{ pendingRolecard.data.messages?.length || 0 }} 条对话记录
+              <span v-if="pendingRolecard.data.theme?.template" class="ml-2 opacity-60">· {{ pendingRolecard.data.theme.template }} 模板</span>
+            </p>
+          </div>
+        </div>
+        <p class="text-sm text-gray-300 mb-5">
+          是否要导入这个角色卡？如果同名角色已存在，将更新其设定并保留现有对话。
+        </p>
+        <div class="flex gap-3 justify-end">
+          <button @click="pendingRolecard = null" class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition text-sm">取消</button>
+          <button @click="confirmRolecardImport" class="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition text-sm font-medium">✅ 确认导入</button>
+        </div>
+      </div>
+    </div>
 
     <!-- 确认对话框 -->
     <div v-if="confirmModal.show" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
