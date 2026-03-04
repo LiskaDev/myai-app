@@ -70,8 +70,8 @@ function clearAvatar() {
 </script>
 
 <template>
-  <section class="glass bg-glass-message rounded-xl overflow-hidden">
-    <details class="advanced-panel">
+  <section class="w-full glass bg-glass-message rounded-xl overflow-hidden">
+    <details class="advanced-panel min-w-0">
       <summary class="p-4 cursor-pointer select-none flex items-center justify-between hover:bg-white/5 transition">
         <div class="flex items-center gap-2">
           <span class="text-base">🔧</span>
@@ -192,6 +192,10 @@ function clearAvatar() {
 
 <style scoped>
 /* v5.5: Collapsible Panel Styles */
+.advanced-panel {
+  width: 100%;
+}
+
 .advanced-panel summary {
   list-style: none;
 }
