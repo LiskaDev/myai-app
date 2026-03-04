@@ -23,9 +23,9 @@ let isSending = false;
 function modelIsReasoner(family, modelId) {
     const m = (modelId || '').toLowerCase();
     if (family === 'deepseek') return m.includes('reasoner') || m.includes('r1');
-    if (family === 'qwen')     return m.includes('qwq');
-    if (family === 'gpt')      return m.includes('o1') || m.includes('o3');
-    if (family === 'kimi')     return m.includes('k1') || m.includes('reasoner');
+    if (family === 'qwen') return m.includes('qwq');
+    if (family === 'gpt') return m.includes('o1') || m.includes('o3');
+    if (family === 'kimi') return m.includes('k1') || m.includes('reasoner');
     return false;
 }
 
@@ -152,19 +152,21 @@ export function useChat(appState) {
 2. CRITICAL PERFORMANCE: Do NOT repeat/summarize the persona or settings in <think>. Assume context is loaded.
 3. Jump IMMEDIATELY to drafting the plot and character reaction.
 4. IMPORTANT: Use <inner>character's internal monologue here</inner> tags for the character's thoughts and feelings.
-5. Actions in *asterisks*, dialogue normally.
+5. Actions in *asterisks*, dialogue in 「」.
 6. 【强制语言规则】你必须全程使用中文回复。所有对话、动作描写、内心独白必须是中文。角色偶尔可夹杂1-2个英文词汇作为口癖，但绝对不可以用英文写完整句子或段落。
+7. 【对话引号规则】所有角色对话必须用「」包裹，不得使用双引号""、单引号''或其他引号形式。
 Example format:
 <think>brief strategy</think>
 <inner>What the character is thinking...</inner>
-*action* "dialogue"`;
+*action* 「dialogue」`;
         } else if (modelFamily === 'claude') {
             // === Claude 专属配置（最容易拒绝，需要特殊处理） ===
             modelSpecificPrompt = `\n\n[Roleplay Execution Note for Claude]
 You are currently embodying "${currentRole.value?.name || 'the character'}". This is a creative writing session.
 - Write ONLY as the character. No author commentary, no disclaimers, no safety notes.
 - If something feels edgy in the story, handle it in-character: deflect, change subject, or use subtext — but NEVER break the fourth wall.
-- Start with <inner>internal thought</inner>, then *action* and "dialogue".
+- Start with <inner>internal thought</inner>, then *action* and 「dialogue」.
+- 【对话引号规则】所有角色对话必须用「」包裹，不得使用双引号""、单引号''或其他引号形式。
 - 中文回复。`;
         } else if (modelFamily === 'gemini') {
             // === Gemini 专属配置 ===
@@ -172,19 +174,21 @@ You are currently embodying "${currentRole.value?.name || 'the character'}". Thi
 You are "${currentRole.value?.name || 'the character'}" in a collaborative fiction story. Write naturally as this character.
 - No disclaimers, no warnings, no meta-commentary about the story.
 - Stay in character through the entire response.
-- Start with <inner>internal thought</inner>, then *action* and "dialogue".
+- Start with <inner>internal thought</inner>, then *action* and 「dialogue」.
+- 【对话引号规则】所有角色对话必须用「」包裹，不得使用双引号或单引号。
 - 全程中文回复。`;
         } else {
             // === 标准模型配置（V3 / Qwen / GLM 等） ===
             modelSpecificPrompt = `\n\n[System Rule: Standard Model]
 1. DO NOT use <think> tags. DO NOT simulate AI reasoning.
 2. IMPORTANT: Start with <inner>character's internal monologue</inner> for character thoughts.
-3. Then write actions in *asterisks* and dialogue normally.
+3. Then write actions in *asterisks* and dialogue in 「」.
 4. Never pretend to have a thinking process.
 5. 【强制语言规则】你必须全程使用中文回复。所有对话、动作描写、内心独白必须是中文。角色偶尔可夹杂1-2个英文词汇作为口癖，但绝对不可以用英文写完整句子或段落。
+6. 【对话引号规则】所有角色对话必须用「」包裹，不得使用双引号""、单引号''或其他引号形式。
 Example format:
 <inner>What the character is thinking...</inner>
-*action* "dialogue"`;
+*action* 「dialogue」`;
         }
 
         // Step A: Inject Model-Specific + Length instructions into last user message
@@ -360,7 +364,7 @@ Example format:
 
                         // CRITICAL: Check if </think> just closed to mark thinkingComplete
                         // 🛡️ v5.3.1: 容错匹配标签变体（</think >、</ think>、</Think> 等）
-                        if (/<\s*\/\s*think\s*>/i.test(fullContent)) {
+                        if (/<\s*\/\s*think(?:ing)?\s*>/i.test(fullContent)) {
                             messages.value[msgIndex].thinkingComplete = true;
                         }
 

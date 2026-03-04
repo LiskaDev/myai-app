@@ -496,8 +496,9 @@ ${dialogueText}`,
             const hasCard = currentCard.userProfile || (currentCard.keyEvents || []).length > 0;
             const currentCardJSON = hasCard ? JSON.stringify(currentCard, null, 2) : '暂无';
 
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com')
                 .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
+            const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
             // reasoner 模型不适合 JSON 结构化输出，强制降级到 deepseek-chat
             const rawModel = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
             const model = rawModel.includes('reasoner') ? 'deepseek-chat' : rawModel;
@@ -506,7 +507,7 @@ ${dialogueText}`,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                    'Authorization': `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
                     model,

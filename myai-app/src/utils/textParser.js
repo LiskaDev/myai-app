@@ -35,6 +35,9 @@ const EXPRESSION_FALLBACK = {
 // ========================================
 export function normalizeTags(text) {
     return text
+        // Claude 的 <thinking> 标签 → 统一为 <think>（必须在 <think> 之前处理）
+        .replace(/<\s*thinking\s*>/gi, '<think>')
+        .replace(/<\s*\/\s*thinking\s*>/gi, '</think>')
         .replace(/<\s*think\s*>/gi, '<think>')
         .replace(/<\s*\/\s*think\s*>/gi, '</think>')
         .replace(/<\s*inner\s*>/gi, '<inner>')

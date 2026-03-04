@@ -455,6 +455,37 @@ footer {
   text-align: left;
 }
 
+/* ✅ 浅色主题 — 欢迎屏文字适配 */
+.chat-style-day .welcome-name {
+  color: #3a2b1e;
+  text-shadow: none;
+}
+
+.chat-style-loveLight .welcome-name {
+  color: #462636;
+  text-shadow: none;
+}
+
+.chat-style-day .welcome-tagline {
+  color: #6b4f3a;
+}
+
+.chat-style-loveLight .welcome-tagline {
+  color: #7a4858;
+}
+
+.chat-style-day .welcome-bubble {
+  background: rgba(120, 90, 60, 0.08);
+  border: 1px solid rgba(120, 90, 60, 0.18);
+  color: rgba(58, 43, 30, 0.82);
+}
+
+.chat-style-loveLight .welcome-bubble {
+  background: rgba(180, 100, 140, 0.08);
+  border: 1px solid rgba(180, 100, 140, 0.18);
+  color: rgba(70, 38, 54, 0.85);
+}
+
 /* 快捷对话建议 */
 .welcome-suggestions {
   display: flex;
@@ -1420,13 +1451,13 @@ footer {
   font-size: 14px;
   font-weight: 400;
   line-height: 2;
-  color: rgba(60, 45, 30, 0.75);
+  color: rgba(50, 35, 20, 0.95);
   letter-spacing: 0.4px;
   text-shadow: none;
 }
 
 .style-day .rp-action {
-  color: rgba(139, 115, 85, 0.55) !important;
+  color: rgba(100, 75, 50, 0.90) !important;
   font-style: italic;
   font-size: 13px !important;
 }
@@ -1569,13 +1600,13 @@ footer {
   font-size: 14px;
   font-weight: 400;
   line-height: 2;
-  color: rgba(80, 40, 60, 0.75);
+  color: rgba(60, 30, 45, 0.95);
   letter-spacing: 0.4px;
   text-shadow: none;
 }
 
 .style-loveLight .rp-action {
-  color: rgba(220, 120, 160, 0.4) !important;
+  color: rgba(150, 75, 110, 0.90) !important;
   font-style: italic;
   font-size: 13px !important;
 }

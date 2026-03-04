@@ -107,16 +107,19 @@ export function useTimeline(appState) {
 
             const prompt = buildTimelinePrompt(dialogueText, role.name, existingEvents);
 
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com')
                 .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
+            const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
+            const model = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
+
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                    'Authorization': `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
-                    model: 'deepseek-chat',
+                    model,
                     messages: [{ role: 'user', content: prompt }],
                     max_tokens: 400,
                     temperature: 0.3,
