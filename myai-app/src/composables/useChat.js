@@ -137,8 +137,9 @@ export function useChat(appState) {
 
         // 动态参数调整 & 安全锁 (Safety Locks)
         let effectiveTemperature = role.temperature || 1.0;
-        let frequencyPenalty = 0;
-        let effectiveMaxTokens = role.maxTokens || 2000;
+        let frequencyPenalty = role.frequencyPenalty ?? 0;  // 读取角色配置的重复惩罚
+        let effectiveMaxTokens = (role.maxTokens > 0) ? role.maxTokens : 0; // 0 = 不限制
+        const effectiveTopP = role.topP ?? 1.0; // 词汇多样性
 
         const responseLength = globalSettings.responseLength || 'normal';
 
@@ -201,14 +202,14 @@ Example format:
 
                 if (responseLength === 'short') {
                     lengthInstruction = "\n\n[严格执行：回复长度限制]\n你必须保持极简回复。严格不超过100中文字。只写核心对话和必要动作。删除一切冗余描写。\n[CRITICAL LENGTH RULE] Keep response under 100 Chinese characters. Dialogue only. Remove all filler. Short responses ONLY.";
-                    effectiveMaxTokens = Math.min(effectiveMaxTokens, 500);
+                    effectiveMaxTokens = effectiveMaxTokens === 0 ? 500 : Math.min(effectiveMaxTokens, 500);
                     presencePenalty = 0.5; // 鼓励简短
                 } else if (responseLength === 'normal') {
                     lengthInstruction = "\n\n[回复长度要求]\n写2-3段，150-300字左右，包含动作描写和对话，不要太短也不要太长。\n[LENGTH RULE] Write 2-3 paragraphs (150-300 Chinese characters). Include action and dialogue.";
                 } else if (responseLength === 'long') {
                     lengthInstruction = "\n\n[严格执行：长文模式]\n你必须写出沉浸式长篇叙事，至少300中文字以上。包含：感官描写（视觉、听觉、嗅觉）、内心独白、环境氛围、详细动作。严格禁止写少于200字的回复。\n[CRITICAL LENGTH RULE] You MUST write an immersive, slow-burn narrative (300+ Chinese characters minimum). Include sensory details, inner monologue, environment. Responses under 200 characters are FORBIDDEN.";
-                    effectiveMaxTokens = Math.max(effectiveMaxTokens, 4000);
-                    frequencyPenalty = 0.3; // 防止长文重复
+                    if (effectiveMaxTokens > 0) effectiveMaxTokens = Math.max(effectiveMaxTokens, 4000);
+                    frequencyPenalty = Math.max(frequencyPenalty, 0.3); // 防止长文重复
                 } else if (responseLength === 'auto') {
                     // v6.1: 场景感知动态长度 — AI 根据剧情节奏自行判断
                     lengthInstruction = "\n\n[回复长度规则：场景感知]\n根据当前场景类型动态调整回复长度：\n- 日常对话/闲聊：100字以内，简洁有力\n- 情绪转折/冲突：200字以内，动作带情绪\n- 高潮/关键场景：300字以内，句子变短，节奏加快\n你必须自行判断当前属于哪种场景，严格控制字数上限。\n[LENGTH RULE: Scene-Aware] Dynamically adjust length by scene type: casual talk ≤100 chars, emotional turns ≤200, climax ≤300. Judge the scene type yourself.";
@@ -220,7 +221,7 @@ Example format:
 
         // Step B: Smart Parameter Adjustment (Safety Locks)
         if (responseLength === 'long') {
-            frequencyPenalty = 0.5; // Force vocabulary expansion
+            frequencyPenalty = Math.max(frequencyPenalty, 0.5); // Force vocabulary expansion
             if (isReasoner) {
                 effectiveTemperature = 0.7; // Prevent logic collapse for R1
             } else {
@@ -272,8 +273,9 @@ Example format:
                 model: model,
                 messages: apiMessages,
                 temperature: effectiveTemperature,
-                max_tokens: effectiveMaxTokens,
+                top_p: effectiveTopP,
                 frequency_penalty: frequencyPenalty,
+                ...(effectiveMaxTokens > 0 && { max_tokens: effectiveMaxTokens }),
                 stream: true,
                 stream_options: { include_usage: true },
                 // 🛡️ Gemini：关闭所有安全过滤（否则角色扮演内容会被拦截）

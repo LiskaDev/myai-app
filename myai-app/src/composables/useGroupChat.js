@@ -479,14 +479,15 @@ Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
         // v5.9: 回复长度统一使用全局设置
         const lengthSetting = globalSettings.responseLength || 'normal';
         const LENGTH_TO_TOKENS = { short: 500, normal: 2000, long: 4000, auto: 2000 };
-        let maxTokens = LENGTH_TO_TOKENS[lengthSetting] || (role.maxTokens || 2000);
+        let maxTokens = LENGTH_TO_TOKENS[lengthSetting] || ((role.maxTokens > 0) ? role.maxTokens : 2000);
 
         // v5.9.3: 长度参数调优 — 与单聊一致
         let effectiveTemperature = role.temperature || 1.0;
-        let frequencyPenalty = 0;
+        let frequencyPenalty = role.frequencyPenalty ?? 0;  // 读取角色配置的重复惩罚
+        const effectiveTopP = role.topP ?? 1.0;  // 词汇多样性
         if (lengthSetting === 'long') {
             maxTokens = Math.max(maxTokens, 4000);
-            frequencyPenalty = 0.5;
+            frequencyPenalty = Math.max(frequencyPenalty, 0.5);
             effectiveTemperature = isReasoner ? 0.7 : 1.0;
         } else if (lengthSetting === 'short') {
             maxTokens = Math.min(maxTokens, 500);
@@ -522,6 +523,7 @@ Example: <inner>What I'm thinking...</inner>*action* "dialogue"`;
             model: model,
             messages: apiMessages,
             temperature: effectiveTemperature,
+            top_p: effectiveTopP,
             max_tokens: maxTokens,
             stream: true,
             stream_options: { include_usage: true },

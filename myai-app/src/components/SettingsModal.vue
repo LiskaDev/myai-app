@@ -1,11 +1,41 @@
 ﻿<script setup>
 import { ref, computed } from 'vue';
-import GlobalSettings from './settings/GlobalSettings.vue';
+import { useAppState } from '../composables/useAppState';
+import AvatarCropper from './AvatarCropper.vue';
 import RoleBasicSettings from './settings/RoleBasicSettings.vue';
 import RoleAdvancedSettings from './settings/RoleAdvancedSettings.vue';
 import CharacterDepthSettings from './settings/CharacterDepthSettings.vue';
 import MemoryManager from './settings/MemoryManager.vue';
 import UserPersonaSettings from './settings/UserPersonaSettings.vue';
+
+// ===== 通用设置所需的模型列表 =====
+const MODEL_PRESETS = [
+  { group: '🔥 DeepSeek 官方', models: [
+    { value: 'deepseek-reasoner', label: 'DeepSeek R1 (推理)', desc: '深度思考，适合复杂剧情' },
+    { value: 'deepseek-chat', label: 'DeepSeek V3 (对话)', desc: '快速轻量，日常聊天' },
+  ]},
+  { group: '🚀 硅基流动 · Qwen', models: [
+    { value: 'Qwen/QwQ-32B', label: 'QwQ-32B (推理)', desc: '阿里推理模型，深度思考' },
+    { value: 'Qwen/Qwen2.5-72B-Instruct', label: 'Qwen2.5-72B', desc: '大参数，高质量输出' },
+    { value: 'Qwen/Qwen2.5-32B-Instruct', label: 'Qwen2.5-32B', desc: '均衡性价比' },
+    { value: 'Qwen/Qwen2.5-7B-Instruct', label: 'Qwen2.5-7B', desc: '轻量快速，适合群聊' },
+  ]},
+  { group: '🚀 硅基流动 · DeepSeek', models: [
+    { value: 'deepseek-ai/DeepSeek-R1', label: 'DeepSeek R1', desc: '经硅基流动加速' },
+    { value: 'deepseek-ai/DeepSeek-V3', label: 'DeepSeek V3', desc: '经硅基流动加速' },
+    { value: 'deepseek-ai/DeepSeek-R1-0528', label: 'DeepSeek R1-0528', desc: '最新版推理模型' },
+  ]},
+  { group: '🌙 硅基流动 · Kimi', models: [
+    { value: 'Pro/moonshotai/Kimi-K2.5', label: 'Kimi K2.5 Pro (推理)', desc: '旗舰最强，深度思考' },
+    { value: 'moonshotai/Kimi-K2-Thinking', label: 'Kimi K2 Thinking', desc: '标准推理，速度均衡' },
+  ]},
+  { group: '🚀 硅基流动 · 其他', models: [
+    { value: 'Pro/zai-org/GLM-5', label: 'GLM-5', desc: '智谱最新旗舰' },
+    { value: 'THUDM/GLM-4-32B-0414', label: 'GLM-4-32B', desc: '智谱清言' },
+    { value: 'google/gemma-3-27b-it', label: 'Gemma 3 27B', desc: 'Google 开源' },
+    { value: 'meta-llama/Llama-3.3-70B-Instruct', label: 'Llama 3.3 70B', desc: 'Meta 开源' },
+  ]},
+];
 
 const props = defineProps({
   globalSettings: Object,
@@ -37,49 +67,107 @@ const emit = defineEmits([
   'show-toast'
 ]);
 
-// Tab 系统
+// ===== 通用设置的状态 =====
+const appState = useAppState();
+const storageUsage = computed(() => appState.storageUsage);
+const storageColor = computed(() => {
+  if (storageUsage.value.percent >= 80) return 'red';
+  if (storageUsage.value.percent >= 60) return 'yellow';
+  return 'green';
+});
+const useCustomModel = ref(false);
+const useCustomBaseUrl = ref(false);
+
+// 用户头像
+const userFileInputRef = ref(null);
+const isUserAvatarProcessing = ref(false);
+const userCropperSrc = ref(null);
+function triggerUserFilePicker() { userFileInputRef.value?.click(); }
+async function handleUserFileSelect(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { emit('show-toast', '图片不能超过 10MB', 'error'); return; }
+  isUserAvatarProcessing.value = true;
+  try {
+    userCropperSrc.value = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => reject(new Error('读取失败'));
+      reader.readAsDataURL(file);
+    });
+  } catch (err) {
+    emit('show-toast', '图片读取失败: ' + err.message, 'error');
+  } finally {
+    isUserAvatarProcessing.value = false;
+    event.target.value = '';
+  }
+}
+function onUserCropConfirm(dataUrl) { props.globalSettings.userAvatar = dataUrl; userCropperSrc.value = null; emit('show-toast', '头像已更新 ✓', 'success'); }
+function onUserCropCancel() { userCropperSrc.value = null; }
+function clearUserAvatar() { props.globalSettings.userAvatar = ''; }
+
+// ===== 顶部 Tab =====
 const TABS = props.isGroupMode
   ? [
       { id: 'general', icon: '⚙️', label: '通用' },
-      { id: 'group', icon: '👥', label: '群聊' },
-      { id: 'timeline', icon: '📅', label: '时间线' },
+      { id: 'group',   icon: '👥', label: '群聊' },
+      { id: 'timeline',icon: '📅', label: '时间线' },
       { id: 'persona', icon: '👤', label: '画像' },
-      { id: 'data', icon: '💾', label: '数据' },
+      { id: 'data',    icon: '💾', label: '数据' },
     ]
   : [
-      { id: 'role', icon: '🎭', label: '角色' },
-      { id: 'memory', icon: '🧠', label: '记忆' },
-      { id: 'timeline', icon: '📅', label: '时间线' },
+      { id: 'role',    icon: '🎭', label: '角色' },
+      { id: 'memory',  icon: '🧠', label: '记忆' },
+      { id: 'timeline',icon: '📅', label: '时间线' },
       { id: 'persona', icon: '👤', label: '画像' },
       { id: 'general', icon: '⚙️', label: '通用' },
-      { id: 'data', icon: '💾', label: '数据' },
+      { id: 'data',    icon: '💾', label: '数据' },
     ];
 
 const activeTab = ref(props.isGroupMode ? 'general' : 'role');
 
-// 时间线数据源：群聊用 group.timeline，单聊用 role.timeline
+// 角色 Tab 的左侧二级导航
+const ROLE_SECTIONS = [
+  { id: 'basic',    icon: '📋', label: '基础设定' },
+  { id: 'depth',    icon: '✨', label: '人设深度' },
+  { id: 'advanced', icon: '🔧', label: '外观 & 背景' },
+];
+const activeRoleSection = ref('basic');
+
+// 记忆 Tab 的左侧二级导航
+const MEMORY_SECTIONS = [
+  { id: 'status',  icon: '💫', label: '角色状态' },
+  { id: 'window',  icon: '🪟', label: '记忆窗口' },
+  { id: 'card',    icon: '🧠', label: '认知卡' },
+  { id: 'chapter', icon: '📖', label: '章节摘要' },
+  { id: 'manual',  icon: '📌', label: '永久记忆' },
+];
+const activeMemorySection = ref('status');
+
+// 通用 Tab 的左侧二级导航
+const GENERAL_SECTIONS = [
+  { id: 'api',     icon: '🔗', label: 'API 配置' },
+  { id: 'display', icon: '🎨', label: '显示与交互' },
+  { id: 'advanced',icon: '⚙️', label: '高级设置' },
+];
+const activeGeneralSection = ref('api');
+
+// 时间线
 const timelineSource = computed(() => {
   if (props.isGroupMode) return props.currentGroup?.timeline || [];
   return props.currentRole?.timeline || [];
 });
 
 function clearTimelineData() {
-  if (props.isGroupMode && props.currentGroup) {
-    props.currentGroup.timeline = [];
-  } else if (props.currentRole) {
-    props.currentRole.timeline = [];
-  }
+  if (props.isGroupMode && props.currentGroup) props.currentGroup.timeline = [];
+  else if (props.currentRole) props.currentRole.timeline = [];
 }
 
 function removeTimelineItem(idx) {
-  if (props.isGroupMode && props.currentGroup?.timeline) {
-    props.currentGroup.timeline.splice(idx, 1);
-  } else if (props.currentRole?.timeline) {
-    props.currentRole.timeline.splice(idx, 1);
-  }
+  if (props.isGroupMode && props.currentGroup?.timeline) props.currentGroup.timeline.splice(idx, 1);
+  else if (props.currentRole?.timeline) props.currentRole.timeline.splice(idx, 1);
 }
 
-// 时间线内联编辑
 const editingTimelineIdx = ref(-1);
 const editingTimelineText = ref('');
 
@@ -87,7 +175,6 @@ function startEditTimeline(idx) {
   editingTimelineIdx.value = idx;
   editingTimelineText.value = timelineSource.value[idx]?.event || '';
 }
-
 function saveTimelineEdit() {
   const idx = editingTimelineIdx.value;
   if (idx >= 0 && editingTimelineText.value.trim() && timelineSource.value[idx]) {
@@ -96,300 +183,1066 @@ function saveTimelineEdit() {
   editingTimelineIdx.value = -1;
   editingTimelineText.value = '';
 }
-
 function cancelTimelineEdit() {
   editingTimelineIdx.value = -1;
   editingTimelineText.value = '';
 }
+
+// 点击遮罩关闭
+function handleOverlayClick(e) {
+  if (e.target === e.currentTarget) emit('close');
+}
 </script>
 
 <template>
-  <div class="settings-panel fixed inset-0 glass-strong bg-glass-dark z-50 flex flex-col">
-    <!-- 设置头部 -->
-    <header class="glass-strong bg-glass-dark px-4 py-3 flex items-center justify-between border-b border-white/10 flex-shrink-0">
-      <h2 class="font-bold text-lg text-shadow">⚙️ 设置</h2>
-      <button @click="$emit('close')" class="p-2 rounded-full hover:bg-white/10 transition">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-        </svg>
-      </button>
-    </header>
+  <!-- 遮罩层 -->
+  <div class="modal-overlay" @click="handleOverlayClick">
+    <!-- 弹窗主体 -->
+    <div class="modal-container">
 
-    <!-- Tab 栏 -->
-    <nav class="settings-tab-bar flex-shrink-0">
-      <button v-for="tab in TABS" :key="tab.id"
-              @click="activeTab = tab.id"
-              class="settings-tab" :class="{ active: activeTab === tab.id }">
-        <span class="settings-tab-icon">{{ tab.icon }}</span>
-        <span class="settings-tab-label">{{ tab.label }}</span>
-      </button>
-    </nav>
-
-    <!-- Tab 内容 -->
-    <div class="flex-1 overflow-y-auto p-4 space-y-6">
-
-      <!-- ========== 角色 Tab ========== -->
-      <template v-if="activeTab === 'role' && !isGroupMode">
-
-        <!-- 分组：基础设定 -->
-        <div class="flex items-center gap-3 px-1 pt-1">
-          <span class="text-sm font-semibold text-gray-400 whitespace-nowrap">🎭 基础设定</span>
-          <div class="flex-1 h-px bg-white/10"></div>
+      <!-- 弹窗头部 -->
+      <header class="modal-header">
+        <span class="modal-title">⚙️ 设置</span>
+        <div class="modal-header-right">
+          <span class="modal-save-hint">修改自动生效，无需手动保存</span>
+          <button @click="$emit('close')" class="modal-close-btn">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
-        <RoleBasicSettings :currentRole="currentRole" :globalSettings="globalSettings" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
+      </header>
 
-        <CharacterDepthSettings :currentRole="currentRole" />
+      <!-- Tab 栏 -->
+      <nav class="modal-tabs">
+        <button v-for="tab in TABS" :key="tab.id"
+                class="modal-tab" :class="{ active: activeTab === tab.id }"
+                @click="activeTab = tab.id">
+          <span class="modal-tab-icon">{{ tab.icon }}</span>
+          <span class="modal-tab-label">{{ tab.label }}</span>
+        </button>
+      </nav>
 
-        <RoleAdvancedSettings :currentRole="currentRole" :availableVoices="availableVoices" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
+      <!-- 内容区：左侧导航 + 右侧内容 -->
+      <div class="modal-body">
 
-      </template>
-
-      <!-- ========== 记忆 Tab ========== -->
-      <template v-if="activeTab === 'memory' && !isGroupMode">
-        <MemoryManager
-          :currentRole="currentRole"
-          :memoryEditState="memoryEditState"
-          @add-manual-memory="$emit('add-manual-memory')"
-          @remove-manual-memory="$emit('remove-manual-memory', $event)"
-          @start-edit-memory="$emit('start-edit-memory', $event)"
-          @save-edit-memory="$emit('save-edit-memory', $event)"
-          @cancel-edit-memory="$emit('cancel-edit-memory')"
-          @toggle-memory-expand="$emit('toggle-memory-expand', $event)"
-          @refine-memory="$emit('refine-memory', $event)"
-          @save-data="$emit('save-data')"
-        />
-      </template>
-
-      <!-- ========== 通用 Tab ========== -->
-      <template v-if="activeTab === 'general'">
-        <GlobalSettings :globalSettings="globalSettings" @show-toast="(msg, type) => emit('show-toast', msg, type)" />
-      </template>
-
-      <!-- ========== 用户画像 Tab ========== -->
-      <template v-if="activeTab === 'persona'">
-        <UserPersonaSettings />
-      </template>
-
-      <!-- ========== 时间线 Tab ========== -->
-      <template v-if="activeTab === 'timeline'">
-        <section class="space-y-4">
-          <div class="flex items-center justify-between px-1">
-            <h3 class="font-semibold text-gray-300 flex items-center text-shadow">
-              <span class="mr-2">📅</span> 剧情时间线
-              <span v-if="timelineSource?.length" class="ml-2 text-xs font-normal text-gray-500">
-                {{ timelineSource.length }} 条事件
-              </span>
-            </h3>
-            <button v-if="timelineSource?.length"
-                    @click="clearTimelineData(); emit('show-toast', '时间线已清空', 'info')"
-                    class="text-xs text-red-400/60 hover:text-red-400 transition">
-              清空全部
+        <!-- ===== 角色 Tab ===== -->
+        <template v-if="activeTab === 'role' && !isGroupMode">
+          <!-- 左侧导航 -->
+          <aside class="modal-sidebar">
+            <p class="sidebar-section-label">角色设定</p>
+            <button v-for="s in ROLE_SECTIONS" :key="s.id"
+                    class="sidebar-item" :class="{ active: activeRoleSection === s.id }"
+                    @click="activeRoleSection = s.id">
+              <span class="sidebar-item-icon">{{ s.icon }}</span>
+              {{ s.label }}
             </button>
+            <p class="sidebar-section-label" style="margin-top:16px">参数</p>
+            <button class="sidebar-item" :class="{ active: activeRoleSection === 'params' }"
+                    @click="activeRoleSection = 'params'">
+              <span class="sidebar-item-icon">🎛️</span> 高级参数
+            </button>
+          </aside>
+          <!-- 右侧内容 -->
+          <div class="modal-content">
+            <RoleBasicSettings v-if="activeRoleSection === 'basic'"
+              :currentRole="currentRole" :globalSettings="globalSettings"
+              @show-toast="(msg, type) => emit('show-toast', msg, type)" />
+            <CharacterDepthSettings v-else-if="activeRoleSection === 'depth'"
+              :currentRole="currentRole" />
+            <RoleAdvancedSettings v-else-if="activeRoleSection === 'advanced'"
+              :currentRole="currentRole" :availableVoices="availableVoices"
+              @show-toast="(msg, type) => emit('show-toast', msg, type)" />
+            <div v-else-if="activeRoleSection === 'params'" class="params-section">
+              <!-- 高级参数直接在这里展开，不折叠 -->
+              <div class="section-title">🎛️ 高级参数调节</div>
+              <p class="section-desc">以下参数调节 AI 的回复特性，不熟悉可保持默认</p>
+
+              <div class="param-item">
+                <div class="param-header">
+                  <div>
+                    <div class="param-name">🎲 创意程度</div>
+                    <div class="param-desc">越高 AI 回复越有创意，越低越稳定保守</div>
+                  </div>
+                  <span class="param-value">{{ (currentRole.temperature ?? 1.0).toFixed(1) }}</span>
+                </div>
+                <input v-model.number="currentRole.temperature" type="range" min="0" max="2" step="0.1" class="param-slider">
+                <div class="param-scale"><span>0 · 保守</span><span>1 · 均衡</span><span>2 · 天马行空</span></div>
+              </div>
+
+              <div class="param-item">
+                <div class="param-header">
+                  <div>
+                    <div class="param-name">🌈 词汇多样性</div>
+                    <div class="param-desc">控制 AI 每次选词的范围，越高用词越丰富多变</div>
+                  </div>
+                  <span class="param-value">{{ (currentRole.topP ?? 1.0).toFixed(2) }}</span>
+                </div>
+                <input v-model.number="currentRole.topP" type="range" min="0" max="1" step="0.05" class="param-slider">
+                <div class="param-scale"><span>0 · 单一</span><span>1 · 丰富</span></div>
+              </div>
+
+              <div class="param-item">
+                <div class="param-header">
+                  <div>
+                    <div class="param-name">📏 单次最大字数</div>
+                    <div class="param-desc">限制 AI 每次回复的最大长度，0 表示不限制</div>
+                  </div>
+                  <span class="param-value">{{ currentRole.maxTokens || '不限' }}</span>
+                </div>
+                <input v-model.number="currentRole.maxTokens" type="range" min="0" max="4096" step="128" class="param-slider">
+                <div class="param-scale"><span>0 · 不限</span><span>4096 · 最大</span></div>
+              </div>
+
+              <div class="param-item">
+                <div class="param-header">
+                  <div>
+                    <div class="param-name">🔁 重复惩罚</div>
+                    <div class="param-desc">越高 AI 越不会重复使用同样的词句</div>
+                  </div>
+                  <span class="param-value">{{ (currentRole.frequencyPenalty ?? 0).toFixed(1) }}</span>
+                </div>
+                <input v-model.number="currentRole.frequencyPenalty" type="range" min="0" max="2" step="0.1" class="param-slider">
+                <div class="param-scale"><span>0 · 允许重复</span><span>2 · 严格避免</span></div>
+              </div>
+
+              <div class="param-item">
+                <div class="param-header">
+                  <div>
+                    <div class="param-name">🔊 语音声线</div>
+                    <div class="param-desc">与此角色对话时使用的 TTS 声音</div>
+                  </div>
+                </div>
+                <select v-model="currentRole.ttsVoice" class="param-select">
+                  <option value="">使用系统默认声音</option>
+                  <option v-for="voice in availableVoices" :key="voice.name" :value="voice.name">
+                    {{ voice.name }} ({{ voice.lang }})
+                  </option>
+                </select>
+              </div>
+            </div>
           </div>
+        </template>
 
-          <p class="text-xs text-gray-500 px-1 leading-relaxed">
-            每 15 轮对话后，AI 会自动提取关键剧情事件，帮助角色保持故事连贯性。
-          </p>
+        <!-- ===== 记忆 Tab ===== -->
+        <template v-else-if="activeTab === 'memory' && !isGroupMode">
+          <aside class="modal-sidebar">
+            <p class="sidebar-section-label">记忆</p>
+            <button v-for="s in MEMORY_SECTIONS" :key="s.id"
+                    class="sidebar-item" :class="{ active: activeMemorySection === s.id }"
+                    @click="activeMemorySection = s.id">
+              <span class="sidebar-item-icon">{{ s.icon }}</span>
+              {{ s.label }}
+            </button>
+          </aside>
+          <div class="modal-content">
+            <!-- 角色状态 -->
+            <div v-if="activeMemorySection === 'status'" class="space-y-4">
+              <div class="section-title">💫 与角色的当前状态</div>
+              <p class="section-desc">AI 自动感知，每 20 条消息更新一次</p>
+              <div class="status-grid">
+                <div class="status-card">
+                  <div class="status-card-label">情绪</div>
+                  <div class="status-card-value" :class="currentRole.currentEmotion ? 'text-gray-200' : 'italic text-gray-600'">
+                    {{ currentRole.currentEmotion || '尚未感知' }}
+                  </div>
+                </div>
+                <div class="status-card">
+                  <div class="status-card-label">关系阶段</div>
+                  <div class="status-card-value" :class="currentRole.relationshipStage ? 'text-gray-200' : 'italic text-gray-600'">
+                    {{ currentRole.relationshipStage || '尚未感知' }}
+                  </div>
+                </div>
+                <div class="status-card" style="grid-column: span 2">
+                  <div class="status-card-label">记住的事</div>
+                  <div class="status-card-value" :class="currentRole.keyMoments?.length ? 'text-gray-200' : 'italic text-gray-600'">
+                    {{ currentRole.keyMoments?.length ? currentRole.keyMoments.slice(-1)[0].text : '尚未感知' }}
+                  </div>
+                </div>
+              </div>
+            </div>
 
-          <!-- 时间线列表 -->
-          <div v-if="timelineSource?.length" class="space-y-2">
-            <div v-for="(event, idx) in timelineSource" :key="idx"
-                 class="glass bg-glass-message rounded-xl px-4 py-3 flex items-start gap-3 group">
-              <span class="flex-shrink-0 mt-0.5 text-sm">
-                {{ event.importance === 'high' ? '⚡' : event.importance === 'medium' ? '📌' : '·' }}
-              </span>
-              <!-- 编辑模式 -->
-              <template v-if="editingTimelineIdx === idx">
-                <div class="flex-1 min-w-0 space-y-2">
-                  <textarea v-model="editingTimelineText"
-                            class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 text-sm outline-none border border-primary/50 resize-none leading-relaxed"
-                            rows="2" @keydown.enter.ctrl="saveTimelineEdit" @keydown.esc="cancelTimelineEdit" />
-                  <div class="flex gap-2">
-                    <button @click="saveTimelineEdit"
-                            class="text-xs px-3 py-1 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 transition">
-                      保存
-                    </button>
-                    <button @click="cancelTimelineEdit"
-                            class="text-xs px-3 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">
-                      取消
-                    </button>
+            <!-- 记忆窗口 -->
+            <div v-else-if="activeMemorySection === 'window'" class="space-y-4">
+              <div class="section-title">🪟 记忆窗口大小</div>
+              <p class="section-desc">控制 AI 能记住的最近对话轮数，越大记忆越长，消耗 Token 越多</p>
+              <div class="param-item">
+                <div class="param-header">
+                  <div class="param-name">窗口大小</div>
+                  <span class="param-value">{{ currentRole.memoryWindow || 15 }} 轮</span>
+                </div>
+                <input v-model.number="currentRole.memoryWindow" type="range" min="5" max="30" step="1" class="param-slider">
+                <div class="param-scale"><span>5轮 · 省 Token</span><span>30轮 · 长记忆</span></div>
+              </div>
+            </div>
+
+            <!-- 认知卡 -->
+            <div v-else-if="activeMemorySection === 'card'" class="space-y-4">
+              <div class="section-title">🧠 认知卡 <span class="badge-auto">AI 自动维护</span></div>
+              <p class="section-desc">AI 自动分析对话，建立对你的认知画像，通常需要 15 轮以上对话后开始生成</p>
+              <template v-if="currentRole.memoryCard && (currentRole.memoryCard.userProfile || (currentRole.memoryCard.keyEvents || []).length > 0)">
+                <div class="text-[10px] text-gray-500">上次更新：{{ currentRole.memoryCard.updatedAt ? new Date(currentRole.memoryCard.updatedAt).toLocaleString('zh-CN') : '未更新' }}</div>
+                <div class="space-y-2">
+                  <div v-if="currentRole.memoryCard.userProfile" class="card-field">
+                    <span class="card-label">👤 用户画像</span>
+                    <span class="card-value">{{ currentRole.memoryCard.userProfile }}</span>
+                  </div>
+                  <div v-if="currentRole.memoryCard.relationshipStage" class="card-field">
+                    <span class="card-label">💕 关系阶段</span>
+                    <span class="card-value">{{ currentRole.memoryCard.relationshipStage }}</span>
+                  </div>
+                  <div v-if="currentRole.memoryCard.emotionalState" class="card-field">
+                    <span class="card-label">😊 情绪状态</span>
+                    <span class="card-value">{{ currentRole.memoryCard.emotionalState }}</span>
+                  </div>
+                  <div v-if="(currentRole.memoryCard.keyEvents || []).length > 0" class="card-field">
+                    <span class="card-label">⚡ 重大事件</span>
+                    <ul class="card-events">
+                      <li v-for="(evt, i) in currentRole.memoryCard.keyEvents" :key="i">{{ evt }}</li>
+                    </ul>
+                  </div>
+                  <div v-if="currentRole.memoryCard.lastTone" class="card-field">
+                    <span class="card-label">🎵 近期基调</span>
+                    <span class="card-value">{{ currentRole.memoryCard.lastTone }}</span>
                   </div>
                 </div>
               </template>
-              <!-- 展示模式 -->
-              <template v-else>
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm text-gray-200 leading-relaxed">{{ event.event }}</div>
-                  <div class="text-xs text-gray-600 mt-1" v-if="event.timestamp">
-                    {{ new Date(event.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+              <div v-else class="empty-state">
+                <div class="empty-state-icon">🧠</div>
+                <div class="empty-state-text">尚未生成认知卡</div>
+                <div class="empty-state-hint">继续对话，AI 会自动分析建立认知</div>
+              </div>
+            </div>
+
+            <!-- 章节摘要 -->
+            <div v-else-if="activeMemorySection === 'chapter'" class="space-y-4">
+              <div class="section-title">📖 剧情章节
+                <span v-if="(currentRole.chapterSummaries || []).length" class="badge-count">{{ currentRole.chapterSummaries.length }} 章</span>
+              </div>
+              <p class="section-desc">对话超出记忆窗口后自动归档，每 15 条消息生成一章</p>
+              <template v-if="(currentRole.chapterSummaries || []).length > 0">
+                <div class="space-y-2">
+                  <div v-for="(ch, i) in currentRole.chapterSummaries" :key="i" class="chapter-item">
+                    <div class="chapter-header">
+                      <span :class="ch.isCondensed ? 'text-purple-400' : 'text-emerald-400'">
+                        {{ ch.isCondensed ? '🏛️ 远古回忆' : `📖 第${ch.chapterIndex}章` }}
+                      </span>
+                      <span class="chapter-meta">{{ ch.messageCount }} 条消息</span>
+                    </div>
+                    <p class="chapter-body">{{ ch.summary }}</p>
                   </div>
                 </div>
-                <div class="opacity-0 group-hover:opacity-100 flex gap-1 flex-shrink-0">
-                  <button @click="startEditTimeline(idx)" class="p-1 rounded-full hover:bg-white/10 transition" title="编辑">
-                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                  </button>
-                  <button @click="removeTimelineItem(idx)" class="p-1 rounded-full hover:bg-red-500/20 transition" title="删除">
-                    <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                  </button>
-                </div>
               </template>
+              <div v-else class="empty-state">
+                <div class="empty-state-icon">📖</div>
+                <div class="empty-state-text">还没有章节摘要</div>
+                <div class="empty-state-hint">对话足够长后会自动生成</div>
+              </div>
+            </div>
+
+            <!-- 永久记忆 -->
+            <div v-else-if="activeMemorySection === 'manual'" class="space-y-4">
+              <div class="section-title">📌 永久记忆
+                <span class="badge-count">{{ (currentRole.manualMemories || []).length }} 条</span>
+              </div>
+              <p class="section-desc">手动钉选的重要内容，AI 始终记得</p>
+              <button @click="$emit('add-manual-memory')" class="add-memory-btn">➕ 新增自定义记忆</button>
+              <div v-if="(currentRole.manualMemories || []).length > 0" class="space-y-3">
+                <div v-for="(memory, mIndex) in currentRole.manualMemories" :key="mIndex" class="memory-item">
+                  <template v-if="memoryEditState.editingIndex !== mIndex">
+                    <div class="flex items-start gap-2">
+                      <span class="flex-shrink-0 mt-0.5">{{ memory.role === 'user' ? '👤' : (memory.isCustom ? '📝' : '🎭') }}</span>
+                      <div class="flex-1 min-w-0" @click="$emit('toggle-memory-expand', mIndex)">
+                        <p class="text-gray-300 text-xs leading-relaxed"
+                           :class="{ 'line-clamp-2': memoryEditState.expandedIndex !== mIndex }">
+                          {{ memory.content || '(空记忆)' }}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="memory-actions">
+                      <button @click="$emit('refine-memory', mIndex)" class="mem-btn refine"
+                              :disabled="memoryEditState.refiningIndex === mIndex || !memory.content">
+                        <span :class="{ 'spinning': memoryEditState.refiningIndex === mIndex }">🪄</span>
+                        {{ memoryEditState.refiningIndex === mIndex ? '精简中...' : '精简' }}
+                      </button>
+                      <button @click="$emit('start-edit-memory', mIndex)" class="mem-btn edit">✏️ 编辑</button>
+                      <button @click="$emit('remove-manual-memory', mIndex)" class="mem-btn delete ml-auto">🗑️</button>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <textarea v-model="memoryEditState.editContent" class="memory-edit-textarea" rows="3"
+                              placeholder="输入记忆内容"></textarea>
+                    <div class="flex gap-2 mt-2">
+                      <button @click="$emit('save-edit-memory', mIndex)" class="mem-btn save">✅ 保存</button>
+                      <button @click="$emit('cancel-edit-memory')" class="mem-btn cancel">❌ 取消</button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+              <div v-else class="empty-state">
+                <div class="empty-state-icon">📌</div>
+                <div class="empty-state-text">暂无永久记忆</div>
+                <div class="empty-state-hint">点击消息旁的 📌 按钮添加，或使用上方按钮创建</div>
+              </div>
             </div>
           </div>
+        </template>
 
-          <!-- 空状态 -->
-          <div v-else class="text-center py-8">
-            <div class="text-3xl mb-2">📅</div>
-            <div class="text-sm text-gray-500">还没有时间线事件</div>
-            <div class="text-xs text-gray-600 mt-1">多聊几轮后 AI 会自动提取关键剧情</div>
+        <!-- ===== 时间线 Tab ===== -->
+        <template v-else-if="activeTab === 'timeline'">
+          <div class="modal-content-full">
+            <div class="timeline-layout">
+              <!-- 左：事件列表 -->
+              <div class="timeline-list">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="section-title" style="margin:0">
+                    📅 剧情时间线
+                    <span v-if="timelineSource?.length" class="badge-count">{{ timelineSource.length }} 条</span>
+                  </div>
+                  <button v-if="timelineSource?.length" @click="clearTimelineData(); emit('show-toast', '时间线已清空', 'info')"
+                          class="text-xs text-red-400/60 hover:text-red-400 transition">清空</button>
+                </div>
+                <p class="section-desc mb-3">每 15 轮对话后，AI 自动提取关键剧情事件</p>
+
+                <div v-if="timelineSource?.length" class="space-y-2">
+                  <div v-for="(event, idx) in timelineSource" :key="idx"
+                       class="timeline-item" :class="{ 'active': editingTimelineIdx === idx }"
+                       @click="editingTimelineIdx !== idx && startEditTimeline(idx)">
+                    <span class="timeline-icon">{{ event.importance === 'high' ? '⚡' : event.importance === 'medium' ? '📌' : '·' }}</span>
+                    <div class="flex-1 min-w-0">
+                      <div v-if="editingTimelineIdx !== idx" class="text-sm text-gray-200 leading-relaxed">{{ event.event }}</div>
+                      <div v-else class="space-y-2">
+                        <textarea v-model="editingTimelineText" class="timeline-edit-input" rows="2"
+                                  @keydown.ctrl.enter="saveTimelineEdit" @keydown.esc="cancelTimelineEdit"></textarea>
+                        <div class="flex gap-2">
+                          <button @click.stop="saveTimelineEdit" class="mem-btn save">保存</button>
+                          <button @click.stop="cancelTimelineEdit" class="mem-btn cancel">取消</button>
+                        </div>
+                      </div>
+                      <div v-if="event.timestamp && editingTimelineIdx !== idx" class="text-xs text-gray-600 mt-0.5">
+                        {{ new Date(event.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                      </div>
+                    </div>
+                    <button v-if="editingTimelineIdx !== idx" @click.stop="removeTimelineItem(idx)"
+                            class="timeline-delete-btn opacity-0 group-hover:opacity-100">✕</button>
+                  </div>
+                </div>
+
+                <div v-else class="empty-state">
+                  <div class="empty-state-icon">📅</div>
+                  <div class="empty-state-text">还没有时间线事件</div>
+                  <div class="empty-state-hint">多聊几轮后 AI 会自动提取关键剧情</div>
+                </div>
+              </div>
+
+              <!-- 右：事件详情 -->
+              <div class="timeline-detail">
+                <div class="section-title" style="margin:0 0 12px">⚡ 事件详情</div>
+                <template v-if="editingTimelineIdx >= 0 && timelineSource[editingTimelineIdx]">
+                  <div class="timeline-detail-content">
+                    <p class="text-sm text-gray-200 leading-relaxed mb-3">{{ timelineSource[editingTimelineIdx].event }}</p>
+                    <div v-if="timelineSource[editingTimelineIdx].characters?.length" class="detail-row">
+                      <span class="detail-label">关联角色</span>
+                      <span class="detail-value">{{ timelineSource[editingTimelineIdx].characters.join('、') }}</span>
+                    </div>
+                    <div v-if="timelineSource[editingTimelineIdx].impact" class="detail-row">
+                      <span class="detail-label">影响</span>
+                      <span class="detail-value">{{ timelineSource[editingTimelineIdx].impact }}</span>
+                    </div>
+                    <div v-if="timelineSource[editingTimelineIdx].timestamp" class="detail-row">
+                      <span class="detail-label">时间</span>
+                      <span class="detail-value">{{ new Date(timelineSource[editingTimelineIdx].timestamp).toLocaleString('zh-CN') }}</span>
+                    </div>
+                  </div>
+                </template>
+                <div v-else class="text-gray-600 text-sm italic">点击左侧事件查看详情</div>
+              </div>
+            </div>
           </div>
-        </section>
-      </template>
+        </template>
 
-      <!-- ========== 群聊 Tab ========== -->
-      <template v-if="activeTab === 'group' && isGroupMode && currentGroup">
-        <section class="space-y-4">
-          <h3 class="font-semibold text-gray-300 flex items-center text-shadow px-1">
-            <span class="mr-2">👥</span> 群聊信息
-          </h3>
-          <div class="glass bg-glass-message rounded-2xl p-4 space-y-3">
-            <div>
-              <label class="block text-sm text-gray-400 mb-1">群聊名称</label>
-              <div class="text-gray-100 text-base font-medium">{{ currentGroup.name }}</div>
-            </div>
-            <div v-if="currentGroup.description">
-              <label class="block text-sm text-gray-400 mb-1">群聊描述</label>
-              <div class="text-gray-300 text-sm leading-relaxed">{{ currentGroup.description }}</div>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
+        <!-- ===== 画像 Tab ===== -->
+        <template v-else-if="activeTab === 'persona'">
+          <div class="modal-content-full">
+            <UserPersonaSettings />
+          </div>
+        </template>
+
+        <!-- ===== 通用 Tab ===== -->
+        <template v-else-if="activeTab === 'general'">
+          <!-- 用户头像裁剪器 -->
+          <AvatarCropper v-if="userCropperSrc" :image-src="userCropperSrc" @confirm="onUserCropConfirm" @cancel="onUserCropCancel" />
+          <input ref="userFileInputRef" type="file" accept="image/*" class="hidden" @change="handleUserFileSelect">
+
+          <aside class="modal-sidebar">
+            <p class="sidebar-section-label">设置</p>
+            <button v-for="s in GENERAL_SECTIONS" :key="s.id"
+                    class="sidebar-item" :class="{ active: activeGeneralSection === s.id }"
+                    @click="activeGeneralSection = s.id">
+              <span class="sidebar-item-icon">{{ s.icon }}</span>
+              {{ s.label }}
+            </button>
+          </aside>
+
+          <div class="modal-content">
+
+            <!-- ── API 配置 ── -->
+            <div v-if="activeGeneralSection === 'api'" class="space-y-5">
+              <div class="section-title">🔗 API 配置</div>
+
+              <!-- 存储用量 -->
               <div>
-                <label class="block text-sm text-gray-400 mb-1">🧠 模型</label>
-                <div class="text-gray-200 text-sm">{{ currentGroup.model || '跟随全局' }}</div>
+                <div class="flex justify-between text-xs text-gray-400 mb-1">
+                  <span>💾 存储用量</span>
+                  <span>{{ (storageUsage.usedKB / 1024).toFixed(1) }} MB / {{ (storageUsage.totalKB / 1024).toFixed(0) }} MB</span>
+                </div>
+                <div class="storage-bar-track">
+                  <div class="storage-bar-fill" :class="storageColor" :style="{ width: Math.min(storageUsage.percent, 100) + '%' }"></div>
+                </div>
+                <details v-if="storageUsage.breakdown?.length" class="mt-1">
+                  <summary class="text-[10px] text-gray-500 cursor-pointer hover:text-gray-400">各模块明细</summary>
+                  <div class="mt-1 space-y-0.5">
+                    <div v-for="item in storageUsage.breakdown" :key="item.key" class="flex justify-between text-[10px] text-gray-500">
+                      <span>{{ item.label }}</span><span>{{ item.sizeKB }} KB</span>
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <!-- API 平台 -->
+              <div class="api-field">
+                <div class="api-field-header">
+                  <label>🔗 API 平台</label>
+                  <button @click="useCustomBaseUrl = !useCustomBaseUrl" class="toggle-mode-btn" :class="{ active: useCustomBaseUrl }">
+                    {{ useCustomBaseUrl ? '📋 选预设' : '✏️ 手动输入' }}
+                  </button>
+                </div>
+                <select v-if="!useCustomBaseUrl" v-model="globalSettings.baseUrl" class="api-input">
+                  <option value="https://api.deepseek.com">🔥 DeepSeek 官方</option>
+                  <option value="https://api.siliconflow.cn/v1">🚀 硅基流动 (SiliconFlow)</option>
+                  <option value="https://openrouter.ai/api/v1">🌐 OpenRouter</option>
+                </select>
+                <input v-else v-model="globalSettings.baseUrl" type="text" placeholder="https://api.example.com/v1" class="api-input">
+              </div>
+
+              <!-- API Key -->
+              <div class="api-field">
+                <div class="api-field-header"><label>API Key</label></div>
+                <input v-model="globalSettings.apiKey" type="password" placeholder="sk-..." class="api-input" :class="{ 'border-amber-500/40': !globalSettings.apiKey }">
+                <p v-if="!globalSettings.apiKey" class="text-xs text-amber-400 mt-1">⚡ 填入 API Key 后即可开始对话</p>
+              </div>
+
+              <!-- 主模型 -->
+              <div class="api-field">
+                <div class="api-field-header">
+                  <label>🧠 主模型</label>
+                  <button @click="useCustomModel = !useCustomModel" class="toggle-mode-btn" :class="{ active: useCustomModel }">
+                    {{ useCustomModel ? '📋 选预设' : '✏️ 手动输入' }}
+                  </button>
+                </div>
+                <select v-if="!useCustomModel" v-model="globalSettings.model" class="api-input">
+                  <template v-for="group in MODEL_PRESETS" :key="group.group">
+                    <optgroup :label="group.group">
+                      <option v-for="m in group.models" :key="m.value" :value="m.value">{{ m.label }} — {{ m.desc }}</option>
+                    </optgroup>
+                  </template>
+                </select>
+                <input v-else v-model="globalSettings.model" type="text" placeholder="输入模型 ID" class="api-input">
+                <p class="text-xs text-gray-500 mt-1">当前：{{ globalSettings.model || '未设置' }}</p>
+                <details class="mt-1">
+                  <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-400 select-none">🔑 哪个平台用哪个 Key？</summary>
+                  <div class="mt-2 space-y-1.5 pl-3 border-l-2 border-white/8 text-xs text-gray-400 leading-relaxed">
+                    <div><span class="text-gray-300">🔥 DeepSeek 官方</span> → <a href="https://platform.deepseek.com" target="_blank" class="text-indigo-400 hover:underline">platform.deepseek.com</a></div>
+                    <div><span class="text-gray-300">🚀 硅基流动</span>（Qwen / DeepSeek / Kimi / GLM）→ <a href="https://cloud.siliconflow.cn" target="_blank" class="text-indigo-400 hover:underline">cloud.siliconflow.cn</a></div>
+                    <div><span class="text-gray-300">🌐 OpenRouter</span>（Claude / Gemini / GPT）→ <a href="https://openrouter.ai/keys" target="_blank" class="text-indigo-400 hover:underline">openrouter.ai</a></div>
+                    <div class="text-gray-500">💡 平台和 Key 要配套，混用会报 401</div>
+                  </div>
+                </details>
+              </div>
+
+              <!-- 后台模型 -->
+              <div class="api-field">
+                <div class="api-field-header">
+                  <label>⚙️ 后台分析模型 <span class="text-gray-600 font-normal">（摘要/记忆/画像用）</span></label>
+                </div>
+                <select v-model="globalSettings.bgModel" class="api-input">
+                  <option value="">🔄 跟随主模型</option>
+                  <template v-for="group in MODEL_PRESETS" :key="'bg-'+group.group">
+                    <optgroup :label="group.group">
+                      <option v-for="m in group.models" :key="'bg-'+m.value" :value="m.value">{{ m.label }} — {{ m.desc }}</option>
+                    </optgroup>
+                  </template>
+                </select>
+                <template v-if="globalSettings.bgModel">
+                  <div class="pl-3 border-l-2 border-white/10 mt-2 space-y-2">
+                    <div>
+                      <label class="block text-xs text-gray-400 mb-1">后台 API 平台 <span class="text-gray-600">（留空跟随主设置）</span></label>
+                      <select v-model="globalSettings.bgBaseUrl" class="api-input text-sm">
+                        <option value="">🔄 跟随主设置</option>
+                        <option value="https://api.deepseek.com">🔥 DeepSeek 官方</option>
+                        <option value="https://api.siliconflow.cn/v1">🚀 硅基流动</option>
+                        <option value="https://openrouter.ai/api/v1">🌐 OpenRouter</option>
+                      </select>
+                    </div>
+                    <div v-if="globalSettings.bgBaseUrl">
+                      <label class="block text-xs text-gray-400 mb-1">后台 API Key <span class="text-gray-600">（留空跟随主设置）</span></label>
+                      <input v-model="globalSettings.bgApiKey" type="password" placeholder="留空则使用主 API Key" class="api-input text-sm">
+                    </div>
+                  </div>
+                </template>
+                <p class="text-xs text-gray-500 mt-1">{{ globalSettings.bgModel ? '后台任务使用独立模型配置' : '后台任务跟随主模型' }}</p>
               </div>
             </div>
-            <div>
-              <label class="block text-sm text-gray-400 mb-2">参与角色（{{ participants?.length || 0 }} 人）</label>
-              <div class="flex flex-wrap gap-2">
-                <div v-for="p in participants" :key="p.id"
-                     class="flex items-center space-x-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/5">
-                  <div v-if="p.avatar" class="w-6 h-6 rounded-full overflow-hidden">
-                    <img :src="p.avatar" class="w-full h-full object-cover" />
+
+            <!-- ── 显示与交互 ── -->
+            <div v-else-if="activeGeneralSection === 'display'" class="space-y-5">
+              <div class="section-title">🎨 显示与交互</div>
+
+              <!-- 用户头像 -->
+              <div>
+                <label class="block text-sm text-gray-300 mb-2">👤 用户头像</label>
+                <div class="flex items-center gap-4">
+                  <div class="avatar-picker-sm" @click="triggerUserFilePicker">
+                    <img v-if="globalSettings.userAvatar" :src="globalSettings.userAvatar" class="w-full h-full object-cover rounded-full" />
+                    <div v-else class="flex flex-col items-center justify-content-center gap-1">
+                      <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                      </svg>
+                      <span class="text-[10px] text-gray-500">上传</span>
+                    </div>
                   </div>
-                  <div v-else class="w-6 h-6 rounded-full bg-primary/30 flex items-center justify-center text-xs">🎭</div>
-                  <span class="text-sm text-gray-200">{{ p.name }}</span>
+                  <div class="flex-1 space-y-1.5">
+                    <input v-model="globalSettings.userAvatar" type="text" placeholder="或粘贴图片 URL..." class="api-input text-sm">
+                    <button v-if="globalSettings.userAvatar" @click="clearUserAvatar" class="text-xs text-red-400 hover:text-red-300 transition">清除头像</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 输出长度 -->
+              <div>
+                <label class="block text-sm text-gray-300 mb-1.5">📝 输出长度偏好</label>
+                <select v-model="globalSettings.responseLength" class="api-input">
+                  <option value="auto">自动（AI 自行决定）</option>
+                  <option value="short">简短（日常对话 50-150字）</option>
+                  <option value="normal">标准（均衡模式 200-400字）</option>
+                  <option value="long">详述（沉浸小说 400+字）</option>
+                </select>
+              </div>
+
+              <!-- 开关组 -->
+              <div class="space-y-1">
+                <div class="toggle-row">
+                  <div><div class="toggle-label">🔊 自动朗读</div><div class="toggle-desc">AI 回复完成后自动语音朗读</div></div>
+                  <div class="toggle-switch" :class="{ active: globalSettings.autoPlayTTS }" @click="globalSettings.autoPlayTTS = !globalSettings.autoPlayTTS"></div>
+                </div>
+                <div v-if="!globalSettings.soundMuted" class="pl-4 pb-1">
+                  <label class="text-xs text-gray-400">音量: {{ Math.round((globalSettings.soundVolume || 0.2) * 100) }}%</label>
+                  <input type="range" min="0.05" max="0.5" step="0.05" :value="globalSettings.soundVolume || 0.2" @input="globalSettings.soundVolume = parseFloat($event.target.value)" class="w-full accent-purple-500 mt-1">
+                </div>
+                <div class="toggle-row">
+                  <div><div class="toggle-label">🔧 显示推理过程</div><div class="toggle-desc">显示 DeepSeek R1 的底层思维链 (&lt;think&gt;)</div></div>
+                  <div class="toggle-switch" :class="{ active: globalSettings.showLogic }" @click="globalSettings.showLogic = !globalSettings.showLogic"></div>
+                </div>
+                <div class="toggle-row">
+                  <div><div class="toggle-label">💭 显示内心戏</div><div class="toggle-desc">显示角色的潜台词和心理活动 (&lt;inner&gt;)</div></div>
+                  <div class="toggle-switch" :class="{ active: globalSettings.showInner }" @click="globalSettings.showInner = !globalSettings.showInner"></div>
+                </div>
+                <div class="toggle-row">
+                  <div><div class="toggle-label">🪙 显示 Token 用量</div><div class="toggle-desc">在每条 AI 回复上显示 Token 用量</div></div>
+                  <div class="toggle-switch" :class="{ active: globalSettings.showTokens }" @click="globalSettings.showTokens = !globalSettings.showTokens"></div>
+                </div>
+              </div>
+
+              <!-- 文字风格 -->
+              <div>
+                <label class="block text-sm text-gray-300 mb-2">🎨 文字风格</label>
+                <div class="style-card-grid">
+                  <div v-for="s in [
+                    { id: 'clear',     name: '清澈·标准',  desc: '深色·无衬线', color: '#6b9fff' },
+                    { id: 'misty',     name: '烟雨·无泡',  desc: '深暖·衬线',   color: '#c8a878' },
+                    { id: 'day',       name: '烟雨·日间',  desc: '浅色·衬线',   color: '#8b7355' },
+                    { id: 'loveDark',  name: '甜心·暗粉',  desc: '深色·粉调',   color: '#ff6eb0' },
+                    { id: 'loveLight', name: '甜心·浅粉',  desc: '浅色·衬线',   color: '#e8699a' },
+                  ]" :key="s.id"
+                       class="style-card" :class="{ active: globalSettings.rpTextStyle === s.id }"
+                       :style="{ '--card-accent': s.color }" @click="globalSettings.rpTextStyle = s.id">
+                    <div class="style-card-dot" :style="{ background: s.color }"></div>
+                    <div class="style-card-name">{{ s.name }}</div>
+                    <div class="style-card-desc">{{ s.desc }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 亮度/深浅/粗细/字号滑块 -->
+              <div class="space-y-3">
+                <div v-for="slider in [
+                  { label: '☀️ 聊天背景亮度', key: 'chatBgBrightness', min: 50, max: 150, step: 5, default: 100, unit: '%', left: '🌙', right: '☀️' },
+                  { label: '✍️ 文字深浅',     key: 'chatTextBrightness', min: 50, max: 150, step: 5, default: 100, unit: '%', left: '淡', right: '深' },
+                  { label: '𝐁 文字粗细',      key: 'chatFontWeight', min: -2, max: 3, step: 1, default: 0, unit: '', left: '细', right: '粗' },
+                  { label: '🔤 字体大小',     key: 'chatFontSize', min: 0.8, max: 1.4, step: 0.05, default: 1.0, unit: '%', left: 'A', right: 'A' },
+                ]" :key="slider.key">
+                  <div class="flex justify-between items-center mb-0.5">
+                    <label class="text-xs text-gray-400">{{ slider.label }}</label>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-gray-500">
+                        {{ slider.key === 'chatFontSize'
+                          ? Math.round((globalSettings[slider.key] || slider.default) * 100) + '%'
+                          : slider.key === 'chatFontWeight'
+                            ? ((globalSettings[slider.key] || 0) === 0 ? '默认' : ((globalSettings[slider.key] > 0 ? '+' : '') + globalSettings[slider.key]))
+                            : (globalSettings[slider.key] || slider.default) + slider.unit }}
+                      </span>
+                      <button v-if="(globalSettings[slider.key] || slider.default) !== slider.default"
+                              @click="globalSettings[slider.key] = slider.default"
+                              class="text-[10px] text-gray-600 hover:text-gray-400 transition">重置</button>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] text-gray-600">{{ slider.left }}</span>
+                    <input type="range" :min="slider.min" :max="slider.max" :step="slider.step"
+                           :value="globalSettings[slider.key] || slider.default"
+                           @input="globalSettings[slider.key] = slider.key === 'chatFontSize' ? parseFloat($event.target.value) : parseInt($event.target.value)"
+                           class="flex-1 accent-purple-500">
+                    <span class="text-[10px] text-gray-600" :class="{ 'font-bold': slider.key === 'chatFontWeight' }">{{ slider.right }}</span>
+                  </div>
                 </div>
               </div>
             </div>
-            <p class="text-xs text-gray-500 mt-2">群名和成员可在关闭设置后，通过聊天窗口顶部的 ✏️ 按钮修改。</p>
-          </div>
-        </section>
 
-        <!-- 群聊角色人设预览 -->
-        <section class="space-y-3">
-          <h3 class="font-semibold text-gray-300 flex items-center text-shadow px-1">
-            <span class="mr-2">🎭</span> 角色人设预览
-          </h3>
-          <div v-for="p in participants" :key="p.id"
-               class="glass bg-glass-message rounded-2xl p-4 space-y-2">
-            <div class="flex items-center space-x-2">
-              <div v-if="p.avatar" class="w-8 h-8 rounded-full overflow-hidden">
-                <img :src="p.avatar" class="w-full h-full object-cover" />
+            <!-- ── 高级设置 ── -->
+            <div v-else-if="activeGeneralSection === 'advanced'" class="space-y-4">
+              <div class="section-title">⚙️ 高级设置</div>
+
+              <div class="toggle-row">
+                <div>
+                  <div class="toggle-label">{{ globalSettings.immersiveMode ? '🎭 沉浸模式' : '💬 自由模式' }}</div>
+                  <div class="toggle-desc">{{ globalSettings.immersiveMode ? '隐藏思维标记，AI 绝不脱离角色' : '显示思考过程，可跳出角色讨论剧情' }}</div>
+                </div>
+                <div class="toggle-switch" :class="{ active: globalSettings.immersiveMode }" @click="globalSettings.immersiveMode = !globalSettings.immersiveMode"></div>
               </div>
-              <div v-else class="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center text-sm">🎭</div>
-              <span class="font-medium text-gray-100">{{ p.name }}</span>
-            </div>
-            <div class="text-sm text-gray-400 whitespace-pre-wrap line-clamp-4 leading-relaxed">
-              {{ p.systemPrompt || '（暂无人设描述）' }}
-            </div>
-          </div>
-        </section>
-      </template>
 
-      <!-- ========== 数据 Tab ========== -->
-      <template v-if="activeTab === 'data'">
-        <section class="space-y-3">
-          <h3 class="font-semibold text-gray-300 flex items-center text-shadow px-1">
-            <span class="mr-2">💾</span> 数据备份与恢复
-          </h3>
-          <div class="grid grid-cols-2 gap-3">
-            <button @click="$emit('export-data')"
-                    class="glass bg-glass-message text-gray-300 rounded-xl px-4 py-3 text-center hover:bg-glass-light transition flex flex-col items-center justify-center space-y-1">
-              <span class="text-xl">📤</span>
-              <span class="text-sm">导出备份</span>
-            </button>
-            <button @click="$emit('show-import-modal')"
-                    class="glass bg-glass-message text-gray-300 rounded-xl px-4 py-3 text-center hover:bg-glass-light transition flex flex-col items-center justify-center space-y-1">
-              <span class="text-xl">📥</span>
-              <span class="text-sm">恢复数据</span>
-            </button>
-          </div>
+              <div class="toggle-row">
+                <div>
+                  <div class="toggle-label">🧠 智能后台分析</div>
+                  <div class="toggle-desc">自动生成摘要、分析关系、提取用户画像（额外消耗 Token）</div>
+                </div>
+                <div class="toggle-switch" :class="{ active: globalSettings.enableSmartAnalysis !== false }" @click="globalSettings.enableSmartAnalysis = !globalSettings.enableSmartAnalysis"></div>
+              </div>
+              <p v-if="!globalSettings.enableSmartAnalysis" class="text-xs" style="color:#f87171;">
+                ⚠️ 已关闭：角色状态、剧情章节、认知卡、时间线将全部停止更新
+              </p>
 
-          <div class="pt-4 border-t border-white/10 mt-4">
-            <button @click="$emit('clear-all-data')"
-                    class="w-full glass bg-red-900/30 text-red-400 rounded-xl px-4 py-3 text-center hover:bg-red-900/50 transition">
-              🗑️ 清除所有数据
-            </button>
+              <div class="toggle-row">
+                <div>
+                  <div class="toggle-label">🔊 音效</div>
+                  <div class="toggle-desc">UI 交互音效和 AI 回复提示音</div>
+                </div>
+                <div class="toggle-switch" :class="{ active: !globalSettings.soundMuted }" @click="globalSettings.soundMuted = !globalSettings.soundMuted"></div>
+              </div>
+              <div v-if="!globalSettings.soundMuted" class="pl-4">
+                <label class="text-xs text-gray-400">音量: {{ Math.round((globalSettings.soundVolume || 0.2) * 100) }}%</label>
+                <input type="range" min="0.05" max="0.5" step="0.05" :value="globalSettings.soundVolume || 0.2" @input="globalSettings.soundVolume = parseFloat($event.target.value)" class="w-full accent-purple-500 mt-1">
+              </div>
+            </div>
+
           </div>
-        </section>
-      </template>
+        </template>
+
+        <!-- ===== 数据 Tab ===== -->
+        <template v-else-if="activeTab === 'data'">
+          <div class="modal-content-full">
+            <div class="section-title">💾 数据备份与恢复</div>
+
+            <!-- 存储用量 -->
+            <div class="data-storage-bar mb-6">
+              <div class="flex justify-between text-xs text-gray-400 mb-1">
+                <span>💾 存储用量</span>
+                <span>点击下方操作管理数据</span>
+              </div>
+            </div>
+
+            <!-- 操作列表 -->
+            <div class="space-y-3">
+              <button @click="$emit('export-data')" class="data-action-row">
+                <div class="data-action-icon">📤</div>
+                <div class="data-action-info">
+                  <div class="data-action-name">导出备份</div>
+                  <div class="data-action-desc">将所有数据导出为 JSON 文件，包含角色设定、对话记录、记忆等</div>
+                </div>
+                <span class="data-action-arrow">›</span>
+              </button>
+
+              <button @click="$emit('show-import-modal')" class="data-action-row">
+                <div class="data-action-icon">📥</div>
+                <div class="data-action-info">
+                  <div class="data-action-name">恢复数据</div>
+                  <div class="data-action-desc">从之前导出的 JSON 文件恢复数据，将覆盖当前数据</div>
+                </div>
+                <span class="data-action-arrow">›</span>
+              </button>
+
+              <button @click="$emit('clear-all-data')" class="data-action-row danger">
+                <div class="data-action-icon">🗑️</div>
+                <div class="data-action-info">
+                  <div class="data-action-name" style="color:#f87171">清除所有数据</div>
+                  <div class="data-action-desc">⚠️ 此操作不可撤销！将永久删除所有对话记录、角色设定、记忆和用户画像。建议先导出备份。</div>
+                </div>
+                <span class="data-action-arrow" style="color:#f87171">›</span>
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <!-- ===== 群聊 Tab ===== -->
+        <template v-else-if="activeTab === 'group' && isGroupMode && currentGroup">
+          <div class="modal-content-full space-y-5">
+            <div>
+              <div class="section-title">👥 群聊信息</div>
+              <div class="glass bg-glass-message rounded-xl p-4 space-y-3 mt-3">
+                <div>
+                  <div class="text-xs text-gray-500 mb-1">群聊名称</div>
+                  <div class="text-gray-100 font-medium">{{ currentGroup.name }}</div>
+                </div>
+                <div v-if="currentGroup.description">
+                  <div class="text-xs text-gray-500 mb-1">群聊描述</div>
+                  <div class="text-gray-300 text-sm leading-relaxed">{{ currentGroup.description }}</div>
+                </div>
+                <div>
+                  <div class="text-xs text-gray-500 mb-2">参与角色（{{ participants?.length || 0 }} 人）</div>
+                  <div class="flex flex-wrap gap-2">
+                    <div v-for="p in participants" :key="p.id" class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/5">
+                      <div v-if="p.avatar" class="w-5 h-5 rounded-full overflow-hidden">
+                        <img :src="p.avatar" class="w-full h-full object-cover" />
+                      </div>
+                      <div v-else class="w-5 h-5 rounded-full bg-primary/30 flex items-center justify-center text-[10px]">🎭</div>
+                      <span class="text-sm text-gray-200">{{ p.name }}</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="text-xs text-gray-500">群名和成员可在关闭设置后，通过聊天窗口顶部的 ✏️ 按钮修改。</p>
+              </div>
+            </div>
+          </div>
+        </template>
+
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.settings-tab-bar {
-  display: flex;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-  padding: 0 8px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+/* ===== 遮罩 ===== */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
 }
-.settings-tab {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 10px 8px 8px;
-  border: none;
-  background: none;
-  color: rgba(160, 160, 180, 0.6);
-  font-size: 0.7rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  white-space: nowrap;
-  min-width: 56px;
+
+/* ===== 弹窗主体 ===== */
+.modal-container {
+  width: 100%; max-width: 860px;
+  height: min(680px, calc(100vh - 40px));
+  background: rgba(13,15,20,0.98);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+  display: flex; flex-direction: column;
+  overflow: hidden;
 }
-.settings-tab::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
-  border-radius: 2px;
-  background: transparent;
-  transition: background 0.2s ease;
+
+/* ===== 头部 ===== */
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 0;
+  flex-shrink: 0;
 }
-.settings-tab.active {
-  color: rgba(220, 220, 240, 0.95);
+.modal-title { font-size: 14px; font-weight: 600; color: rgba(220,220,240,0.9); }
+.modal-header-right { display: flex; align-items: center; gap: 12px; }
+.modal-save-hint { font-size: 11px; color: rgba(255,255,255,0.25); }
+.modal-close-btn {
+  width: 26px; height: 26px; border-radius: 7px; border: none;
+  background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
 }
-.settings-tab.active::after {
-  background: rgba(99, 102, 241, 0.8);
+.modal-close-btn:hover { background: rgba(255,255,255,0.12); color: white; }
+
+/* ===== Tab 栏 ===== */
+.modal-tabs {
+  display: flex; padding: 12px 20px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0; gap: 2px;
 }
-.settings-tab:hover:not(.active) {
-  color: rgba(200, 200, 220, 0.8);
+.modal-tab {
+  display: flex; align-items: center; gap: 5px;
+  padding: 7px 12px 9px; border: none; background: transparent;
+  color: rgba(150,155,175,0.7); font-size: 12.5px; font-family: inherit;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  position: relative; bottom: -1px; border-radius: 6px 6px 0 0;
 }
-.settings-tab-icon {
-  font-size: 1.1rem;
+.modal-tab:hover { color: rgba(210,215,235,0.9); }
+.modal-tab.active {
+  color: rgba(220,225,245,1); font-weight: 500;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-bottom-color: rgba(13,15,20,0.98);
+  background: rgba(255,255,255,0.03);
 }
-.settings-tab-label {
-  font-size: 0.65rem;
-  font-weight: 500;
+.modal-tab-icon { font-size: 13px; }
+.modal-tab-label { font-size: 12px; }
+
+/* ===== Body：左 + 右 ===== */
+.modal-body {
+  display: flex; flex: 1; overflow: hidden;
 }
+
+/* ===== 左侧导航 ===== */
+.modal-sidebar {
+  width: 160px; flex-shrink: 0;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  padding: 16px 10px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sidebar-section-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: rgba(255,255,255,0.25);
+  padding: 2px 8px 6px;
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 10px; border-radius: 8px;
+  border: none; background: transparent;
+  color: rgba(160,165,185,0.8); font-size: 12.5px;
+  font-family: inherit; cursor: pointer; text-align: left;
+  width: 100%; transition: all 0.15s;
+}
+.sidebar-item:hover { background: rgba(255,255,255,0.05); color: rgba(210,215,235,1); }
+.sidebar-item.active { background: rgba(139,92,246,0.15); color: rgba(167,139,250,1); }
+.sidebar-item-icon { font-size: 13px; flex-shrink: 0; }
+
+/* ===== 右侧内容 ===== */
+.modal-content {
+  flex: 1; overflow-y: auto; padding: 20px 24px;
+}
+.modal-content::-webkit-scrollbar { width: 4px; }
+.modal-content::-webkit-scrollbar-track { background: transparent; }
+.modal-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+/* 无左导航的全宽内容 */
+.modal-content-full {
+  flex: 1; overflow-y: auto; padding: 20px 24px;
+}
+.modal-content-full::-webkit-scrollbar { width: 4px; }
+.modal-content-full::-webkit-scrollbar-track { background: transparent; }
+.modal-content-full::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+/* ===== 通用内容样式 ===== */
+.section-title {
+  font-size: 13px; font-weight: 600;
+  color: rgba(210,215,235,0.9); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-desc { font-size: 11.5px; color: rgba(255,255,255,0.3); margin-bottom: 16px; line-height: 1.5; }
+
+.badge-auto {
+  font-size: 10px; padding: 2px 7px; border-radius: 10px;
+  background: rgba(99,102,241,0.2); color: #a5b4fc; font-weight: 500;
+}
+.badge-count {
+  font-size: 10px; padding: 2px 7px; border-radius: 10px;
+  background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); font-weight: 500;
+}
+
+/* ===== 角色状态卡片 ===== */
+.status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.status-card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px; padding: 14px 16px;
+}
+.status-card-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(255,255,255,0.3); margin-bottom: 6px; }
+.status-card-value { font-size: 13px; line-height: 1.5; }
+
+/* ===== 参数 ===== */
+.params-section { space-y: 20px; }
+.param-item { margin-bottom: 20px; }
+.param-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.param-name { font-size: 13px; color: rgba(210,215,235,0.9); margin-bottom: 2px; }
+.param-desc { font-size: 11px; color: rgba(255,255,255,0.35); line-height: 1.4; }
+.param-value { font-size: 13px; color: #a78bfa; font-family: monospace; flex-shrink: 0; }
+.param-slider {
+  width: 100%; height: 3px; border-radius: 2px;
+  background: rgba(255,255,255,0.08); outline: none;
+  -webkit-appearance: none; accent-color: #8b5cf6;
+}
+.param-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: #8b5cf6; cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.2);
+}
+.param-scale { display: flex; justify-content: space-between; font-size: 10px; color: rgba(255,255,255,0.25); margin-top: 4px; }
+.param-select {
+  width: 100%; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
+  padding: 8px 10px; color: rgba(220,225,245,0.9);
+  font-size: 12.5px; font-family: inherit; outline: none; cursor: pointer;
+}
+.param-select:focus { border-color: rgba(139,92,246,0.4); }
+
+/* ===== 认知卡 ===== */
+.card-field { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 2px solid rgba(99,102,241,0.4); margin-bottom: 6px; }
+.card-label { font-size: 10px; color: #9ca3af; font-weight: 500; }
+.card-value { font-size: 12.5px; color: #d1d5db; line-height: 1.5; }
+.card-events { list-style: none; padding: 0; margin: 2px 0 0; }
+.card-events li { font-size: 11.5px; color: #d1d5db; padding: 1px 0; line-height: 1.4; }
+.card-events li::before { content: '· '; color: #6366f1; }
+
+/* ===== 章节 ===== */
+.chapter-item { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
+.chapter-header { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; margin-bottom: 5px; }
+.chapter-meta { color: rgba(255,255,255,0.25); font-weight: 400; }
+.chapter-body { font-size: 12px; color: rgba(200,205,220,0.8); line-height: 1.6; }
+
+/* ===== 永久记忆 ===== */
+.add-memory-btn {
+  width: 100%; padding: 9px;
+  border: 1.5px dashed rgba(139,92,246,0.35); border-radius: 10px;
+  background: transparent; color: #a78bfa; font-size: 13px;
+  cursor: pointer; transition: all 0.15s; margin-bottom: 12px;
+}
+.add-memory-btn:hover { border-color: rgba(139,92,246,0.7); background: rgba(139,92,246,0.08); }
+
+.memory-item { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+.memory-actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); }
+.memory-edit-textarea {
+  width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(99,102,241,0.35);
+  border-radius: 8px; padding: 8px 10px; color: #e0e0e0; font-size: 12px;
+  resize: vertical; font-family: inherit;
+}
+.memory-edit-textarea:focus { outline: none; border-color: rgba(99,102,241,0.7); }
+
+.mem-btn {
+  padding: 4px 8px; border-radius: 6px; font-size: 11px;
+  border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;
+  transition: all 0.15s;
+}
+.mem-btn.refine { background: rgba(139,92,246,0.2); color: #a78bfa; }
+.mem-btn.refine:hover { background: rgba(139,92,246,0.35); }
+.mem-btn.edit { background: rgba(59,130,246,0.2); color: #60a5fa; }
+.mem-btn.edit:hover { background: rgba(59,130,246,0.35); }
+.mem-btn.save { background: rgba(34,197,94,0.2); color: #4ade80; }
+.mem-btn.save:hover { background: rgba(34,197,94,0.35); }
+.mem-btn.cancel { background: rgba(107,114,128,0.2); color: #9ca3af; }
+.mem-btn.cancel:hover { background: rgba(107,114,128,0.35); }
+.mem-btn.delete { background: rgba(239,68,68,0.15); color: #f87171; }
+.mem-btn.delete:hover { background: rgba(239,68,68,0.3); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinning { animation: spin 1s linear infinite; display: inline-block; }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ===== 时间线双栏 ===== */
+.timeline-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 100%; }
+.timeline-list { overflow-y: auto; }
+.timeline-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-radius: 10px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer; transition: all 0.15s; margin-bottom: 6px; position: relative;
+}
+.timeline-item:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.12); }
+.timeline-item:hover .timeline-delete-btn { opacity: 1; }
+.timeline-item.active { background: rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.3); }
+.timeline-icon { flex-shrink: 0; font-size: 13px; margin-top: 1px; }
+.timeline-delete-btn {
+  position: absolute; top: 8px; right: 8px;
+  width: 18px; height: 18px; border-radius: 4px; border: none;
+  background: rgba(239,68,68,0.2); color: #f87171; font-size: 10px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; opacity: 0;
+}
+.timeline-delete-btn:hover { background: rgba(239,68,68,0.4); }
+.timeline-edit-input {
+  width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(99,102,241,0.4);
+  border-radius: 7px; padding: 6px 9px; color: #e0e0e0; font-size: 12px;
+  resize: none; font-family: inherit;
+}
+.timeline-edit-input:focus { outline: none; border-color: rgba(99,102,241,0.7); }
+.timeline-detail {
+  background: rgba(255,255,255,0.02); border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.06); padding: 16px;
+  height: fit-content;
+}
+.timeline-detail-content {}
+.detail-row { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+.detail-label { font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.06em; }
+.detail-value { font-size: 12.5px; color: rgba(200,205,220,0.9); line-height: 1.5; }
+
+/* ===== 空状态 ===== */
+.empty-state { text-align: center; padding: 40px 20px; }
+.empty-state-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.5; }
+.empty-state-text { font-size: 13px; color: rgba(255,255,255,0.3); margin-bottom: 5px; }
+.empty-state-hint { font-size: 11px; color: rgba(255,255,255,0.2); }
+
+/* ===== 数据 Tab ===== */
+.data-action-row {
+  width: 100%; display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; border-radius: 12px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  cursor: pointer; transition: all 0.15s; text-align: left;
+}
+.data-action-row:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.12); }
+.data-action-row.danger:hover { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); }
+.data-action-icon { font-size: 22px; flex-shrink: 0; }
+.data-action-info { flex: 1; }
+.data-action-name { font-size: 13px; color: rgba(210,215,235,0.9); font-weight: 500; margin-bottom: 3px; }
+.data-action-desc { font-size: 11.5px; color: rgba(255,255,255,0.3); line-height: 1.5; }
+.data-action-arrow { font-size: 18px; color: rgba(255,255,255,0.2); flex-shrink: 0; }
+/* ===== 通用 Tab 内联样式 ===== */
+.api-field { display: flex; flex-direction: column; gap: 6px; }
+.api-field-header { display: flex; justify-content: space-between; align-items: center; }
+.api-field-header label { font-size: 13px; color: rgba(200,205,225,0.85); font-weight: 500; }
+.api-input {
+  width: 100%; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 9px;
+  padding: 8px 11px; color: rgba(220,225,245,0.9);
+  font-size: 13px; font-family: inherit; outline: none; transition: border-color 0.15s;
+}
+.api-input:focus { border-color: rgba(139,92,246,0.45); }
+.toggle-mode-btn {
+  font-size: 11px; padding: 3px 9px; border-radius: 20px; border: none;
+  background: rgba(255,255,255,0.06); color: rgba(160,165,185,0.8);
+  cursor: pointer; transition: all 0.15s;
+}
+.toggle-mode-btn:hover { background: rgba(255,255,255,0.1); }
+.toggle-mode-btn.active { background: rgba(139,92,246,0.2); color: #a78bfa; }
+
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-label { font-size: 13px; color: rgba(210,215,235,0.9); margin-bottom: 2px; }
+.toggle-desc { font-size: 11px; color: rgba(255,255,255,0.3); }
+
+.avatar-picker-sm {
+  width: 56px; height: 56px; border-radius: 50%;
+  border: 2px dashed rgba(255,255,255,0.18); cursor: pointer; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  background: rgba(255,255,255,0.04); transition: all 0.15s;
+}
+.avatar-picker-sm:hover { border-color: rgba(139,92,246,0.5); background: rgba(139,92,246,0.08); }
+
+.style-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 7px; }
+.style-card {
+  padding: 9px 10px; border-radius: 9px;
+  border: 1.5px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.03);
+  cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.style-card:hover { border-color: var(--card-accent, rgba(255,255,255,0.2)); background: rgba(255,255,255,0.06); }
+.style-card.active { border-color: var(--card-accent, #6b9fff); background: rgba(255,255,255,0.08); box-shadow: 0 0 10px color-mix(in srgb, var(--card-accent) 18%, transparent); }
+.style-card-dot { width: 7px; height: 7px; border-radius: 50%; margin: 0 auto 5px; }
+.style-card-name { font-size: 11px; color: rgba(255,255,255,0.8); margin-bottom: 2px; }
+.style-card-desc { font-size: 10px; color: rgba(255,255,255,0.3); }
 </style>
