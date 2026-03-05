@@ -215,6 +215,8 @@ export function createNewRoleData() {
         // v6.1: 写作风格系统
         writingStyle: '',        // 写作风格模板 ID（adventure/emotion/healing/suspense）
         styleDirectives: [],     // 动态风格指令数组（用户在聊天中添加的）
+        // v7.0: 内容偏好（独立于角色人设）
+        contentPreferences: '',  // 故事内容基调和边界设定
         // v6.0: 三层记忆系统
         memoryCard: {
             updatedAt: 0,          // 上次更新时的时间戳
@@ -256,6 +258,10 @@ export function migrateRoleMemoryFields(role) {
         if (role.memoryCard[key] === undefined) {
             role.memoryCard[key] = val;
         }
+    }
+    // v7.0: 确保 contentPreferences 字段存在
+    if (role.contentPreferences === undefined) {
+        role.contentPreferences = '';
     }
     return role;
 }

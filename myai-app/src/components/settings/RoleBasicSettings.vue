@@ -135,6 +135,24 @@ defineExpose({ cancelGeneration });
                   class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-secondary transition resize-none text-shadow-light"></textarea>
       </div>
 
+      <!-- 🔞 内容偏好（独立于角色人设） -->
+      <div class="basic-field content-pref-field">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-base">📜</span>
+          <label class="text-sm text-gray-200 font-medium">内容偏好</label>
+          <div class="tooltip-trigger relative group ml-auto">
+            <span class="cursor-help text-gray-500 hover:text-gray-300 text-xs">❓</span>
+            <div class="tooltip-content">
+              独立于角色人设的故事基调设定。写在这里的偏好会以「创作者备注」方式注入，不与角色身份混淆，降低 AI 拒绝率。
+            </div>
+          </div>
+        </div>
+        <textarea v-model="currentRole.contentPreferences" rows="2" 
+                  placeholder="例如：故事可包含适度的冲突和紧张情节，允许描写战斗场景..."
+                  class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-amber-500/40 transition resize-none text-shadow-light"></textarea>
+        <p class="text-xs text-gray-500 mt-1" style="padding-left: 2px;">此处内容不会进入角色人设，而是作为故事创作者的备注单独注入</p>
+      </div>
+
       <!-- 开场白 -->
       <div class="basic-field">
         <div class="flex items-center gap-2 mb-1">

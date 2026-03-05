@@ -332,11 +332,11 @@ function resetCustomStyle() {
         </summary>
         <div class="mt-3 space-y-0">
 
-      <!-- 沉浸模式 -->
+      <!-- 沉浸/自由模式 -->
       <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10">
         <div>
-          <label class="block text-sm text-gray-300">🌙 沉浸模式</label>
-          <p class="text-xs text-gray-400">隐藏思维标记和状态提示，提供纯粹的阅读体验</p>
+          <label class="block text-sm text-gray-300">{{ globalSettings.immersiveMode ? '🎭 沉浸模式' : '💬 自由模式' }}</label>
+          <p class="text-xs text-gray-400">{{ globalSettings.immersiveMode ? '隐藏思维标记，AI 绝不脱离角色' : '显示思考过程，可跳出角色讨论剧情' }}</p>
         </div>
         <div class="toggle-switch" :class="{ 'active': globalSettings.immersiveMode }"
              @click="globalSettings.immersiveMode = !globalSettings.immersiveMode"></div>

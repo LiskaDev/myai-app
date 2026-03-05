@@ -61,8 +61,8 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { constructPrompt } = usePromptBuilder(appState);
 
         const messages = constructPrompt();
-        // ROLEPLAY FRAMEWORK + WRITING_STYLE_BASE + [当前状态]（始终注入，含默认值）
-        expect(messages.length).toBe(3);
+        // ROLEPLAY FRAMEWORK + 沉浸/自由模式指令 + WRITING_STYLE_BASE + [当前状态]（始终注入）
+        expect(messages.length).toBe(4);
     });
 
     it('应该注入 styleGuide', async () => {

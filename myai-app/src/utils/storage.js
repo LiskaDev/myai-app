@@ -17,7 +17,7 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     showInner: true,
     autoPlayTTS: false,
     responseLength: 'normal',
-    immersiveMode: false,
+    immersiveMode: true,
     rpTextStyle: 'clear',
     readingDensity: 'standard',
     motionLevel: 'soft',
