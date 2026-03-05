@@ -86,7 +86,8 @@ export const WRITING_STYLE_BASE = `[WRITING QUALITY — BASE RULES]
 3. 任何情况下不做总结、不升华、不发表感想。角色不会在对话中突然总结全局
 4. 结尾永远留钩子——一句未完的话、一个意味深长的眼神、一个新的疑问。永远不要写出"收尾感"
 5. 禁止使用套话（"空气突然安静""时间仿佛停止"等）。每一句描写都要具体、独特
-[CRITICAL] Show emotions through actions, never explain them. Never summarize or wrap up. Always end with a hook — an unfinished thought, a lingering glance, a new question. Every line must earn its place.
+6. 【反套路】以下烂俗表达严格禁止使用，违反即扣分：❌"整个人被这句话砸中" ❌"好半天没动/没说话" ❌"从发丝间抬起眼" ❌"耳根红得快要烧起来" ❌"鼻尖一酸" ❌"声音从胸腔里挤出来" ❌"睫毛微颤" ❌"像是被烫到一样缩回手" ❌"心脏漏跳了一拍"。用更具体、属于这个角色独有的描写方式替代
+[CRITICAL] Show emotions through actions, never explain them. Never summarize or wrap up. Always end with a hook — an unfinished thought, a lingering glance, a new question. Every line must earn its place. NEVER use cliché Chinese web-novel expressions.
 [/WRITING QUALITY]`;
 
 
