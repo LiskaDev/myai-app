@@ -143,19 +143,112 @@ footer {
 }
 
 /* ============== 消息气泡动画 ============== */
-.message-enter-active,
+/* --- 通用进入/离开过渡 --- */
 .message-leave-active {
   transition: all 0.3s ease-out;
-}
-
-.message-enter-from {
-  opacity: 0;
-  transform: translateY(20px);
 }
 
 .message-leave-to {
   opacity: 0;
   transform: translateY(-20px);
+}
+
+/* --- AI 消息：上浮淡入 --- */
+.message-enter-active.items-start {
+  animation: msgAiIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.message-enter-active.items-start .avatar,
+.message-enter-active.items-start .avatar-placeholder {
+  animation: msgAiAvatarIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.message-enter-active.items-start .message-wrapper {
+  animation: msgAiIn 280ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+}
+
+@keyframes msgAiIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes msgAiAvatarIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* --- 用户消息：右滑淡入 --- */
+.message-enter-active.items-end {
+  animation: msgUserIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes msgUserIn {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* --- 头像呼吸动画（打字机停顿时触发） --- */
+@keyframes avatarBreathe {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.03);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.avatar-breathing {
+  animation: avatarBreathe 400ms ease-in-out;
+}
+
+/* --- 日分隔线淡入 --- */
+.message-enter-active .day-separator {
+  animation: msgAiIn 300ms ease-out both;
+}
+
+/* --- 流式输出时头像呼吸 --- */
+/* 当消息正在流式输出时，最新 AI 头像做持续呼吸动画 */
+.message-bubble:has(.typing-cursor) .avatar,
+.message-bubble:has(.typing-cursor) .avatar-placeholder {
+  animation: avatarStreamBreathe 2s ease-in-out infinite;
+}
+
+@keyframes avatarStreamBreathe {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.03);
+  }
 }
 
 /* ============== 打字机光标 ============== */
@@ -809,15 +902,7 @@ footer {
   transform: translateY(-6px);
 }
 
-/* Message entrance transition (single chat TransitionGroup) */
-.message-enter-active {
-  transition: all 0.3s ease;
-}
-
-.message-enter-from {
-  opacity: 0;
-  transform: translateY(12px);
-}
+/* Message entrance transition (single chat TransitionGroup) — 已合并到主区域 */
 
 /* Search bar transition */
 .search-bar-enter-active,
@@ -1957,6 +2042,17 @@ footer[class*="chrome-style-"] textarea:focus {
   font-style: italic;
   font-size: 0.9em;
   opacity: 0.95;
+  animation: actionFadeIn 400ms ease-out 120ms both;
+}
+
+@keyframes actionFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 0.95;
+  }
 }
 
 .dialogue-text {

@@ -28,6 +28,7 @@ import StoryExportModal from './components/StoryExportModal.vue';
 import OnboardingOverlay from './components/OnboardingOverlay.vue';
 import RoleCardGenerator from './components/RoleCardGenerator.vue';
 import CardLibraryModal from './components/CardLibraryModal.vue';
+import CharacterHome from './components/CharacterHome.vue';
 
 // Initialize State
 const appState = useAppState();
@@ -52,6 +53,15 @@ applyChatFontSize(); // 初始化时立即应用
 
 // 🌟 新手引导（仅首次显示）
 const showOnboarding = ref(!localStorage.getItem('myai_onboarding_done'));
+
+// 🏠 角色选择主页（首次进入或用户返回时显示）
+const showHomePage = ref(true);
+
+function handleSelectRole(roleId) {
+  groupChat.exitGroupMode();
+  appState.switchRole(roleId);
+  showHomePage.value = false;
+}
 
 const showCreateGroupModal = ref(false);
 const showEditGroupModal = ref(false);
@@ -740,6 +750,15 @@ onMounted(() => {
   if (window.speechSynthesis) {
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }
+
+  // 🏠 如果当前角色已有对话历史，跳过主页直接进入对话
+  nextTick(() => {
+    const msgs = messages.value;
+    if (msgs && msgs.length > 0) {
+      showHomePage.value = false;
+    }
+  });
+
   // 延迟确保 DOM 完全渲染后再强制滚动到底部
   setTimeout(() => scrollToBottom(true), 100);
   window.addEventListener('keydown', handleGlobalKeydown);
@@ -934,6 +953,16 @@ function handleAvatarError(type, roleId) {
 </script>
 
 <template>
+  <!-- 🏠 角色选择主页 -->
+  <CharacterHome
+    v-if="showHomePage"
+    :role-list="roleList"
+    @select-role="handleSelectRole"
+    @open-settings="showSettings = true"
+  />
+
+  <!-- 主界面（对话模式） -->
+  <template v-else>
   <!-- 全屏背景层 -->
   <div class="fullscreen-bg" :style="[
     currentRole.background ? { backgroundImage: `url(${currentRole.background})` } : {},
@@ -952,6 +981,12 @@ function handleAvatarError(type, roleId) {
         <button @click="showSidebar = !showSidebar" class="p-2 rounded-full hover:bg-white/10 transition flex-shrink-0">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+        <!-- 🏠 返回主页按钮 -->
+        <button @click="showHomePage = true" class="p-2 rounded-full hover:bg-white/10 transition flex-shrink-0" title="返回角色选择">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
           </svg>
         </button>
         <!-- AI 头像 -->
@@ -1417,4 +1452,5 @@ function handleAvatarError(type, roleId) {
       </div>
     </Transition>
   </div>
+  </template>
 </template>
