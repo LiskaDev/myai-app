@@ -378,6 +378,9 @@ function resetCustomStyle() {
         <div class="toggle-switch" :class="{ 'active': globalSettings.enableSmartAnalysis !== false }"
              @click="globalSettings.enableSmartAnalysis = !globalSettings.enableSmartAnalysis"></div>
       </div>
+      <p v-if="!globalSettings.enableSmartAnalysis" class="text-xs mt-1" style="color: #f87171;">
+        ⚠️ 已关闭：角色状态、剧情章节、认知卡、时间线将全部停止更新
+      </p>
 
       <!-- 文字风格选择 -->
       <div class="pt-3 mt-3 border-t border-white/10">

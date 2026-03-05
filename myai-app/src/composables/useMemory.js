@@ -294,15 +294,16 @@ ${rawContent}`;
                 .map((m, i) => `${i + 1}. ${m.content}`)
                 .join('\n');
 
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+            const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com')
                 .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const model = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
+            const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
 
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${globalSettings.apiKey}`,
+                    'Authorization': `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
                     model,
@@ -596,38 +597,74 @@ ${dialogueText}
         const totalMessages = allMessages.length;
         const windowSize = role.memoryWindow || 15;
 
-        // ---- 判断 1：是否需要生成章节摘要 ----
-        // 窗口外的消息中，已归档的消息数
-        const archivedCount = (role.chapterSummaries || [])
-            .reduce((sum, c) => sum + c.messageCount, 0);
-        // 窗口外的总消息数
-        const outsideWindow = Math.max(0, totalMessages - windowSize);
-        // 未归档的消息数
-        const unarchived = outsideWindow - archivedCount;
-
-        if (unarchived >= CHAPTER_TRIGGER_COUNT && !isBackgroundLocked()) {
-            const start = archivedCount;
-            const end = start + CHAPTER_TRIGGER_COUNT;
-            const messagesToArchive = allMessages.slice(start, end);
-            triggerChapterSummary(role, messagesToArchive).catch(() => { });
-        }
+        // ---- 判断 1：是否需要生成章节摘要（含追赶循环）----
+        scheduleChapterCatchUp(role, allMessages, windowSize);
 
         // ---- 判断 2：是否需要更新认知卡 ----
         const lastCardUpdate = role.memoryCard?.updatedAt || 0;
         const timeSinceUpdate = Date.now() - lastCardUpdate;
-        // 每 15 条消息 或 距上次更新超过 30 分钟 时触发
         const messagesSinceUpdate = totalMessages - (role._lastCardMessageCount || 0);
 
         if (messagesSinceUpdate >= MEMORY_CARD_INTERVAL || (timeSinceUpdate > 30 * 60 * 1000 && totalMessages > 5)) {
-            role._lastCardMessageCount = totalMessages;
-            // 延迟 2 秒执行，避免和章节摘要抢锁
-            setTimeout(() => {
-                if (!isBackgroundLocked()) {
-                    const recent = allMessages.slice(-30);
-                    triggerMemoryCardUpdate(role, recent).catch(() => { });
-                }
-            }, 2000);
+            // 🛡️ 不在这里推进计数器，等实际执行成功后再更新
+            scheduleMemoryCardUpdate(role, allMessages, totalMessages);
         }
+    }
+
+    /**
+     * 🗂️ 章节摘要追赶调度：锁忙时 10 秒后重试，归档完一批后检查是否还有积压
+     */
+    function scheduleChapterCatchUp(role, allMessages, windowSize) {
+        const totalMessages = allMessages.length;
+        const archivedCount = (role.chapterSummaries || [])
+            .reduce((sum, c) => sum + c.messageCount, 0);
+        const outsideWindow = Math.max(0, totalMessages - windowSize);
+        const unarchived = outsideWindow - archivedCount;
+
+        if (unarchived < CHAPTER_TRIGGER_COUNT) return; // 无积压
+
+        if (isBackgroundLocked()) {
+            console.log('[ChapterSummary] 后台繁忙，10秒后重试...');
+            setTimeout(() => scheduleChapterCatchUp(role, allMessages, windowSize), 10000);
+            return;
+        }
+
+        const start = archivedCount;
+        const end = start + CHAPTER_TRIGGER_COUNT;
+        const messagesToArchive = allMessages.slice(start, end);
+
+        triggerChapterSummary(role, messagesToArchive)
+            .then(() => {
+                // 归档成功后检查是否还有积压，继续追赶
+                const newArchived = (role.chapterSummaries || [])
+                    .reduce((sum, c) => sum + c.messageCount, 0);
+                const stillUnarchived = outsideWindow - newArchived;
+                if (stillUnarchived >= CHAPTER_TRIGGER_COUNT) {
+                    console.log(`[ChapterSummary] 还有 ${stillUnarchived} 条积压，5秒后继续归档...`);
+                    setTimeout(() => scheduleChapterCatchUp(role, allMessages, windowSize), 5000);
+                }
+            })
+            .catch(() => { });
+    }
+
+    /**
+     * 🧠 认知卡调度：延迟 2 秒避免抢锁，锁忙时 10 秒后重试
+     */
+    function scheduleMemoryCardUpdate(role, allMessages, snapshotCount) {
+        setTimeout(() => {
+            if (isBackgroundLocked()) {
+                console.log('[MemoryCard] 后台繁忙，10秒后重试...');
+                setTimeout(() => scheduleMemoryCardUpdate(role, allMessages, snapshotCount), 10000);
+                return;
+            }
+            const recent = allMessages.slice(-30);
+            triggerMemoryCardUpdate(role, recent)
+                .then(() => {
+                    // 🛡️ 只有执行成功后才推进计数器
+                    role._lastCardMessageCount = snapshotCount;
+                })
+                .catch(() => { });
+        }, 2000);
     }
 
     return {

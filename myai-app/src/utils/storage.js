@@ -96,7 +96,7 @@ export function loadFromStorage(onError) {
 // 导出数据为 JSON
 export function exportData(globalSettings, roleList) {
     const data = {
-        version: '5.9',
+        version: '7.0',
         exportDate: new Date().toISOString(),
         globalSettings,
         roleList,

@@ -415,6 +415,7 @@ export function useAppState() {
                     };
                     role.autoSummary = '';
                     role.summarizedUpTo = 0;
+                    role._lastCardMessageCount = 0;
                 }
                 showToast('聊天记录已清空');
             }
