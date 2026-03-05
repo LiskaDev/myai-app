@@ -11,11 +11,8 @@ const props = defineProps({
 })
 const emit = defineEmits(['close'])
 
-const mode         = ref('ai')
-const isGenerating = ref(false)
 const isExporting  = ref(false)
 const theme        = ref(null)
-const feedback     = ref('')
 const cardRef      = ref(null)
 const editTagline  = ref('')
 const editBio      = ref('')
@@ -110,53 +107,6 @@ const themeStyle = computed(() => ({
   '--card-text':    theme.value?.overrides?.text     || '#f0eeff',
   '--card-accent':  theme.value?.overrides?.accent   || '#8b5cf6',
 }))
-
-// ── AI Generation ─────────────────────────────────
-const CARD_THEME_SYSTEM_PROMPT = `You are a character card theme designer. Given a character description, select the best visual template and return ONLY a JSON object with no markdown formatting.
-Available templates: love - romantic cute girl; ink - ancient Chinese martial arts; dark - gothic demon villain; cyber - AI hacker sci-fi; flame - warrior hot blood; cozy - cafe daily life; glitch - experimental digital; film - vintage noir; minimal - cold elite intellectual; aurora - magical elf fantasy; scrap - cute handmade diary
-Return ONLY valid JSON: {"template":"ink","overrides":{"primary":"#c8a96e","bg":"#f5efe0","text":"#1a0a00","accent":"#8b2020"},"tagline":"千年修行，一剑入梦","mood":"ancient","decorationEmoji":"⚔️"}
-Rules: tagline must be 8-16 Chinese characters; colors must be valid hex; decorationEmoji must be single emoji`
-
-function buildGenerationPrompt(role, prevTheme, fb) {
-  let p = `Character name: ${role.name}\nDescription: ${(role.description || '').slice(0, 200)}\nPersona: ${(role.systemPrompt || '').slice(0, 300)}\n`
-  if (role.tags?.length) p += `Tags: ${role.tags.join(', ')}\n`
-  if (prevTheme && fb) p += `\nPrevious theme: ${JSON.stringify(prevTheme)}\nUser feedback: "${fb}"\nPlease adjust the theme based on feedback.`
-  return p
-}
-
-async function generateAITheme(prevTheme = null) {
-  if (!props.globalSettings?.apiKey) {
-    theme.value = autoSelectTheme(props.role)
-    editTagline.value = theme.value.tagline
-    return
-  }
-  isGenerating.value = true
-  const baseUrl = (props.globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '')
-  const model = props.globalSettings.model?.includes('reasoner') ? 'deepseek-chat' : (props.globalSettings.model || 'deepseek-chat')
-  try {
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${props.globalSettings.apiKey}` },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: CARD_THEME_SYSTEM_PROMPT }, { role: 'user', content: buildGenerationPrompt(props.role, prevTheme, feedback.value) }], temperature: 0.9, max_tokens: 200, stream: false }),
-      signal: AbortSignal.timeout(15000),
-    })
-    if (!res.ok) throw new Error('API failed')
-    const data = await res.json()
-    const raw = data.choices?.[0]?.message?.content?.trim() || ''
-    const parsed = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
-    theme.value = parsed
-    editTagline.value = parsed.tagline || ''
-    feedback.value = ''
-    showLocalToast('✨ 主题已生成！')
-  } catch (e) {
-    theme.value = autoSelectTheme(props.role)
-    editTagline.value = theme.value.tagline
-    console.warn('AI theme generation failed:', e.message)
-    showLocalToast('自动匹配主题（AI生成失败）')
-  } finally {
-    isGenerating.value = false
-  }
-}
 
 // ── Template & Color Switcher ─────────────────────
 function switchTemplate(id) {
@@ -321,33 +271,10 @@ function showLocalToast(msg) {
       <button class="rcg-close" @click="$emit('close')">✕</button>
     </div>
 
-    <!-- Mode tabs -->
-    <div class="rcg-mode-tabs">
-      <button :class="['rcg-tab',{active:mode==='ai'}]"      @click="mode='ai'">✨ AI 生成</button>
-      <button :class="['rcg-tab',{active:mode==='manual'}]"  @click="mode='manual'">🎨 手动选择</button>
-      <button :class="['rcg-tab',{active:mode==='iterate'}]" @click="mode='iterate'">💬 反馈修改</button>
-    </div>
-
     <!-- Body -->
     <div class="rcg-body">
       <!-- Controls -->
       <div class="rcg-controls">
-        <div v-if="mode==='ai'" class="rcg-section">
-          <p class="rcg-hint">根据角色设定自动推荐最匹配的视觉风格</p>
-          <button class="rcg-btn-primary" :disabled="isGenerating" @click="generateAITheme()">
-            {{ isGenerating ? '⏳ 生成中...' : '🤖 AI 生成主题' }}
-          </button>
-          <p v-if="!globalSettings?.apiKey" class="rcg-warn">⚠️ 未设置 API Key，将使用自动匹配</p>
-        </div>
-
-        <div v-if="mode==='iterate'" class="rcg-section">
-          <label class="rcg-label">描述你想要的改变：</label>
-          <textarea class="rcg-textarea" v-model="feedback" placeholder="例：颜色再深沉一些，换成更神秘的氛围…" rows="3"></textarea>
-          <button class="rcg-btn-primary" :disabled="isGenerating||!feedback.trim()" @click="generateAITheme(theme)">
-            {{ isGenerating ? '⏳ 生成中...' : '🔄 重新生成' }}
-          </button>
-        </div>
-
         <!-- Template selector -->
         <div class="rcg-section">
           <label class="rcg-label">选择模板</label>
@@ -682,10 +609,6 @@ function showLocalToast(msg) {
 .rcg-title { font-size:18px;font-weight:700;color:#f0eeff; }
 .rcg-close { width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.08);color:#aaa;cursor:pointer;font-size:14px;transition:background 0.15s; }
 .rcg-close:hover { background:rgba(255,255,255,0.15);color:#fff; }
-.rcg-mode-tabs { display:flex;gap:8px;padding:10px 20px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0; }
-.rcg-tab { padding:6px 16px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#9ca3af;font-size:13px;cursor:pointer;transition:all 0.15s; }
-.rcg-tab:hover { background:rgba(255,255,255,0.06); }
-.rcg-tab.active { background:rgba(99,102,241,0.25);border-color:rgba(99,102,241,0.5);color:#a5b4fc; }
 .rcg-body { display:flex;flex:1;overflow:hidden; }
 .rcg-controls { width:280px;flex-shrink:0;padding:16px;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:16px; }
 .rcg-section { display:flex;flex-direction:column;gap:8px; }
@@ -721,8 +644,23 @@ function showLocalToast(msg) {
 .rcg-loading { color:#4b5563;font-size:14px; }
 /* Mobile */
 @media (max-width:640px) {
-  .rcg-body { flex-direction:column; }
-  .rcg-controls { width:100%;border-right:none;border-bottom:1px solid rgba(255,255,255,0.06); }
-  .rcg-card-wrap { transform:scale(0.85);transform-origin:top center; }
+  .rcg-modal { width:100vw;max-height:100dvh;border-radius:0;border:none; }
+  .rcg-header { padding:12px 16px; }
+  .rcg-title { font-size:16px; }
+  .rcg-body { flex-direction:column;overflow-y:auto; }
+  /* Card preview comes first on mobile */
+  .rcg-preview-area { order:-1;padding:16px 12px;flex:none; }
+  .rcg-preview-hint { display:none; }
+  .rcg-card-wrap { transform:scale(0.72);transform-origin:top center;margin-bottom:-40px; }
+  /* Controls below card */
+  .rcg-controls { width:100%;border-right:none;border-top:1px solid rgba(255,255,255,0.06);padding:12px 16px;padding-bottom:72px; }
+  /* Horizontal template list on mobile */
+  .rcg-template-list { flex-direction:row;flex-wrap:wrap;max-height:none;gap:6px; }
+  .rcg-tmpl-btn { padding:4px 10px;font-size:11px; }
+  /* Color row: 4 across */
+  .rcg-color-row { grid-template-columns:repeat(4,1fr);gap:6px; }
+  .rcg-color-item input[type="color"] { width:32px;height:24px; }
+  /* Fixed bottom action bar */
+  .rcg-actions { position:fixed;bottom:0;left:0;right:0;padding:10px 16px;background:#0e0e1f;border-top:1px solid rgba(255,255,255,0.1);margin-top:0;z-index:10; }
 }
 </style>
