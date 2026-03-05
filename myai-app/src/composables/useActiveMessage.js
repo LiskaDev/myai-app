@@ -146,7 +146,8 @@ export function useActiveMessage(appState) {
                 ? `${Math.floor(hoursAway)} 小时`
                 : `${Math.floor(hoursAway / 24)} 天`;
 
-            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com').replace(/\/$/, '');
+            const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
+                .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const model = globalSettings.model?.includes('reasoner')
                 ? 'deepseek-chat'
                 : (globalSettings.model || 'deepseek-chat');

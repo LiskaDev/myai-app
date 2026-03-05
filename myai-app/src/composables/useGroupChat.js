@@ -1424,8 +1424,9 @@ Begin EVERY reply with an expression tag: <expr:EMOTION> (joy/sad/angry/blush/su
                 group.relationshipMatrix,
                 participants.value,
                 {
-                    baseUrl: globalSettings.baseUrl,
-                    apiKey: globalSettings.apiKey,
+                    baseUrl: globalSettings.bgBaseUrl || globalSettings.baseUrl,
+                    apiKey: globalSettings.bgApiKey || globalSettings.apiKey,
+                    model: globalSettings.bgModel || globalSettings.model,
                 }
             );
 

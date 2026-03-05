@@ -662,6 +662,7 @@ ${dialogueText}
                 .then(() => {
                     // 🛡️ 只有执行成功后才推进计数器
                     role._lastCardMessageCount = snapshotCount;
+                    saveData();
                 })
                 .catch(() => { });
         }, 2000);

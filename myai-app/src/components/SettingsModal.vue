@@ -1,5 +1,5 @@
 ﻿<script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useAppState } from '../composables/useAppState';
 import AvatarCropper from './AvatarCropper.vue';
 import RoleBasicSettings from './settings/RoleBasicSettings.vue';
@@ -34,6 +34,19 @@ const MODEL_PRESETS = [
     { value: 'THUDM/GLM-4-32B-0414', label: 'GLM-4-32B', desc: '智谱清言' },
     { value: 'google/gemma-3-27b-it', label: 'Gemma 3 27B', desc: 'Google 开源' },
     { value: 'meta-llama/Llama-3.3-70B-Instruct', label: 'Llama 3.3 70B', desc: 'Meta 开源' },
+  ]},
+  { group: '🌐 OpenRouter · Google', models: [
+    { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro', desc: '顶配推理，百万上下文' },
+    { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: '速度与质量均衡' },
+    { value: 'google/gemini-3-pro-preview', label: 'Gemini 3 Pro Preview', desc: '最新旗舰预览版' },
+    { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash Preview', desc: '极速轻量预览版' },
+  ]},
+  { group: '🌐 OpenRouter · Anthropic', models: [
+    { value: 'anthropic/claude-opus-4.6', label: 'Claude Opus 4.6', desc: '顶配智能，旗舰级创作' },
+    { value: 'anthropic/claude-sonnet-4.6', label: 'Claude Sonnet 4.6', desc: '强大均衡，推荐首选' },
+    { value: 'anthropic/claude-3.7-sonnet', label: 'Claude 3.7 Sonnet', desc: '延伸思考，深度推理' },
+    { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet', desc: '经典高质量，稳定可靠' },
+    { value: 'anthropic/claude-3.5-haiku', label: 'Claude 3.5 Haiku', desc: '极速轻量，最高性价比' },
   ]},
 ];
 
@@ -78,6 +91,33 @@ const storageColor = computed(() => {
 });
 const useCustomModel = ref(false);
 const useCustomBaseUrl = ref(false);
+
+// ===== 模型选择器下拉状态 =====
+const modelPickerOpen = ref(false);
+const bgModelPickerOpen = ref(false);
+const modelPickerRef = ref(null);
+const bgModelPickerRef = ref(null);
+
+function modelLabel(value) {
+  if (!value) return '🔄 跟随主模型';
+  for (const g of MODEL_PRESETS) {
+    for (const m of g.models) {
+      if (m.value === value) return m.label;
+    }
+  }
+  return value;
+}
+
+function handleDocClick(e) {
+  if (modelPickerRef.value && !modelPickerRef.value.contains(e.target)) {
+    modelPickerOpen.value = false;
+  }
+  if (bgModelPickerRef.value && !bgModelPickerRef.value.contains(e.target)) {
+    bgModelPickerOpen.value = false;
+  }
+}
+onMounted(() => document.addEventListener('click', handleDocClick, true));
+onBeforeUnmount(() => document.removeEventListener('click', handleDocClick, true));
 
 // 用户头像
 const userFileInputRef = ref(null);
@@ -643,13 +683,24 @@ function handleOverlayClick(e) {
                     {{ useCustomModel ? '📋 选预设' : '✏️ 手动输入' }}
                   </button>
                 </div>
-                <select v-if="!useCustomModel" v-model="globalSettings.model" class="api-input">
-                  <template v-for="group in MODEL_PRESETS" :key="group.group">
-                    <optgroup :label="group.group">
-                      <option v-for="m in group.models" :key="m.value" :value="m.value">{{ m.label }} — {{ m.desc }}</option>
-                    </optgroup>
-                  </template>
-                </select>
+                <div v-if="!useCustomModel" class="model-picker-wrap" ref="modelPickerRef">
+                  <button type="button" class="model-picker-trigger" @click="modelPickerOpen = !modelPickerOpen">
+                    <span>{{ modelLabel(globalSettings.model) || '请选择模型…' }}</span>
+                    <span class="model-picker-chevron" :class="{ open: modelPickerOpen }">▾</span>
+                  </button>
+                  <div v-show="modelPickerOpen" class="model-picker">
+                    <template v-for="group in MODEL_PRESETS" :key="group.group">
+                      <div class="model-picker-group">{{ group.group }}</div>
+                      <div v-for="m in group.models" :key="m.value"
+                           class="model-picker-item"
+                           :class="{ active: globalSettings.model === m.value }"
+                           @click="globalSettings.model = m.value; modelPickerOpen = false">
+                        <span class="model-picker-label">{{ m.label }}</span>
+                        <span class="model-picker-desc">{{ m.desc }}</span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
                 <input v-else v-model="globalSettings.model" type="text" placeholder="输入模型 ID" class="api-input">
                 <p class="text-xs text-gray-500 mt-1">当前：{{ globalSettings.model || '未设置' }}</p>
                 <details class="mt-1">
@@ -668,14 +719,30 @@ function handleOverlayClick(e) {
                 <div class="api-field-header">
                   <label>⚙️ 后台分析模型 <span class="text-gray-600 font-normal">（摘要/记忆/画像用）</span></label>
                 </div>
-                <select v-model="globalSettings.bgModel" class="api-input">
-                  <option value="">🔄 跟随主模型</option>
-                  <template v-for="group in MODEL_PRESETS" :key="'bg-'+group.group">
-                    <optgroup :label="group.group">
-                      <option v-for="m in group.models" :key="'bg-'+m.value" :value="m.value">{{ m.label }} — {{ m.desc }}</option>
-                    </optgroup>
-                  </template>
-                </select>
+                <div class="model-picker-wrap" ref="bgModelPickerRef">
+                  <button type="button" class="model-picker-trigger" @click="bgModelPickerOpen = !bgModelPickerOpen">
+                    <span>{{ modelLabel(globalSettings.bgModel) }}</span>
+                    <span class="model-picker-chevron" :class="{ open: bgModelPickerOpen }">▾</span>
+                  </button>
+                  <div v-show="bgModelPickerOpen" class="model-picker">
+                    <div class="model-picker-item"
+                         :class="{ active: !globalSettings.bgModel }"
+                         @click="globalSettings.bgModel = ''; bgModelPickerOpen = false">
+                      <span class="model-picker-label">🔄 跟随主模型</span>
+                      <span class="model-picker-desc">使用主模型配置</span>
+                    </div>
+                    <template v-for="group in MODEL_PRESETS" :key="'bg-'+group.group">
+                      <div class="model-picker-group">{{ group.group }}</div>
+                      <div v-for="m in group.models" :key="'bg-'+m.value"
+                           class="model-picker-item"
+                           :class="{ active: globalSettings.bgModel === m.value }"
+                           @click="globalSettings.bgModel = m.value; bgModelPickerOpen = false">
+                        <span class="model-picker-label">{{ m.label }}</span>
+                        <span class="model-picker-desc">{{ m.desc }}</span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
                 <template v-if="globalSettings.bgModel">
                   <div class="pl-3 border-l-2 border-white/10 mt-2 space-y-2">
                     <div>
@@ -1220,6 +1287,60 @@ function handleOverlayClick(e) {
 }
 .toggle-mode-btn:hover { background: rgba(255,255,255,0.1); }
 .toggle-mode-btn.active { background: rgba(139,92,246,0.2); color: #a78bfa; }
+
+/* ===== 模型滚动选择器 ===== */
+.model-picker-wrap { position: relative; }
+.model-picker-trigger {
+  width: 100%; display: flex; justify-content: space-between; align-items: center;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 9px; padding: 8px 11px; color: rgba(220,225,245,0.9);
+  font-size: 13px; font-family: inherit; cursor: pointer; text-align: left;
+  transition: border-color 0.15s;
+}
+.model-picker-trigger:hover { border-color: rgba(255,255,255,0.18); }
+.model-picker-chevron {
+  font-size: 14px; color: rgba(255,255,255,0.35);
+  transition: transform 0.2s; flex-shrink: 0; margin-left: 6px;
+}
+.model-picker-chevron.open { transform: rotate(180deg); }
+.model-picker {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+  max-height: 190px; overflow-y: auto;
+  background: rgba(22, 18, 38, 0.98);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 9px; padding: 3px 0;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+}
+.model-picker::-webkit-scrollbar { width: 4px; }
+.model-picker::-webkit-scrollbar-track { background: transparent; }
+.model-picker::-webkit-scrollbar-thumb {
+  background: rgba(139,92,246,0.3); border-radius: 4px;
+}
+.model-picker-group {
+  font-size: 10px; color: rgba(139,92,246,0.65); font-weight: 700;
+  padding: 7px 12px 2px; letter-spacing: 0.06em; user-select: none;
+  text-transform: uppercase;
+}
+.model-picker-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 12px; cursor: pointer; gap: 8px;
+  transition: background 0.12s;
+}
+.model-picker-item:hover { background: rgba(255,255,255,0.07); }
+.model-picker-item.active {
+  background: rgba(139,92,246,0.2);
+  border-left: 2px solid rgba(139,92,246,0.7);
+  padding-left: 10px;
+}
+.model-picker-label {
+  font-size: 12.5px; color: rgba(220,225,245,0.9);
+  font-weight: 500; flex-shrink: 0;
+}
+.model-picker-desc {
+  font-size: 11px; color: rgba(255,255,255,0.32);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 160px;
+}
 
 .toggle-row {
   display: flex; align-items: center; justify-content: space-between;

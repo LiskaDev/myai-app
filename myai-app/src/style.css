@@ -18,6 +18,24 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ============== 原生 Select 下拉暗色修复 ============== */
+/* 浏览器原生下拉弹出层不继承半透明背景，需要用不透明深色覆盖 */
+select {
+  background-color: #1e1e30 !important;
+  color: #e2e8f0;
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #1e1e30;
+  color: #e2e8f0;
+}
+
+select optgroup {
+  background-color: #16162a;
+  color: #94a3b8;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   overscroll-behavior: none;

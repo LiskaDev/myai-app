@@ -294,7 +294,7 @@ ${relevantMsgs}
                 'Authorization': `Bearer ${apiConfig.apiKey}`,
             },
             body: JSON.stringify({
-                model: 'deepseek-chat',
+                model: apiConfig.model || 'deepseek-chat',
                 messages: [{ role: 'user', content: prompt }],
                 max_tokens: 300,
                 temperature: 0.3,

@@ -133,7 +133,7 @@ ${chatContext}${prevDiaryContext}
                 .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const apiUrl = `${baseUrl}/chat/completions`;
 
-            // 使用便宜的模型生成日记
+            // 使用主模型生成日记（属于角色扮演互动）
             const model = globalSettings.model?.includes('reasoner')
                 ? 'deepseek-chat'
                 : (globalSettings.model || 'deepseek-chat');

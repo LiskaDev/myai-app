@@ -41,6 +41,7 @@ export function useTimeline(appState) {
         currentRole,
         currentRoleId,
         messages,
+        saveData,
     } = appState;
 
     /**
@@ -96,6 +97,7 @@ export function useTimeline(appState) {
 
             if (!dialogueText.trim()) {
                 role.timelineAnalyzedCount = userMsgCount;
+                if (saveData) saveData();
                 return;
             }
 
@@ -135,6 +137,7 @@ export function useTimeline(appState) {
 
             if (!content) {
                 role.timelineAnalyzedCount = userMsgCount;
+                if (saveData) saveData();
                 return;
             }
 
@@ -156,6 +159,7 @@ export function useTimeline(appState) {
 
             // v5.9: 持久化计数器（保存在 role 上，刷新不丢失）
             role.timelineAnalyzedCount = userMsgCount;
+            if (saveData) saveData();
 
         } finally {
             releaseBackgroundLock();
