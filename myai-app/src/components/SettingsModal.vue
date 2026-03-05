@@ -47,6 +47,7 @@ const props = defineProps({
   isGroupMode: Boolean,
   currentGroup: Object,
   participants: Array,
+  initialTab: String,
 });
 
 const emit = defineEmits([
@@ -124,7 +125,9 @@ const TABS = props.isGroupMode
       { id: 'data',    icon: '💾', label: '数据' },
     ];
 
-const activeTab = ref(props.isGroupMode ? 'general' : 'role');
+// 支持从外部指定初始 Tab（如「去设置」按钮直接跳转到通用 Tab）
+const defaultTab = props.isGroupMode ? 'general' : (props.initialTab || 'role');
+const activeTab = ref(defaultTab);
 
 // 角色 Tab 的左侧二级导航
 const ROLE_SECTIONS = [

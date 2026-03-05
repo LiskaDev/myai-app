@@ -19,6 +19,7 @@ export function useAppState() {
     // UI 状态
     const showSidebar = ref(false);
     const showSettings = ref(false);
+    const settingsInitialTab = ref('');
     const showImportModal = ref(false);
     const importJson = ref('');
 
@@ -481,6 +482,7 @@ export function useAppState() {
         messages,
         showSidebar,
         showSettings,
+        settingsInitialTab,
         showImportModal,
         importJson,
         userInput,

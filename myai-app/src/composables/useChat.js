@@ -62,7 +62,7 @@ export function useChat(appState) {
         if (!globalSettings.apiKey) {
             showToast('请先在设置中配置 API Key', 'error', {
                 label: '去设置',
-                callback: () => { appState.showSettings.value = true; },
+                callback: () => { appState.settingsInitialTab.value = 'general'; appState.showSettings.value = true; },
             });
             isSending = false;
             return;

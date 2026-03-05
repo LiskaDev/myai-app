@@ -400,6 +400,7 @@ const {
   messages,
   showSidebar,
   showSettings,
+  settingsInitialTab,
   showImportModal,
   importJson,
   userInput,
@@ -525,6 +526,7 @@ function goToMatch(direction) {
 
 // v5.9: 关闭设置时清理未完成的 AI 生成角色
 function handleSettingsClose() {
+  settingsInitialTab.value = ''; // 消费后重置，下次正常打开回归默认
   if (pendingAiRoleId.value) {
     const pendingRole = roleList.value.find(r => r.id === pendingAiRoleId.value);
     // 如果角色还是空的（没有 systemPrompt），说明用户取消了生成
@@ -634,6 +636,7 @@ onMounted(() => {
     // 延迟一下避免和新手引导冲突
     setTimeout(() => {
       if (!globalSettings.apiKey && !showOnboarding.value) {
+        settingsInitialTab.value = 'general';
         showSettings.value = true;
         showToast('⚡ 请先配置 API Key 才能开始对话', 'info');
       }
@@ -1285,6 +1288,7 @@ function handleAvatarError(type, roleId) {
     <SettingsModal v-if="showSettings"
       :global-settings="globalSettings"
       :current-role="currentRole"
+      :initial-tab="settingsInitialTab"
       :available-voices="availableVoices"
       :role-list="roleList"
       :import-json="importJson"

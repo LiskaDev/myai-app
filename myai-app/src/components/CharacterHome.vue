@@ -42,16 +42,7 @@
       </div>
     </div>
 
-    <!-- 底部操作 -->
-    <div class="home-footer">
-      <button class="home-settings-btn" @click="$emit('open-settings')" title="配置 API Key">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-        </svg>
-        <span>设置</span>
-      </button>
-    </div>
+
   </div>
 </template>
 
@@ -60,11 +51,13 @@ const props = defineProps({
   roleList: { type: Array, required: true },
 });
 
-defineEmits(['select-role', 'open-settings']);
+defineEmits(['select-role']);
 
 function getWorldTag(worldLogic) {
   if (worldLogic.includes('怪物猎人') || worldLogic.includes('猎人世界')) return '🐉 怪猎';
   if (worldLogic.includes('生化') || worldLogic.includes('安布雷拉')) return '🧬 生化危机';
+  if (worldLogic.includes('原神') || worldLogic.includes('提瓦特') || worldLogic.includes('蒙德')) return '🌀 原神';
+  if (worldLogic.includes('写作') || worldLogic.includes('创意') || worldLogic.includes('灵感')) return '📝 创作';
   if (worldLogic.includes('异世界') || worldLogic.includes('魔法')) return '🗡️ 奇幻';
   if (worldLogic.includes('都市悬疑') || worldLogic.includes('侦探')) return '🔍 悬疑';
   if (worldLogic.includes('都市奇幻') || worldLogic.includes('超自然')) return '🔮 都市奇幻';
@@ -140,9 +133,9 @@ function hasHistory(role) {
 /* ===== Card Grid ===== */
 .home-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  max-width: 720px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  max-width: 880px;
   width: 100%;
 }
 
@@ -287,36 +280,7 @@ function hasHistory(role) {
   opacity: 0.6;
 }
 
-/* ===== Footer ===== */
-.home-footer {
-  margin-top: 40px;
-  animation: fadeSlideUp 0.6s ease-out 0.5s both;
-}
 
-.home-settings-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 24px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.home-settings-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.home-settings-btn svg {
-  width: 18px;
-  height: 18px;
-}
 
 /* ===== 手机端适配 ===== */
 @media (max-width: 640px) {
