@@ -15,7 +15,10 @@
 - **多角色管理** — 创建、切换、删除角色，每个角色独立保存对话历史
 - **深度人设定制** — 角色性格、说话风格、内心秘密、关系设定、外貌描写、世界观
 - **自定义头像 & 背景** — 为每个角色设置独立的视觉风格
-- **单角色导出** — 单独导出某个角色的完整数据
+- **头像裁剪器** — 上传图片后自由裁剪、缩放，生成完美头像
+- **单角色导出/导入** — 单独导出某个角色的完整数据，支持导入
+- **🃏 角色卡片生成器** — 一键生成精美角色卡片，多种主题模板可选
+- **📚 卡片库** — 浏览、管理、收藏已生成的角色卡片
 
 ### 💬 智能对话
 - **SSE 流式响应** — 实时逐字输出 AI 回复，体验自然
@@ -25,6 +28,8 @@
 - **5 种视觉风格** — 清澈 (clear) / 烟雨 (misty) / 白昼 (day) / 甜心暗粉 (loveDark) / 甜心浅粉 (loveLight)
 - **消息时间戳** — 悬浮显示消息发送/接收时间
 - **表情系统** — `<expr:joy>` 等标签驱动角色头像表情变化（8 种情绪 + 模糊匹配）
+- **😊 消息表情反应** — 对消息添加 ❤️ 👍 🔥 👎 反应，pill 标签展示
+- **🔀 对话分支系统** — 在任意消息处分叉、切换、重命名、删除分支，探索不同剧情走向
 
 ### 🎨 写作风格系统 (v6.1)
 - **写作风格模板** — 角色级别的预设写作风格（如"文艺"、"轻松"、"诗意"等）
@@ -67,6 +72,12 @@
 - **消息管理** — 编辑、删除、重新生成消息
 - **复制到剪贴板** — 一键复制消息内容，带视觉反馈
 
+### 📖 日记 & 关系系统
+- **📔 角色日记** — 自动生成角色视角的日记，记录剧情发展
+- **💞 关系雷达图** — 可视化展示角色间的关系亲密度与变化
+- **🎭 用户人设** — 设定玩家自身的角色背景，AI 感知你是谁
+- **📅 时间线分析** — 异步分析对话时间线，维护剧情连贯性
+
 ### ⚙️ 设置系统
 - **多平台模型预设** — DeepSeek 官方 / 硅基流动 (SiliconFlow) / OpenRouter 一键切换
 - **模型选择器** — 预设 + 手动输入双模式，预设按平台分组（DeepSeek / Qwen / Kimi / GLM 等）
@@ -77,8 +88,9 @@
 ### 💾 数据管理
 - **本地持久化** — 全部数据存储在 localStorage，无需服务器
 - **Session 恢复** — 刷新浏览器自动回到上次的角色/群聊
-- **一键导出/导入** — JSON 格式备份恢复所有角色和设置
+- **一键导出/导入** — JSON 格式备份恢复所有角色和设置，支持单角色导入
 - **跨标签页同步** — 多窗口实时状态同步
+- **📖 故事导出** — 将对话导出为可读的故事文本
 - **存储用量监控** — 实时显示 localStorage 使用百分比
 
 ### 📱 PWA 支持
@@ -163,41 +175,67 @@ npm run preview   # 本地预览生产构建
 ```
 myai-app/
 ├── src/
-│   ├── App.vue                    # 主应用（路由、布局）
+│   ├── App.vue                        # 主应用（路由、布局）
 │   ├── components/
-│   │   ├── ChatWindow.vue         # 聊天消息列表
-│   │   ├── GroupChatWindow.vue    # 群聊消息列表
-│   │   ├── SettingsModal.vue      # 设置面板（群聊/单聊自适应）
-│   │   ├── RoleSidebar.vue        # 角色列表侧边栏
-│   │   ├── CreateGroupModal.vue   # 创建群聊弹窗
-│   │   ├── EditGroupModal.vue     # 编辑群聊弹窗
-│   │   ├── EditMessageModal.vue   # 编辑消息弹窗
-│   │   ├── ImportDataModal.vue    # 数据导入弹窗
-│   │   └── settings/              # 设置子组件
-│   │       ├── GlobalSettings.vue # 全局设置（模型预设、字体等）
-│   │       ├── RoleBasicSettings.vue
-│   │       ├── RoleAdvancedSettings.vue
-│   │       ├── CharacterDepthSettings.vue
-│   │       ├── ParameterSettings.vue
-│   │       └── MemoryManager.vue
-│   ├── composables/               # 组合式函数
-│   │   ├── useChat.js             # 核心聊天逻辑（流式 SSE）
-│   │   ├── useGroupChat.js        # 群聊逻辑（多角色、摘要）
-│   │   ├── usePromptBuilder.js    # API Prompt 构建
-│   │   ├── useAutoSummary.js      # 单聊自动摘要
-│   │   ├── useAppState.js         # 全局状态 + Session 持久化
-│   │   ├── useMemory.js           # 记忆系统
-│   │   ├── presets.js             # 预设数据（写作风格、角色模板等）
-│   │   └── useTTS.js              # 语音朗读
-│   ├── styles/                    # 风格主题 token
-│   │   ├── tokens.css
-│   │   ├── theme-tokens.css
-│   │   └── decor-tokens.css
+│   │   ├── ChatWindow.vue             # 聊天消息列表
+│   │   ├── GroupChatWindow.vue        # 群聊消息列表
+│   │   ├── SettingsModal.vue          # 设置面板（群聊/单聊自适应）
+│   │   ├── RoleSidebar.vue            # 角色列表侧边栏
+│   │   ├── RoleCardGenerator.vue      # 🃏 角色卡片生成器
+│   │   ├── CardLibraryModal.vue       # 📚 卡片库弹窗
+│   │   ├── AvatarCropper.vue          # ✂️ 头像裁剪器
+│   │   ├── BranchSwitcher.vue         # 🔀 分支切换器
+│   │   ├── DiaryModal.vue             # 📔 角色日记弹窗
+│   │   ├── RelationshipRadar.vue      # 💞 关系雷达图
+│   │   ├── StoryExportModal.vue       # 📖 故事导出弹窗
+│   │   ├── CreateGroupModal.vue       # 创建群聊弹窗
+│   │   ├── EditGroupModal.vue         # 编辑群聊弹窗
+│   │   ├── EditMessageModal.vue       # 编辑消息弹窗
+│   │   ├── ImportDataModal.vue        # 数据导入弹窗
+│   │   ├── OnboardingOverlay.vue      # 新手引导覆盖层
+│   │   └── settings/                  # 设置子组件
+│   │       ├── GlobalSettings.vue     # 全局设置
+│   │       ├── RoleBasicSettings.vue   # 角色基础设置
+│   │       ├── RoleAdvancedSettings.vue # 角色高级设置
+│   │       ├── CharacterDepthSettings.vue # 角色深度设定
+│   │       ├── UserPersonaSettings.vue # 🎭 用户人设设置
+│   │       └── MemoryManager.vue      # 记忆管理器
+│   ├── composables/                   # 组合式函数
+│   │   ├── useChat.js                 # 核心聊天逻辑（流式 SSE）
+│   │   ├── useGroupChat.js            # 群聊逻辑（多角色、摘要）
+│   │   ├── usePromptBuilder.js        # API Prompt 构建
+│   │   ├── useAutoSummary.js          # 单聊自动摘要
+│   │   ├── useAppState.js             # 全局状态 + Session 持久化
+│   │   ├── useBranch.js               # 🔀 分支管理
+│   │   ├── useDiary.js                # 📔 日记系统
+│   │   ├── useRelationship.js         # 💞 关系系统
+│   │   ├── useTimeline.js             # 📅 时间线分析
+│   │   ├── useUserPersona.js          # 🎭 用户人设
+│   │   ├── useMemory.js               # 记忆系统
+│   │   ├── useRoleGenerator.js        # 角色生成器
+│   │   ├── useStoryExporter.js        # 故事导出
+│   │   ├── useBackgroundTasks.js      # 后台任务
+│   │   ├── useActiveMessage.js        # 消息激活状态
+│   │   ├── useGestures.js             # 手势交互
+│   │   ├── useSoundEffects.js         # 音效系统
+│   │   ├── modelAdapter.js            # 模型适配器
+│   │   ├── presets.js                 # 预设数据
+│   │   └── useTTS.js                  # 语音朗读
+│   ├── styles/                        # 风格主题
+│   │   ├── tokens.css                 # 基础 token
+│   │   ├── theme-tokens.css           # 主题 token
+│   │   ├── decor-tokens.css           # 装饰 token
+│   │   └── card-templates.css         # 🃏 卡片模板样式
 │   └── utils/
-│       ├── textParser.js          # 双层解析 & 角色扮演文字格式化
-│       ├── storage.js             # localStorage 封装
-│       └── validation.js          # 输入验证
-├── tests/                         # Vitest 单元测试 (225+)
+│       ├── textParser.js              # 双层解析 & 角色扮演文字格式化
+│       ├── cardTheme.js               # 🃏 卡片主题工具
+│       ├── markdown.js                # Markdown 渲染
+│       ├── summary.js                 # 摘要工具
+│       ├── apiUtils.js                # API 工具函数
+│       ├── storage.js                 # localStorage 封装
+│       ├── uuid.js                    # UUID 生成
+│       └── validation.js              # 输入验证
+├── tests/                             # Vitest 单元测试
 └── index.html
 ```
 
