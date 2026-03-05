@@ -1245,4 +1245,111 @@ function handleOverlayClick(e) {
 .style-card-dot { width: 7px; height: 7px; border-radius: 50%; margin: 0 auto 5px; }
 .style-card-name { font-size: 11px; color: rgba(255,255,255,0.8); margin-bottom: 2px; }
 .style-card-desc { font-size: 10px; color: rgba(255,255,255,0.3); }
+
+/* ===== 📱 手机端适配 ===== */
+@media (max-width: 640px) {
+  /* 遮罩：从底部弹出 */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  /* 弹窗：全宽 + 顶部圆角 + 90vh 高 */
+  .modal-container {
+    max-width: 100%;
+    width: 100%;
+    height: min(92vh, 680px);
+    border-radius: 20px 20px 0 0;
+  }
+
+  /* Header 紧凑 */
+  .modal-header {
+    padding: 14px 16px 0;
+  }
+  .modal-save-hint { display: none; }
+
+  /* Tab 栏可横向滚动 */
+  .modal-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 10px 12px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-tabs::-webkit-scrollbar { display: none; }
+  .modal-tab { flex-shrink: 0; padding: 6px 10px 8px; }
+  .modal-tab-label { font-size: 11px; }
+
+  /* Body 改为纵向：sidebar 在上，内容在下 */
+  .modal-body { flex-direction: column; }
+
+  /* Sidebar → 横向可滚动标签行 */
+  .modal-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 8px 12px;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-shrink: 0;
+    gap: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .modal-sidebar::-webkit-scrollbar { display: none; }
+  .sidebar-section-label { display: none; }
+  .sidebar-item {
+    flex-shrink: 0;
+    padding: 5px 13px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.04);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .sidebar-item.active {
+    background: rgba(139,92,246,0.2);
+  }
+
+  /* 内容区：缩减内边距 */
+  .modal-content { padding: 16px 14px; }
+  .modal-content-full { padding: 16px 14px; }
+
+  /* 时间线：单列 + 隐藏右侧详情 */
+  .timeline-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    gap: 0;
+  }
+  .timeline-detail { display: none; }
+
+  /* 角色状态卡片：保持两列但紧凑 */
+  .status-grid { gap: 8px; }
+  .status-card { padding: 10px 12px; }
+
+  /* 文字风格卡片：2 列 */
+  .style-card-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* 参数滑块标签字号 */
+  .param-scale { font-size: 9px; }
+  .section-desc { font-size: 11px; }
+
+  /* API 字段 */
+  .api-input { font-size: 14px; } /* 防止 iOS 自动放大 */
+
+  /* 数据操作行 */
+  .data-action-row { padding: 12px 12px; gap: 10px; }
+  .data-action-icon { font-size: 18px; }
+  .data-action-desc { display: none; } /* 手机上只显示标题 */
+
+  /* 记忆操作按钮 */
+  .memory-actions { flex-wrap: wrap; }
+  .add-memory-btn { font-size: 12px; }
+}
+
+/* 极窄设备（320px，旧 iPhone SE 等） */
+@media (max-width: 360px) {
+  .modal-tab { padding: 6px 8px 8px; gap: 3px; }
+  .modal-tab-icon { font-size: 11px; }
+  .modal-tab-label { font-size: 10px; }
+}
 </style>
