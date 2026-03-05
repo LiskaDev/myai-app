@@ -5,7 +5,7 @@
   --style-action-color: rgba(240, 244, 255, 0.4);
   --style-thought-color: rgba(228, 235, 250, 0.74);
   --style-status-color: rgba(214, 224, 242, 0.5);
-  --style-quote-color: rgba(220, 120, 160, 0.6);
+  --style-quote-color: rgba(220, 120, 160, 0.8);
 }
 
 .chat-style-misty {
@@ -15,7 +15,7 @@
   --style-action-color: rgba(200, 168, 120, 0.54);
   --style-thought-color: rgba(235, 215, 185, 0.72);
   --style-status-color: rgba(214, 191, 156, 0.5);
-  --style-quote-color: rgba(200, 168, 120, 0.5);
+  --style-quote-color: rgba(180, 145, 95, 0.8);
 }
 
 .chat-style-day {
@@ -25,7 +25,7 @@
   --style-action-color: rgba(139, 115, 85, 0.78);
   --style-thought-color: rgba(77, 58, 38, 0.7);
   --style-status-color: rgba(110, 88, 64, 0.72);
-  --style-quote-color: rgba(200, 168, 120, 0.5);
+  --style-quote-color: rgba(180, 145, 95, 0.8);
 }
 
 .chat-style-loveDark {
@@ -35,7 +35,7 @@
   --style-action-color: rgba(255, 140, 180, 0.52);
   --style-thought-color: rgba(255, 224, 238, 0.78);
   --style-status-color: rgba(255, 190, 216, 0.52);
-  --style-quote-color: rgba(220, 120, 160, 0.6);
+  --style-quote-color: rgba(200, 95, 140, 0.8);
 }
 
 .chat-style-loveLight {
@@ -45,5 +45,5 @@
   --style-action-color: rgba(142, 76, 108, 0.82);
   --style-thought-color: rgba(86, 47, 66, 0.7);
   --style-status-color: rgba(120, 72, 95, 0.76);
-  --style-quote-color: rgba(220, 120, 160, 0.6);
+  --style-quote-color: rgba(200, 95, 140, 0.8);
 }

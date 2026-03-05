@@ -1,5 +1,5 @@
 :root {
-  --decor-quote-color: rgba(220, 120, 160, 0.6);
+  --decor-quote-color: rgba(220, 120, 160, 0.8);
   --decor-role-label-color: rgba(255, 255, 255, 0.4);
   --decor-role-label-size: 11px;
   --decor-role-label-spacing: 1.8px;
@@ -83,7 +83,7 @@
 
 .chat-style-misty,
 .chrome-style-misty {
-  --decor-quote-color: rgba(200, 168, 120, 0.5);
+  --decor-quote-color: rgba(180, 145, 95, 0.8);
   --decor-role-label-color: rgba(200, 168, 120, 0.36);
   --decor-role-label-size: 11px;
   --decor-role-label-spacing: 2.6px;
@@ -126,7 +126,7 @@
 
 .chat-style-day,
 .chrome-style-day {
-  --decor-quote-color: rgba(200, 168, 120, 0.5);
+  --decor-quote-color: rgba(180, 145, 95, 0.8);
   --decor-role-label-color: rgba(139, 115, 85, 0.44);
   --decor-role-label-size: 11px;
   --decor-role-label-spacing: 1.8px;
@@ -166,7 +166,7 @@
 
 .chat-style-loveDark,
 .chrome-style-loveDark {
-  --decor-quote-color: rgba(220, 120, 160, 0.6);
+  --decor-quote-color: rgba(200, 95, 140, 0.8);
   --decor-role-label-color: rgba(255, 110, 160, 0.36);
   --decor-role-label-size: 10px;
   --decor-role-label-spacing: 1.8px;
@@ -207,7 +207,7 @@
 
 .chat-style-loveLight,
 .chrome-style-loveLight {
-  --decor-quote-color: rgba(220, 120, 160, 0.6);
+  --decor-quote-color: rgba(200, 95, 140, 0.8);
   --decor-role-label-color: rgba(232, 105, 154, 0.4);
   --decor-role-label-size: 11px;
   --decor-role-label-spacing: 1.8px;

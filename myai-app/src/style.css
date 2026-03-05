@@ -1411,13 +1411,13 @@ footer {
 .style-misty .rp-dialogue.say::before,
 .style-day .rp-dialogue.say::before {
   content: '「';
-  color: rgba(200, 168, 120, 0.5);
+  color: rgba(180, 145, 95, 0.8);
 }
 
 .style-misty .rp-dialogue.say::after,
 .style-day .rp-dialogue.say::after {
   content: '」';
-  color: rgba(200, 168, 120, 0.5);
+  color: rgba(180, 145, 95, 0.8);
 }
 
 .style-misty .rp-thought {
@@ -1554,13 +1554,13 @@ footer {
 .style-loveDark .rp-dialogue.say::before,
 .style-loveLight .rp-dialogue.say::before {
   content: '「';
-  color: rgba(220, 120, 160, 0.6);
+  color: rgba(200, 95, 140, 0.8);
 }
 
 .style-loveDark .rp-dialogue.say::after,
 .style-loveLight .rp-dialogue.say::after {
   content: '」';
-  color: rgba(220, 120, 160, 0.6);
+  color: rgba(200, 95, 140, 0.8);
 }
 
 .style-loveLight .rp-dialogue::before,
