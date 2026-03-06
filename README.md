@@ -83,6 +83,12 @@
 - **关键词匹配** — 扫描最近对话，精确匹配触发词，按优先级排序注入
 - **🧠 语义搜索** — 通过 AI 向量搜索自动发现语义相关的世界书条目（需配置 Supabase + SiliconFlow）
 - **混合匹配** — 关键词匹配作为 baseline，语义搜索补充覆盖面，可开关切换
+- **✨ AI 提取器** — 上传 TXT 小说/设定文档，AI 自动分块提取世界观条目
+  - 自动检测编码（UTF-8 / GBK），智能段落分块
+  - 串行调用 AI 提取，支持暂停/继续/停止
+  - 按分类分组预览（地理/种族/势力/功法/物品/历史/其他）
+  - 保存时自动去重（同名条目跳过）
+  - 🌍 **小说冒险模式** — 提取小说世界书 + 创建"故事引导者"角色，即可以主角身份在小说世界冒险
 - **SillyTavern 兼容** — 支持导入 SillyTavern Lorebook JSON 格式
 - **Tag 式关键词输入** — 直观的标签输入框，回车/Tab 添加，Backspace 删除
 - **注入位置控制** — 可选「角色设定前」或「对话上下文前」两个注入点
@@ -212,6 +218,7 @@ myai-app/
 │   │       ├── CharacterDepthSettings.vue # 角色深度设定
 │   │       ├── UserPersonaSettings.vue # 🎭 用户人设设置
 │   │       ├── WorldBookSettings.vue   # 📖 世界书管理
+│   │       ├── WorldBookExtractor.vue  # ✨ AI 世界书提取器
 │   │       └── MemoryManager.vue      # 记忆管理器
 │   ├── composables/                   # 组合式函数
 │   │   ├── useChat.js                 # 核心聊天逻辑（流式 SSE）
