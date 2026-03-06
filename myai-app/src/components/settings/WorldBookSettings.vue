@@ -4,6 +4,7 @@
  * 条目增删改查、开关、tag 式关键词输入、导入导出
  */
 import { ref, computed, onMounted, watch } from 'vue';
+import WorldBookExtractor from './WorldBookExtractor.vue';
 import {
     createEntry,
     loadWorldBook,
@@ -25,6 +26,7 @@ const entries = ref([]);
 const editingEntry = ref(null);     // 当前编辑中的条目（null = 列表模式）
 const keywordInput = ref('');       // Tag 输入框的临时文本
 const importFileRef = ref(null);    // 文件输入 ref
+const showExtractor = ref(false);   // AI 提取器弹窗
 
 // ── 加载/保存 ──
 function load() {
@@ -176,6 +178,7 @@ function toggleSemantic() {
       <div class="flex gap-2">
         <button @click="triggerImport" class="wb-action-btn">📥 导入</button>
         <button @click="handleExport" class="wb-action-btn">📤 导出</button>
+        <button @click="showExtractor = true" class="wb-action-btn ai">✨ AI提取</button>
         <button @click="addEntry" class="wb-action-btn primary">➕ 新增</button>
       </div>
     </div>
@@ -292,6 +295,15 @@ function toggleSemantic() {
         <div class="empty-state-hint">点击上方「新增」添加世界设定，或导入 SillyTavern 格式的 Lorebook</div>
       </div>
     </template>
+
+    <!-- AI 提取器 -->
+    <WorldBookExtractor
+      :show="showExtractor"
+      :characterId="currentRole?.id"
+      :globalSettings="globalSettings"
+      @close="showExtractor = false"
+      @saved="load()"
+      @show-toast="(msg, type) => emit('show-toast', msg, type)" />
   </div>
 </template>
 
@@ -310,6 +322,8 @@ function toggleSemantic() {
 .wb-action-btn:hover { background: rgba(255, 255, 255, 0.1); color: #d4d4d8; }
 .wb-action-btn.primary { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border-color: rgba(99, 102, 241, 0.25); }
 .wb-action-btn.primary:hover { background: rgba(99, 102, 241, 0.25); }
+.wb-action-btn.ai { background: rgba(168, 85, 247, 0.15); color: #c4b5fd; border-color: rgba(168, 85, 247, 0.25); }
+.wb-action-btn.ai:hover { background: rgba(168, 85, 247, 0.25); }
 
 /* ── 编辑表单 ── */
 .wb-edit-form {
