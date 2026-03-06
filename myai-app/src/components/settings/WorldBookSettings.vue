@@ -178,7 +178,7 @@ function toggleSemantic() {
       <div class="flex gap-2">
         <button @click="triggerImport" class="wb-action-btn">📥 导入</button>
         <button @click="handleExport" class="wb-action-btn">📤 导出</button>
-        <button @click="showExtractor = true" class="wb-action-btn ai">✨ AI提取</button>
+        <button @click="showExtractor = true" class="wb-action-btn ai">✨ AI生成</button>
         <button @click="addEntry" class="wb-action-btn primary">➕ 新增</button>
       </div>
     </div>
@@ -300,6 +300,7 @@ function toggleSemantic() {
     <WorldBookExtractor
       :show="showExtractor"
       :characterId="currentRole?.id"
+      :currentRole="currentRole"
       :globalSettings="globalSettings"
       @close="showExtractor = false"
       @saved="load()"

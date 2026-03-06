@@ -1,7 +1,8 @@
 <script setup>
 /**
- * ✨ WorldBookExtractor.vue — 世界书 AI 提取器
- * TXT 文件上传 → 分块 → AI 提取 → 预览审核 → 批量保存
+ * ✨ WorldBookExtractor.vue — 世界书 AI 生成器（统一入口）
+ * 三种模式：TXT 提取 / 主题生成 / 角色推导
+ * 共用预览审核 → 批量保存
  */
 import { ref, computed, watch } from 'vue';
 import { createEntry, saveWorldBook, loadWorldBook, syncEntryToSupabase } from '../../composables/promptModules/worldBook.js';
@@ -10,14 +11,36 @@ const props = defineProps({
     characterId: String,
     show: Boolean,
     globalSettings: Object,
+    currentRole: Object,       // 3C 角色推导需要读取角色设定
 });
 const emit = defineEmits(['close', 'saved', 'show-toast']);
 
-// ── 阶段控制 ──
-const PHASE = { UPLOAD: 'upload', EXTRACTING: 'extracting', PREVIEW: 'preview' };
-const phase = ref(PHASE.UPLOAD);
+// ── 模式 ──
+const MODE = { EXTRACT: 'extract', TOPIC: 'topic', ROLE: 'role' };
+const activeMode = ref(null); // null = 模式选择页
 
-// ── 文件上传 ──
+// ── 阶段控制 ──
+const PHASE = {
+    MODE_SELECT: 'mode_select',
+    INPUT: 'input',
+    GENERATING: 'generating',
+    PREVIEW: 'preview',
+};
+const phase = ref(PHASE.MODE_SELECT);
+
+// ── 标题映射 ──
+const MODAL_TITLES = {
+    [PHASE.MODE_SELECT]: '✨ AI 世界书生成',
+    extract: '📄 TXT 提取',
+    topic: '🌍 主题生成',
+    role: '🎭 角色推导',
+};
+const modalTitle = computed(() => {
+    if (phase.value === PHASE.MODE_SELECT) return MODAL_TITLES[PHASE.MODE_SELECT];
+    return MODAL_TITLES[activeMode.value] || '✨ AI 世界书生成';
+});
+
+// ── TXT 文件上传（模式A）──
 const fileText = ref('');
 const fileName = ref('');
 const isDragging = ref(false);
@@ -28,9 +51,33 @@ const CHUNK_SIZE = 8000;
 const chunks = ref([]);
 const totalChars = computed(() => fileText.value.length);
 const estimatedCost = computed(() => {
-    // DeepSeek V3 ¥0.27/百万 input token, 中文 1 字 ≈ 1.5 token
     const tokens = totalChars.value * 1.5;
     return (tokens / 1_000_000 * 0.27).toFixed(3);
+});
+
+// ── 主题生成（模式B）──
+const topicInput = ref('');
+const topicCount = ref(15);
+const topicExtraContext = ref('');
+
+// ── 角色推导（模式C）──
+const roleContextPreview = computed(() => {
+    const r = props.currentRole;
+    if (!r) return '';
+    const fields = [
+        r.name && `角色名：${r.name}`,
+        r.background && `背景：${r.background}`,
+        r.worldLogic && `世界规则：${r.worldLogic}`,
+        r.appearance && `外貌：${r.appearance}`,
+        r.speakingStyle && `说话方式：${r.speakingStyle}`,
+        r.relationship && `关系：${r.relationship}`,
+        r.contentPreferences && `内容偏好：${r.contentPreferences}`,
+    ].filter(Boolean);
+    return fields.join('\n\n');
+});
+const canDerive = computed(() => {
+    const r = props.currentRole;
+    return r && r.name && (r.background || r.worldLogic);
 });
 
 // ── 提取状态 ──
@@ -38,8 +85,9 @@ const extractedEntries = ref([]);
 const currentChunkIndex = ref(0);
 const isPaused = ref(false);
 const isStopped = ref(false);
-const failedChunks = ref([]);     // 失败块的索引
-const extractionAbort = ref(null); // AbortController
+const failedChunks = ref([]);
+const extractionAbort = ref(null);
+const generatingError = ref('');
 
 // ── 预览选择 ──
 const selectedIds = ref(new Set());
@@ -72,7 +120,28 @@ const selectedCount = computed(() => selectedIds.value.size);
 const isAllSelected = computed(() => extractedEntries.value.length > 0 && selectedIds.value.size === extractedEntries.value.length);
 const isNoneSelected = computed(() => selectedIds.value.size === 0);
 
-// ── 文件处理 ──
+// ── 模式选择 ──
+function selectMode(mode) {
+    activeMode.value = mode;
+    phase.value = PHASE.INPUT;
+}
+
+function backToModeSelect() {
+    activeMode.value = null;
+    phase.value = PHASE.MODE_SELECT;
+    // 清理各模式的输入状态
+    fileText.value = '';
+    fileName.value = '';
+    chunks.value = [];
+    topicInput.value = '';
+    topicExtraContext.value = '';
+    generatingError.value = '';
+}
+
+// ══════════════════════════════════════════════
+// TXT 文件处理（模式A 专用）
+// ══════════════════════════════════════════════
+
 function handleFile(file) {
     if (!file || !file.name.endsWith('.txt')) {
         emit('show-toast', '请上传 .txt 文件', 'error');
@@ -80,14 +149,11 @@ function handleFile(file) {
     }
     fileName.value = file.name;
 
-    // 先用 UTF-8 读，如果乱码则用 GBK 重读
     const reader = new FileReader();
     reader.onload = (e) => {
         const text = e.target.result;
-        // 检测是否有乱码（U+FFFD 替换字符）
         const garbledRatio = (text.match(/\uFFFD/g) || []).length / Math.max(text.length, 1);
         if (garbledRatio > 0.05) {
-            // 乱码超过 5%，用 GBK 重读
             const gbkReader = new FileReader();
             gbkReader.onload = (e2) => {
                 fileText.value = e2.target.result;
@@ -126,17 +192,14 @@ function splitIntoChunks(text, size) {
     while (pos < text.length) {
         let end = Math.min(pos + size, text.length);
         if (end < text.length) {
-            // 在段落换行处切割
             const lastParagraph = text.lastIndexOf('\n\n', end);
             if (lastParagraph > pos + size * 0.5) {
                 end = lastParagraph + 2;
             } else {
-                // 退而求之次，找最后一个换行
                 const lastNewline = text.lastIndexOf('\n', end);
                 if (lastNewline > pos + size * 0.5) {
                     end = lastNewline + 1;
                 }
-                // 再退，找句号
                 else {
                     const lastSentence = Math.max(
                         text.lastIndexOf('。', end),
@@ -165,19 +228,14 @@ function splitIntoChunks(text, size) {
 function extractJsonArray(raw) {
     if (!raw || !raw.trim()) return [];
 
-    // 1. 去掉 <think>...</think> 推理内容
     let text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-
-    // 2. 去掉 markdown 代码块包裹
     text = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
-    // 3. 直接尝试解析
     try {
         const parsed = JSON.parse(text);
         if (Array.isArray(parsed)) return parsed;
     } catch { /* 继续尝试 */ }
 
-    // 4. 在文本中找到第一个 [ ... ] 块（括号匹配）
     const startIdx = text.indexOf('[');
     if (startIdx === -1) return [];
 
@@ -201,8 +259,11 @@ function extractJsonArray(raw) {
     return [];
 }
 
-// ── AI 提取 ──
-const SYSTEM_PROMPT = `你是一个专业的小说设定提取助手。请从以下文本中提取所有出现的世界观设定，包括：地点、种族、势力、功法/魔法体系、重要物品、历史事件等。
+// ══════════════════════════════════════════════
+// System Prompts
+// ══════════════════════════════════════════════
+
+const EXTRACT_SYSTEM_PROMPT = `你是一个专业的小说设定提取助手。请从以下文本中提取所有出现的世界观设定，包括：地点、种族、势力、功法/魔法体系、重要物品、历史事件等。
 
 重要规则：
 - 忽略所有非正文内容：广告、水印、版权声明、译者注、章节标题、作者声明、平台推广、求票求收藏等
@@ -214,31 +275,145 @@ const SYSTEM_PROMPT = `你是一个专业的小说设定提取助手。请从以
 [{"name":"条目名","keywords":["词1","词2"],"content":"详细描述100-200字","category":"地理|种族|势力|功法|物品|历史|其他"}]
 如果该段文本没有可提取的设定，返回空数组 []`;
 
-async function startExtraction() {
-    phase.value = PHASE.EXTRACTING;
-    extractedEntries.value = [];
-    currentChunkIndex.value = 0;
-    isPaused.value = false;
-    isStopped.value = false;
-    failedChunks.value = [];
+const TOPIC_SYSTEM_PROMPT = `你是一个专业的世界观架构师。用户给出一个主题，请围绕该主题构建一套完整的世界观设定。
 
-    await processChunks(0);
-}
+生成规则：
+- 覆盖多个维度：地理、种族、势力、功法/魔法、物品、历史
+- 每个条目要有层次和细节，不要泛泛而谈
+- 条目之间要有关联性，形成有机的世界观体系
+- 关键词要覆盖该条目在故事中可能出现的多种称呼
+- content 字段的描述要具体生动，150-250字
 
-async function processChunks(startFrom) {
+严格只返回 JSON 数组，不要任何解释文字，不要 markdown 代码块。
+格式：
+[{"name":"条目名","keywords":["词1","词2"],"content":"详细描述150-250字","category":"地理|种族|势力|功法|物品|历史|其他"}]`;
+
+const ROLE_SYSTEM_PROMPT = `你是一个专业的世界观架构师。根据以下角色设定推导出该角色所处世界的完整世界观设定。
+
+推导规则：
+- 从角色背景和世界规则出发，补全世界观的所有维度
+- 地理：角色可能活动的地点和区域
+- 势力：角色涉及的组织、阵营
+- 功法/魔法：角色使用或可能遇到的能力体系
+- 物品：角色的装备或世界中的重要物品
+- 历史：影响角色命运的历史事件
+- 条目要与角色有关联，不要生成无关内容
+- content 字段的描述要具体生动，150-250字
+
+严格只返回 JSON 数组，不要任何解释文字，不要 markdown 代码块。
+格式：
+[{"name":"条目名","keywords":["词1","词2"],"content":"详细描述150-250字","category":"地理|种族|势力|功法|物品|历史|其他"}]`;
+
+// ══════════════════════════════════════════════
+// API 调用工具
+// ══════════════════════════════════════════════
+
+function getApiConfig() {
     const baseUrl = (props.globalSettings?.bgBaseUrl || props.globalSettings?.baseUrl || 'https://api.deepseek.com').replace(/\/+$/, '');
     const apiKey = props.globalSettings?.bgApiKey || props.globalSettings?.apiKey;
     const model = props.globalSettings?.bgModel || props.globalSettings?.model || 'deepseek-chat';
+    return { baseUrl, apiKey, model };
+}
 
+// ══════════════════════════════════════════════
+// 统一生成入口
+// ══════════════════════════════════════════════
+
+async function startGeneration() {
+    const { apiKey } = getApiConfig();
     if (!apiKey) {
         emit('show-toast', '请先在设置中配置 API Key', 'error');
         return;
     }
 
+    phase.value = PHASE.GENERATING;
+    extractedEntries.value = [];
+    selectedIds.value = new Set();
+    failedChunks.value = [];
+    generatingError.value = '';
+    isPaused.value = false;
+    isStopped.value = false;
+
+    if (activeMode.value === MODE.EXTRACT) {
+        currentChunkIndex.value = 0;
+        await processChunks(0);
+    } else {
+        await singleShotGenerate();
+    }
+}
+
+// ── 单次 API 生成（主题 / 角色模式）──
+async function singleShotGenerate() {
+    const systemPrompt = activeMode.value === MODE.TOPIC
+        ? TOPIC_SYSTEM_PROMPT
+        : ROLE_SYSTEM_PROMPT;
+
+    const userMessage = activeMode.value === MODE.TOPIC
+        ? `主题：${topicInput.value}\n请生成 ${topicCount.value} 条世界书条目。${topicExtraContext.value ? '\n补充说明：' + topicExtraContext.value : ''}`
+        : `请根据以下角色设定推导世界观：\n\n${roleContextPreview.value}`;
+
+    const { baseUrl, apiKey, model } = getApiConfig();
+
+    try {
+        const controller = new AbortController();
+        extractionAbort.value = controller;
+
+        const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userMessage },
+                ],
+                temperature: 0.7,
+                max_tokens: 8000,
+            }),
+            signal: controller.signal,
+        });
+
+        if (!res.ok) {
+            const errBody = await res.text().catch(() => '');
+            throw new Error(`API ${res.status}: ${errBody.slice(0, 100)}`);
+        }
+
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content || '';
+        const entries = extractJsonArray(content);
+
+        if (entries.length === 0) {
+            generatingError.value = 'AI 返回了空结果，请尝试换个主题或补充更多细节';
+            phase.value = PHASE.INPUT;
+            return;
+        }
+
+        extractedEntries.value = entries;
+    } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.warn('[Generator] 生成失败:', err.message);
+        generatingError.value = `生成失败: ${err.message}`;
+        phase.value = PHASE.INPUT;
+        return;
+    }
+
+    deduplicateEntries();
+    phase.value = PHASE.PREVIEW;
+    for (const e of extractedEntries.value) {
+        selectedIds.value.add(e.name);
+    }
+}
+
+// ── TXT 分块提取（模式A）──
+async function processChunks(startFrom) {
+    const { baseUrl, apiKey, model } = getApiConfig();
+
     for (let i = startFrom; i < chunks.value.length; i++) {
         if (isStopped.value) break;
 
-        // 暂停等待
         while (isPaused.value && !isStopped.value) {
             await new Promise(r => setTimeout(r, 200));
         }
@@ -259,7 +434,7 @@ async function processChunks(startFrom) {
                 body: JSON.stringify({
                     model,
                     messages: [
-                        { role: 'system', content: SYSTEM_PROMPT },
+                        { role: 'system', content: EXTRACT_SYSTEM_PROMPT },
                         { role: 'user', content: `请提取以下文本中的世界观设定：\n\n${chunks.value[i]}` },
                     ],
                     temperature: 0.3,
@@ -273,7 +448,6 @@ async function processChunks(startFrom) {
             const data = await res.json();
             let content = data.choices?.[0]?.message?.content || '';
 
-            // 容错：提取 JSON 数组
             const entries = extractJsonArray(content);
             if (entries.length > 0) {
                 for (const e of entries) {
@@ -287,16 +461,13 @@ async function processChunks(startFrom) {
             failedChunks.value.push(i);
         }
 
-        // 块间间隔
         if (i < chunks.value.length - 1 && !isStopped.value) {
             await new Promise(r => setTimeout(r, 500));
         }
     }
 
-    // 提取完成 → 去重 → 进入预览
     deduplicateEntries();
     phase.value = PHASE.PREVIEW;
-    // 全选
     for (const e of extractedEntries.value) {
         selectedIds.value.add(e.name);
     }
@@ -313,13 +484,11 @@ async function retryFailed() {
     if (failedChunks.value.length === 0) return;
     const retryIndices = [...failedChunks.value];
     failedChunks.value = [];
-    phase.value = PHASE.EXTRACTING;
+    phase.value = PHASE.GENERATING;
     isPaused.value = false;
     isStopped.value = false;
 
-    const baseUrl = (props.globalSettings?.bgBaseUrl || props.globalSettings?.baseUrl || 'https://api.deepseek.com').replace(/\/+$/, '');
-    const apiKey = props.globalSettings?.bgApiKey || props.globalSettings?.apiKey;
-    const model = props.globalSettings?.bgModel || props.globalSettings?.model || 'deepseek-chat';
+    const { baseUrl, apiKey, model } = getApiConfig();
 
     for (const i of retryIndices) {
         if (isStopped.value) break;
@@ -332,7 +501,7 @@ async function retryFailed() {
                 body: JSON.stringify({
                     model,
                     messages: [
-                        { role: 'system', content: SYSTEM_PROMPT },
+                        { role: 'system', content: EXTRACT_SYSTEM_PROMPT },
                         { role: 'user', content: `请提取以下文本中的世界观设定：\n\n${chunks.value[i]}` },
                     ],
                     temperature: 0.3, max_tokens: 4000,
@@ -412,18 +581,10 @@ async function saveSelected() {
     isSaving.value = true;
 
     const existing = loadWorldBook(props.characterId);
-    const existingNames = new Set(existing.map(e => (e.name || '').trim().toLowerCase()));
     const newEntries = [];
-    let skippedCount = 0;
 
     for (const raw of extractedEntries.value) {
         if (!selectedIds.value.has(raw.name)) continue;
-        // 去重：已有同名条目则跳过
-        const nameLower = (raw.name || '').trim().toLowerCase();
-        if (existingNames.has(nameLower)) {
-            skippedCount++;
-            continue;
-        }
         const entry = createEntry({
             name: raw.name || '',
             keywords: Array.isArray(raw.keywords) ? raw.keywords : [],
@@ -432,13 +593,11 @@ async function saveSelected() {
             position: 'before_char',
         });
         newEntries.push(entry);
-        existingNames.add(nameLower); // 防止本批次内重复
     }
 
     const merged = [...existing, ...newEntries];
     saveWorldBook(props.characterId, merged);
 
-    // 语义搜索同步
     if (props.globalSettings?.semanticSearchEnabled && props.characterId) {
         for (const entry of newEntries) {
             try {
@@ -449,26 +608,31 @@ async function saveSelected() {
     }
 
     isSaving.value = false;
-    const skipMsg = skippedCount > 0 ? `（跳过 ${skippedCount} 条重复）` : '';
-    emit('show-toast', `已保存 ${newEntries.length} 条世界书条目 ✓${skipMsg}`, 'success');
+    emit('show-toast', `已保存 ${newEntries.length} 条世界书条目 ✓`, 'success');
     emit('saved');
     closeModal();
 }
 
 // ── 工具 ──
 function closeModal() {
-    phase.value = PHASE.UPLOAD;
+    phase.value = PHASE.MODE_SELECT;
+    activeMode.value = null;
     fileText.value = '';
     fileName.value = '';
     chunks.value = [];
+    topicInput.value = '';
+    topicExtraContext.value = '';
     extractedEntries.value = [];
     selectedIds.value = new Set();
     failedChunks.value = [];
+    generatingError.value = '';
+    isStopped.value = true;
+    extractionAbort.value?.abort();
     emit('close');
 }
 
 function formatTime(chunks) {
-    const minutes = Math.ceil(chunks * 3.5 / 60); // ~3.5s per chunk average
+    const minutes = Math.ceil(chunks * 3.5 / 60);
     return minutes < 1 ? '不到 1 分钟' : `约 ${minutes} 分钟`;
 }
 
@@ -492,12 +656,50 @@ const progressPercent = computed(() => {
       <div class="wbe-modal">
         <!-- 标题 -->
         <div class="wbe-header">
-          <h3>✨ AI 世界书提取</h3>
+          <div class="wbe-header-left">
+            <button v-if="phase !== 'mode_select'"
+                    @click="phase === 'input' ? backToModeSelect() : null"
+                    class="wbe-back"
+                    :class="{ disabled: phase !== 'input' }"
+                    :disabled="phase !== 'input'"
+                    title="返回模式选择">←</button>
+            <h3>{{ modalTitle }}</h3>
+          </div>
           <button @click="closeModal" class="wbe-close">✕</button>
         </div>
 
-        <!-- ═══ 阶段1：上传 ═══ -->
-        <div v-if="phase === 'upload'" class="wbe-body">
+        <!-- ═══════════════════════════════════ -->
+        <!-- 模式选择页                           -->
+        <!-- ═══════════════════════════════════ -->
+        <div v-if="phase === 'mode_select'" class="wbe-body">
+          <p class="wbe-mode-desc">选择一种方式来生成世界书条目</p>
+          <div class="wbe-mode-grid">
+            <!-- TXT 提取 -->
+            <div class="wbe-mode-card" @click="selectMode('extract')">
+              <div class="wbe-mode-icon">📄</div>
+              <div class="wbe-mode-title">TXT 文本提取</div>
+              <div class="wbe-mode-hint">从小说/设定文档中<br>自动提取世界设定</div>
+            </div>
+            <!-- 主题生成 -->
+            <div class="wbe-mode-card" @click="selectMode('topic')">
+              <div class="wbe-mode-icon">🌍</div>
+              <div class="wbe-mode-title">主题生成</div>
+              <div class="wbe-mode-hint">输入主题关键词<br>一键生成完整世界观</div>
+            </div>
+            <!-- 角色推导 -->
+            <div class="wbe-mode-card" :class="{ disabled: !canDerive }" @click="canDerive && selectMode('role')">
+              <div class="wbe-mode-icon">🎭</div>
+              <div class="wbe-mode-title">角色推导</div>
+              <div class="wbe-mode-hint">从当前角色设定<br>自动推导配套世界观</div>
+              <div v-if="!canDerive" class="wbe-mode-lock">需要先填写角色背景</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════ -->
+        <!-- 输入页 — TXT 模式                    -->
+        <!-- ═══════════════════════════════════ -->
+        <div v-else-if="phase === 'input' && activeMode === 'extract'" class="wbe-body">
           <!-- 拖拽区 -->
           <div class="wbe-drop-zone"
                :class="{ dragging: isDragging }"
@@ -530,35 +732,126 @@ const progressPercent = computed(() => {
 
           <div v-if="fileText" class="wbe-actions">
             <button @click="fileText = ''; fileName = ''; chunks = []" class="wbe-btn secondary">重新选择</button>
-            <button @click="startExtraction" class="wbe-btn primary">🚀 开始提取</button>
+            <button @click="startGeneration" class="wbe-btn primary">🚀 开始提取</button>
           </div>
         </div>
 
-        <!-- ═══ 阶段2：提取中 ═══ -->
-        <div v-else-if="phase === 'extracting'" class="wbe-body">
-          <div class="wbe-progress-section">
-            <div class="wbe-progress-bar">
-              <div class="wbe-progress-fill" :style="{ width: progressPercent + '%' }"></div>
+        <!-- ═══════════════════════════════════ -->
+        <!-- 输入页 — 主题模式                    -->
+        <!-- ═══════════════════════════════════ -->
+        <div v-else-if="phase === 'input' && activeMode === 'topic'" class="wbe-body">
+          <div class="wbe-topic-form">
+            <div class="wbe-field">
+              <label>🌍 世界主题</label>
+              <input v-model="topicInput" type="text" class="wbe-input"
+                     placeholder="例如：东方修仙世界、赛博朋克都市、中世纪魔法学院…"
+                     @keydown.enter="topicInput.trim() && startGeneration()">
             </div>
-            <div class="wbe-progress-stats">
-              <span>⏳ 处理第 {{ currentChunkIndex + 1 }}/{{ chunks.length }} 块</span>
-              <span>已提取 {{ extractedEntries.length }} 条设定</span>
+
+            <div class="wbe-field">
+              <label>📊 生成条目数</label>
+              <div class="wbe-count-row">
+                <input v-model.number="topicCount" type="range" min="5" max="25" step="1" class="wbe-slider">
+                <span class="wbe-count-value">{{ topicCount }} 条</span>
+              </div>
             </div>
-            <div v-if="failedChunks.length" class="wbe-fail-note">
-              ⚠️ {{ failedChunks.length }} 块失败
+
+            <div class="wbe-field">
+              <label>📝 补充说明 <span class="wbe-optional">（可选）</span></label>
+              <textarea v-model="topicExtraContext" class="wbe-textarea-input" rows="3"
+                        placeholder="对世界观的补充要求，如：重点描写战斗体系、包含东方元素…"></textarea>
             </div>
+
+            <div v-if="generatingError" class="wbe-error">⚠️ {{ generatingError }}</div>
           </div>
-          <div class="wbe-extract-controls">
-            <button v-if="!isPaused" @click="pauseExtraction" class="wbe-btn secondary">⏸️ 暂停</button>
-            <button v-else @click="resumeExtraction" class="wbe-btn primary">▶️ 继续</button>
-            <button @click="stopExtraction" class="wbe-btn danger">⏹️ 停止（保留已提取）</button>
+
+          <div class="wbe-actions">
+            <button @click="backToModeSelect" class="wbe-btn secondary">← 返回</button>
+            <button @click="startGeneration" :disabled="!topicInput.trim()" class="wbe-btn primary">🌍 开始生成</button>
           </div>
         </div>
 
-        <!-- ═══ 阶段3：预览 ═══ -->
+        <!-- ═══════════════════════════════════ -->
+        <!-- 输入页 — 角色推导模式                -->
+        <!-- ═══════════════════════════════════ -->
+        <div v-else-if="phase === 'input' && activeMode === 'role'" class="wbe-body">
+          <div class="wbe-role-preview">
+            <div class="wbe-role-header">
+              <span class="wbe-role-avatar">🎭</span>
+              <span class="wbe-role-name">{{ currentRole?.name || '未命名角色' }}</span>
+            </div>
+            <div class="wbe-role-fields">
+              <div v-if="currentRole?.background" class="wbe-role-field">
+                <span class="wbe-role-label">📋 背景</span>
+                <p>{{ currentRole.background.slice(0, 200) }}{{ currentRole.background.length > 200 ? '…' : '' }}</p>
+              </div>
+              <div v-if="currentRole?.worldLogic" class="wbe-role-field">
+                <span class="wbe-role-label">🌐 世界规则</span>
+                <p>{{ currentRole.worldLogic.slice(0, 200) }}{{ currentRole.worldLogic.length > 200 ? '…' : '' }}</p>
+              </div>
+              <div v-if="currentRole?.appearance" class="wbe-role-field">
+                <span class="wbe-role-label">👁️ 外貌</span>
+                <p>{{ currentRole.appearance.slice(0, 100) }}{{ currentRole.appearance.length > 100 ? '…' : '' }}</p>
+              </div>
+              <div v-if="currentRole?.speakingStyle" class="wbe-role-field">
+                <span class="wbe-role-label">💬 说话方式</span>
+                <p>{{ currentRole.speakingStyle.slice(0, 100) }}{{ currentRole.speakingStyle.length > 100 ? '…' : '' }}</p>
+              </div>
+            </div>
+            <p class="wbe-role-note">AI 将基于以上设定推导出完整的世界观条目</p>
+
+            <div v-if="generatingError" class="wbe-error">⚠️ {{ generatingError }}</div>
+          </div>
+
+          <div class="wbe-actions">
+            <button @click="backToModeSelect" class="wbe-btn secondary">← 返回</button>
+            <button @click="startGeneration" class="wbe-btn primary">🎭 开始推导</button>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════ -->
+        <!-- 生成中                              -->
+        <!-- ═══════════════════════════════════ -->
+        <div v-else-if="phase === 'generating'" class="wbe-body">
+          <!-- TXT 模式：分块进度 -->
+          <template v-if="activeMode === 'extract'">
+            <div class="wbe-progress-section">
+              <div class="wbe-progress-bar">
+                <div class="wbe-progress-fill" :style="{ width: progressPercent + '%' }"></div>
+              </div>
+              <div class="wbe-progress-stats">
+                <span>⏳ 处理第 {{ currentChunkIndex + 1 }}/{{ chunks.length }} 块</span>
+                <span>已提取 {{ extractedEntries.length }} 条设定</span>
+              </div>
+              <div v-if="failedChunks.length" class="wbe-fail-note">
+                ⚠️ {{ failedChunks.length }} 块失败
+              </div>
+            </div>
+            <div class="wbe-extract-controls">
+              <button v-if="!isPaused" @click="pauseExtraction" class="wbe-btn secondary">⏸️ 暂停</button>
+              <button v-else @click="resumeExtraction" class="wbe-btn primary">▶️ 继续</button>
+              <button @click="stopExtraction" class="wbe-btn danger">⏹️ 停止（保留已提取）</button>
+            </div>
+          </template>
+
+          <!-- 主题 / 角色模式：loading spinner -->
+          <template v-else>
+            <div class="wbe-generating-spinner">
+              <div class="wbe-spinner"></div>
+              <p class="wbe-generating-text">
+                {{ activeMode === 'topic' ? '🌍 AI 正在构建世界观…' : '🎭 AI 正在推导世界观…' }}
+              </p>
+              <p class="wbe-generating-hint">通常需要 10-30 秒，请耐心等待</p>
+            </div>
+          </template>
+        </div>
+
+        <!-- ═══════════════════════════════════ -->
+        <!-- 预览（三种模式共用）                  -->
+        <!-- ═══════════════════════════════════ -->
         <div v-else-if="phase === 'preview'" class="wbe-body">
           <div class="wbe-preview-header">
-            <span class="wbe-preview-count">提取完成：{{ extractedEntries.length }} 条设定</span>
+            <span class="wbe-preview-count">生成完成：{{ extractedEntries.length }} 条设定</span>
             <div class="wbe-select-actions">
               <button @click="selectAll" class="wbe-btn-sm" :class="{ active: isAllSelected }">全选</button>
               <button @click="selectNone" class="wbe-btn-sm" :class="{ active: isNoneSelected }">全不选</button>
@@ -628,13 +921,59 @@ const progressPercent = computed(() => {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.07);
 }
+.wbe-header-left { display: flex; align-items: center; gap: 10px; }
 .wbe-header h3 { margin: 0; font-size: 16px; color: #e5e7eb; font-weight: 600; }
+.wbe-back {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  color: #a1a1aa; cursor: pointer; font-size: 14px; padding: 3px 8px;
+  border-radius: 6px; transition: all 0.15s;
+}
+.wbe-back:hover:not(.disabled) { background: rgba(255,255,255,0.1); color: #d4d4d8; }
+.wbe-back.disabled { opacity: 0.3; cursor: not-allowed; }
 .wbe-close {
   background: none; border: none; color: #71717a; cursor: pointer;
   font-size: 18px; padding: 2px 6px;
 }
 .wbe-close:hover { color: #d4d4d8; }
 .wbe-body { padding: 20px; overflow-y: auto; flex: 1; }
+
+/* ── 模式选择 ── */
+.wbe-mode-desc {
+  text-align: center; color: #71717a; font-size: 13px; margin: 0 0 20px;
+}
+.wbe-mode-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+@media (max-width: 500px) {
+  .wbe-mode-grid { grid-template-columns: 1fr; }
+}
+.wbe-mode-card {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px 16px; border-radius: 12px; cursor: pointer;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: all 0.2s; text-align: center; position: relative;
+}
+.wbe-mode-card:hover {
+  background: rgba(99,102,241,0.08);
+  border-color: rgba(99,102,241,0.3);
+  transform: translateY(-2px);
+}
+.wbe-mode-card.disabled {
+  opacity: 0.45; cursor: not-allowed;
+}
+.wbe-mode-card.disabled:hover {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.08);
+  transform: none;
+}
+.wbe-mode-icon { font-size: 36px; margin-bottom: 10px; }
+.wbe-mode-title { font-size: 14px; font-weight: 600; color: #e5e7eb; margin-bottom: 6px; }
+.wbe-mode-hint { font-size: 11px; color: #71717a; line-height: 1.5; }
+.wbe-mode-lock {
+  margin-top: 8px; font-size: 10px; color: #fbbf24;
+  background: rgba(251,191,36,0.1); padding: 2px 8px; border-radius: 4px;
+}
 
 /* ── 拖拽区 ── */
 .wbe-drop-zone {
@@ -655,6 +994,69 @@ const progressPercent = computed(() => {
   margin-top: 8px; font-size: 13px; color: #a1a1aa;
 }
 .wbe-warning { color: #fbbf24; font-size: 12px; margin-top: 8px; }
+
+/* ── 主题生成表单 ── */
+.wbe-topic-form { display: flex; flex-direction: column; gap: 16px; }
+.wbe-field label {
+  display: block; font-size: 13px; color: #d4d4d8; font-weight: 500; margin-bottom: 6px;
+}
+.wbe-optional { color: #52525b; font-weight: 400; font-size: 11px; }
+.wbe-input {
+  width: 100%; padding: 10px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+  color: #e5e7eb; font-size: 14px; outline: none; transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.wbe-input:focus { border-color: rgba(99,102,241,0.5); }
+.wbe-input::placeholder { color: #52525b; }
+.wbe-textarea-input {
+  width: 100%; padding: 10px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+  color: #e5e7eb; font-size: 13px; outline: none; resize: vertical;
+  font-family: inherit; line-height: 1.6; transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.wbe-textarea-input:focus { border-color: rgba(99,102,241,0.5); }
+.wbe-textarea-input::placeholder { color: #52525b; }
+.wbe-count-row { display: flex; align-items: center; gap: 12px; }
+.wbe-slider {
+  flex: 1; accent-color: #6366f1; height: 4px;
+}
+.wbe-count-value {
+  font-size: 14px; color: #a5b4fc; font-weight: 600; min-width: 50px; text-align: right;
+}
+
+/* ── 角色推导预览 ── */
+.wbe-role-preview {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 16px;
+}
+.wbe-role-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.wbe-role-avatar { font-size: 28px; }
+.wbe-role-name { font-size: 16px; font-weight: 600; color: #e5e7eb; }
+.wbe-role-fields { display: flex; flex-direction: column; gap: 10px; }
+.wbe-role-field {
+  background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 12px;
+}
+.wbe-role-label {
+  font-size: 11px; color: #a5b4fc; font-weight: 500; display: block; margin-bottom: 4px;
+}
+.wbe-role-field p {
+  margin: 0; font-size: 12px; color: #a1a1aa; line-height: 1.5;
+}
+.wbe-role-note {
+  margin: 14px 0 0; font-size: 12px; color: #71717a; text-align: center; font-style: italic;
+}
+
+/* ── 错误提示 ── */
+.wbe-error {
+  padding: 10px 14px; background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.2); border-radius: 8px;
+  font-size: 13px; color: #fca5a5; margin-top: 12px;
+}
 
 /* ── 按钮 ── */
 .wbe-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
@@ -695,6 +1097,20 @@ const progressPercent = computed(() => {
 }
 .wbe-fail-note { margin-top: 6px; font-size: 12px; color: #fbbf24; }
 .wbe-extract-controls { display: flex; gap: 10px; }
+
+/* ── Loading spinner ── */
+.wbe-generating-spinner {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 60px 20px; gap: 16px;
+}
+.wbe-spinner {
+  width: 40px; height: 40px; border: 3px solid rgba(99,102,241,0.15);
+  border-top-color: #6366f1; border-radius: 50%;
+  animation: wbe-spin 0.8s linear infinite;
+}
+@keyframes wbe-spin { to { transform: rotate(360deg); } }
+.wbe-generating-text { font-size: 15px; color: #e5e7eb; font-weight: 500; }
+.wbe-generating-hint { font-size: 12px; color: #71717a; }
 
 /* ── 预览 ── */
 .wbe-preview-header {
