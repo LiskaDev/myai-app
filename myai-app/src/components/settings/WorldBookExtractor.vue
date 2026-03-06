@@ -412,10 +412,18 @@ async function saveSelected() {
     isSaving.value = true;
 
     const existing = loadWorldBook(props.characterId);
+    const existingNames = new Set(existing.map(e => (e.name || '').trim().toLowerCase()));
     const newEntries = [];
+    let skippedCount = 0;
 
     for (const raw of extractedEntries.value) {
         if (!selectedIds.value.has(raw.name)) continue;
+        // 去重：已有同名条目则跳过
+        const nameLower = (raw.name || '').trim().toLowerCase();
+        if (existingNames.has(nameLower)) {
+            skippedCount++;
+            continue;
+        }
         const entry = createEntry({
             name: raw.name || '',
             keywords: Array.isArray(raw.keywords) ? raw.keywords : [],
@@ -424,6 +432,7 @@ async function saveSelected() {
             position: 'before_char',
         });
         newEntries.push(entry);
+        existingNames.add(nameLower); // 防止本批次内重复
     }
 
     const merged = [...existing, ...newEntries];
@@ -440,7 +449,8 @@ async function saveSelected() {
     }
 
     isSaving.value = false;
-    emit('show-toast', `已保存 ${newEntries.length} 条世界书条目 ✓`, 'success');
+    const skipMsg = skippedCount > 0 ? `（跳过 ${skippedCount} 条重复）` : '';
+    emit('show-toast', `已保存 ${newEntries.length} 条世界书条目 ✓${skipMsg}`, 'success');
     emit('saved');
     closeModal();
 }
