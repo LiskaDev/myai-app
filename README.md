@@ -78,6 +78,16 @@
 - **🎭 用户人设** — 设定玩家自身的角色背景，AI 感知你是谁
 - **📅 时间线分析** — 异步分析对话时间线，维护剧情连贯性
 
+### 📖 世界书 / Lorebook (v8.0)
+- **世界观注入** — 定义地点、物品、历史等设定，对话中提到关键词时自动注入到 AI 上下文
+- **关键词匹配** — 扫描最近对话，精确匹配触发词，按优先级排序注入
+- **🧠 语义搜索** — 通过 AI 向量搜索自动发现语义相关的世界书条目（需配置 Supabase + SiliconFlow）
+- **混合匹配** — 关键词匹配作为 baseline，语义搜索补充覆盖面，可开关切换
+- **SillyTavern 兼容** — 支持导入 SillyTavern Lorebook JSON 格式
+- **Tag 式关键词输入** — 直观的标签输入框，回车/Tab 添加，Backspace 删除
+- **注入位置控制** — 可选「角色设定前」或「对话上下文前」两个注入点
+- **Token 预算** — 自动估算注入内容的 token 消耗，超预算自动截止
+
 ### ⚙️ 设置系统
 - **多平台模型预设** — DeepSeek 官方 / 硅基流动 (SiliconFlow) / OpenRouter 一键切换
 - **模型选择器** — 预设 + 手动输入双模式，预设按平台分组（DeepSeek / Qwen / Kimi / GLM 等）
@@ -133,10 +143,12 @@ npm run preview   # 本地预览生产构建
 
 | 平台 | 链接 | 适用 |
 |------|------|------|
-| **Cloudflare Pages** | [myai-app.pages.dev](https://myai-app.pages.dev) | 🇨🇳 国内访问 |
-| **Vercel** | [myai-app-eight.vercel.app](https://myai-app-eight.vercel.app) | 🌍 海外访问 |
+| **Cloudflare Pages** | [myai-app.pages.dev](https://myai-app.pages.dev) | 🇨🇳 国内访问（纯前端功能） |
+| **Vercel** | [myai-app-eight.vercel.app](https://myai-app-eight.vercel.app) | 🌍 完整功能（含语义搜索 API） |
 
-> 两个平台内容完全相同，代码推送到 GitHub 后会自动同步部署。
+> **平台差异**：Cloudflare Pages 仅部署静态前端，**语义搜索**需要通过 Vercel 的 Serverless Function 运行。关键词匹配在两个平台上都正常工作。
+> 
+> **无需梯子**：SiliconFlow 是国内服务，Supabase API 由 Vercel Serverless 中转调用（服务端到服务端），用户浏览器不直接请求海外服务。
 
 ---
 
@@ -199,6 +211,7 @@ myai-app/
 │   │       ├── RoleAdvancedSettings.vue # 角色高级设置
 │   │       ├── CharacterDepthSettings.vue # 角色深度设定
 │   │       ├── UserPersonaSettings.vue # 🎭 用户人设设置
+│   │       ├── WorldBookSettings.vue   # 📖 世界书管理
 │   │       └── MemoryManager.vue      # 记忆管理器
 │   ├── composables/                   # 组合式函数
 │   │   ├── useChat.js                 # 核心聊天逻辑（流式 SSE）
@@ -220,7 +233,13 @@ myai-app/
 │   │   ├── useSoundEffects.js         # 音效系统
 │   │   ├── modelAdapter.js            # 模型适配器
 │   │   ├── presets.js                 # 预设数据
-│   │   └── useTTS.js                  # 语音朗读
+│   │   ├── useTTS.js                  # 语音朗读
+│   │   └── promptModules/             # Prompt 模块
+│   │       ├── coreIdentity.js        # 核心身份
+│   │       ├── styleSystem.js         # 风格系统
+│   │       ├── memorySystem.js        # 记忆系统
+│   │       ├── worldBook.js           # 📖 世界书 + 语义搜索
+│   │       └── contextAssembler.js    # 上下文组装器
 │   ├── styles/                        # 风格主题
 │   │   ├── tokens.css                 # 基础 token
 │   │   ├── theme-tokens.css           # 主题 token
@@ -235,6 +254,9 @@ myai-app/
 │       ├── storage.js                 # localStorage 封装
 │       ├── uuid.js                    # UUID 生成
 │       └── validation.js              # 输入验证
+├── api/                               # Vercel Serverless Functions
+│   ├── worldbook-embed.js             # 📖 世界书 embedding 存储
+│   └── worldbook-search.js            # 🧠 向量语义搜索
 ├── tests/                             # Vitest 单元测试
 └── index.html
 ```
@@ -261,7 +283,9 @@ npm run test:coverage     # 生成覆盖率报告
 | 测试 | Vitest + Vue Test Utils |
 | 安全 | DOMPurify (XSS 防护) |
 | AI API | DeepSeek / Qwen / Kimi / GLM（兼容 OpenAI 格式） |
-| 部署 | Vercel + Cloudflare Pages（双平台自动同步） |
+| 向量搜索 | Supabase pgvector + SiliconFlow Embedding |
+| Serverless | Vercel Serverless Functions |
+| 部署 | Vercel（完整功能） + Cloudflare Pages（纯前端） |
 | PWA | Service Worker + Manifest |
 
 ---
