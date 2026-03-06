@@ -50,6 +50,8 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     bgModel: '',
     bgBaseUrl: '',
     bgApiKey: '',
+    // v8.1: 世界书语义搜索开关
+    semanticSearchEnabled: false,
 };
 
 // 保存数据到 localStorage

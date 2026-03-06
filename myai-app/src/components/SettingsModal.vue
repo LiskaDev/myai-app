@@ -296,7 +296,7 @@ function handleOverlayClick(e) {
             <CharacterDepthSettings v-else-if="activeRoleSection === 'depth'"
               :currentRole="currentRole" />
             <WorldBookSettings v-else-if="activeRoleSection === 'worldbook'"
-              :currentRole="currentRole"
+              :currentRole="currentRole" :globalSettings="globalSettings"
               @show-toast="(msg, type) => emit('show-toast', msg, type)" />
             <RoleAdvancedSettings v-else-if="activeRoleSection === 'advanced'"
               :currentRole="currentRole" :availableVoices="availableVoices"

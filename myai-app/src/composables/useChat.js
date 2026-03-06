@@ -128,7 +128,7 @@ export function useChat(appState) {
         const { targetRoleId = null } = options;
         const role = currentRole.value;
         const initialRoleId = role.id; // 🛡️ 快照当前角色 ID
-        const apiMessages = constructPrompt();
+        const apiMessages = await constructPrompt();
 
         // 模型配置
         const model = globalSettings.model || 'deepseek-reasoner';

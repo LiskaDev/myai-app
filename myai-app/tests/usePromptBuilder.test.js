@@ -38,7 +38,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
 
         expect(messages[0].role).toBe('system');
         expect(messages[0].content).toContain('ROLEPLAY FRAMEWORK');
@@ -50,7 +50,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
         const systemPromptMsg = messages.find(m => m.content.includes('尖酸刻薄'));
         expect(systemPromptMsg).toBeDefined();
     });
@@ -60,7 +60,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
         // ROLEPLAY FRAMEWORK + 沉浸/自由模式指令 + WRITING_STYLE_BASE + [当前状态]（始终注入）
         expect(messages.length).toBe(4);
     });
@@ -70,7 +70,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
         const styleMsg = messages.find(m => m.content.includes('风格指导'));
         expect(styleMsg).toBeDefined();
         expect(styleMsg.content).toContain('禁止打破第四面墙');
@@ -87,7 +87,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
         const allContent = messages.map(m => m.content).join('\n');
 
         expect(allContent).toContain('WorldSetting');
@@ -107,7 +107,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
         const summaryMsg = messages.find(m => m.content.includes('昨天一起去了咖啡厅'));
         expect(summaryMsg).toBeDefined();
     });
@@ -122,7 +122,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
         const memoryMsg = messages.find(m => m.content.includes('重要记忆'));
         expect(memoryMsg).toBeDefined();
         expect(memoryMsg.content).toContain('小明');
@@ -142,7 +142,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
         // 只应包含最后 3 条对话消息
         const chatMessages = messages.filter(m => m.content === 'msg2' || m.content === 'resp2' || m.content === 'msg3');
         expect(chatMessages.length).toBe(3);
@@ -167,7 +167,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
 
         // day-separator 不应出现
         const hasSeparator = messages.some(m => m.type === 'day-separator' || (m.content && m.content.includes('第 2 天')));
@@ -190,7 +190,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
         const styleMsg = messages.find(m => m.content.includes('WRITING STYLE DIRECTIVE'));
         expect(styleMsg).toBeDefined();
         expect(styleMsg.content).toContain('ACTION/ADVENTURE');
@@ -201,7 +201,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
         const styleMsg = messages.find(m => m.content.includes('WRITING STYLE DIRECTIVE'));
         expect(styleMsg).toBeUndefined();
     });
@@ -213,7 +213,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
         const directiveMsg = messages.find(m => m.content.includes('写作风格偏好'));
         expect(directiveMsg).toBeDefined();
         expect(directiveMsg.content).toContain('多用短句');
@@ -225,7 +225,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
         const { constructPrompt } = usePromptBuilder(appState);
 
-        const messages = constructPrompt();
+        const messages = await constructPrompt();
         const directiveMsg = messages.find(m => m.content.includes('写作风格偏好'));
         expect(directiveMsg).toBeUndefined();
     });

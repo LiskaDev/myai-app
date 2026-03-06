@@ -10,10 +10,13 @@ import {
     saveWorldBook,
     exportWorldBook,
     importWorldBook,
+    syncEntryToSupabase,
+    deleteEntryFromSupabase,
 } from '../../composables/promptModules/worldBook.js';
 
 const props = defineProps({
     currentRole: Object,
+    globalSettings: Object,
 });
 const emit = defineEmits(['show-toast']);
 
@@ -63,6 +66,12 @@ function saveEntry() {
     }
     editingEntry.value = null;
     save();
+
+    // 🔄 异步同步到 Supabase（fire-and-forget，不阻塞 UI）
+    if (e.content && props.currentRole?.id) {
+        syncEntryToSupabase(props.currentRole.id, e)
+            .then(r => { if (!r.success) console.warn('[WorldBook] Supabase sync failed:', r.error); });
+    }
 }
 
 function cancelEdit() {
@@ -73,6 +82,11 @@ function deleteEntry(id) {
     entries.value = entries.value.filter(e => e.id !== id);
     save();
     emit('show-toast', '条目已删除', 'info');
+
+    // 🔄 异步从 Supabase 删除（fire-and-forget）
+    if (props.currentRole?.id) {
+        deleteEntryFromSupabase(props.currentRole.id, id);
+    }
 }
 
 function toggleEntry(entry) {
@@ -141,6 +155,13 @@ function handleImportFile(event) {
     reader.readAsText(file);
     event.target.value = '';
 }
+
+// ── 语义搜索开关 ──
+function toggleSemantic() {
+    if (props.globalSettings) {
+        props.globalSettings.semanticSearchEnabled = !props.globalSettings.semanticSearchEnabled;
+    }
+}
 </script>
 
 <template>
@@ -160,6 +181,17 @@ function handleImportFile(event) {
     </div>
     <p class="section-desc">定义世界观设定（地点、物品、历史等），对话中提到关键词时自动注入到 AI 上下文</p>
     <input ref="importFileRef" type="file" accept=".json" class="hidden" @change="handleImportFile">
+
+    <!-- 语义搜索开关 -->
+    <div class="wb-semantic-toggle">
+      <div class="wb-semantic-info">
+        <span class="wb-semantic-label">🧠 语义搜索</span>
+        <span class="wb-semantic-desc">除关键词匹配外，还通过 AI 向量搜索自动发现语义相关的世界书条目</span>
+      </div>
+      <button @click="toggleSemantic" class="wb-toggle-switch" :class="{ on: globalSettings?.semanticSearchEnabled }">
+        {{ globalSettings?.semanticSearchEnabled ? 'ON' : 'OFF' }}
+      </button>
+    </div>
 
     <!-- 编辑表单 -->
     <div v-if="editingEntry" class="wb-edit-form">
@@ -441,4 +473,37 @@ function handleImportFile(event) {
   transition: opacity 0.15s;
 }
 .wb-delete-btn:hover { opacity: 1; }
+
+/* ── 语义搜索开关 ── */
+.wb-semantic-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+}
+.wb-semantic-info { display: flex; flex-direction: column; gap: 2px; }
+.wb-semantic-label { font-size: 13px; font-weight: 500; color: #e5e7eb; }
+.wb-semantic-desc { font-size: 11px; color: #71717a; line-height: 1.4; }
+.wb-toggle-switch {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #71717a;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.wb-toggle-switch.on {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+.wb-toggle-switch:hover { transform: scale(1.05); }
 </style>

@@ -218,3 +218,119 @@ export function importWorldBook(jsonString) {
         return { success: false, error: `JSON 解析失败: ${e.message}` };
     }
 }
+
+
+// ─────────────────────────────────────────────
+// 5. 语义搜索（Phase 2 — Supabase pgvector）
+// ─────────────────────────────────────────────
+
+/**
+ * 同步条目到 Supabase（生成 embedding 并存储）
+ * @param {string} characterId
+ * @param {Object} entry - { id, name, content }
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function syncEntryToSupabase(characterId, entry) {
+    try {
+        const res = await fetch('/api/worldbook-embed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'upsert', characterId, entry }),
+        });
+        const data = await res.json();
+        if (!res.ok) return { success: false, error: data.error || 'Sync failed' };
+        return { success: true };
+    } catch (e) {
+        console.warn('[WorldBook] Supabase sync failed:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * 从 Supabase 删除条目
+ * @param {string} characterId
+ * @param {string} entryId
+ * @returns {Promise<{success: boolean}>}
+ */
+export async function deleteEntryFromSupabase(characterId, entryId) {
+    try {
+        const res = await fetch('/api/worldbook-embed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', characterId, entry: { id: entryId } }),
+        });
+        return { success: res.ok };
+    } catch {
+        return { success: false };
+    }
+}
+
+/**
+ * 语义搜索 — 通过 Vercel Serverless Function 查询 Supabase
+ * @param {string} query - 搜索文本
+ * @param {string} characterId
+ * @param {number} topK - 返回最相关的条目数
+ * @returns {Promise<Array<{content: string, similarity: number}>>}
+ */
+export async function semanticSearch(query, characterId, topK = 3) {
+    try {
+        const res = await fetch('/api/worldbook-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, characterId, topK }),
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.results || [];
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * 混合匹配 — 关键词匹配 + 语义搜索去重合并
+ * 关键词结果优先（快、确定性高），语义结果补充（慢、覆盖面广）
+ * @param {Array} messages - 对话消息
+ * @param {Array} lorebook - 本地世界书条目
+ * @param {string} characterId - 角色 ID
+ * @param {Object} options
+ * @returns {Promise<{before: string[], after: string[]}>}
+ */
+export async function getActiveLoreEntriesHybrid(messages, lorebook, characterId, options = {}) {
+    // 1. 同步：关键词匹配（始终执行，作为 baseline）
+    const keywordResults = getActiveLoreEntries(messages, lorebook, options);
+
+    // 2. 异步：语义搜索（拼最近消息作为 query）
+    const scanDepth = options.scanDepth || 5;
+    const recentText = messages
+        .slice(-scanDepth)
+        .map(m => m.rawContent || m.content || '')
+        .join('\n')
+        .slice(0, 500); // 限制 query 长度，避免 embedding 浪费
+
+    if (!recentText.trim()) return keywordResults;
+
+    let semanticResults = [];
+    try {
+        semanticResults = await semanticSearch(recentText, characterId, 3);
+    } catch {
+        // 语义搜索失败 → 静默降级到纯关键词
+        return keywordResults;
+    }
+
+    // 3. 去重合并：用 content 内容判断是否重复
+    const existingContents = new Set([
+        ...keywordResults.before,
+        ...keywordResults.after,
+    ]);
+
+    for (const sr of semanticResults) {
+        if (sr.content && !existingContents.has(sr.content)) {
+            keywordResults.before.push(sr.content);
+            existingContents.add(sr.content);
+        }
+    }
+
+    return keywordResults;
+}
+
