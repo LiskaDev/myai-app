@@ -1,0 +1,444 @@
+<script setup>
+/**
+ * 📖 WorldBookSettings.vue — 世界书管理 UI
+ * 条目增删改查、开关、tag 式关键词输入、导入导出
+ */
+import { ref, computed, onMounted, watch } from 'vue';
+import {
+    createEntry,
+    loadWorldBook,
+    saveWorldBook,
+    exportWorldBook,
+    importWorldBook,
+} from '../../composables/promptModules/worldBook.js';
+
+const props = defineProps({
+    currentRole: Object,
+});
+const emit = defineEmits(['show-toast']);
+
+// ── 状态 ──
+const entries = ref([]);
+const editingEntry = ref(null);     // 当前编辑中的条目（null = 列表模式）
+const keywordInput = ref('');       // Tag 输入框的临时文本
+const importFileRef = ref(null);    // 文件输入 ref
+
+// ── 加载/保存 ──
+function load() {
+    entries.value = loadWorldBook(props.currentRole?.id);
+}
+function save() {
+    saveWorldBook(props.currentRole?.id, entries.value);
+}
+
+onMounted(load);
+watch(() => props.currentRole?.id, load);
+
+// 条目计数
+const enabledCount = computed(() => entries.value.filter(e => e.enabled).length);
+
+// ── 条目操作 ──
+function addEntry() {
+    const entry = createEntry();
+    editingEntry.value = entry;
+    keywordInput.value = '';
+}
+
+function editEntry(entry) {
+    editingEntry.value = { ...entry, keywords: [...entry.keywords] };
+    keywordInput.value = '';
+}
+
+function saveEntry() {
+    const e = editingEntry.value;
+    if (!e.name.trim() && !e.content.trim()) {
+        emit('show-toast', '请至少填写名称或内容', 'error');
+        return;
+    }
+    const idx = entries.value.findIndex(x => x.id === e.id);
+    if (idx >= 0) {
+        entries.value[idx] = e;
+    } else {
+        entries.value.push(e);
+    }
+    editingEntry.value = null;
+    save();
+}
+
+function cancelEdit() {
+    editingEntry.value = null;
+}
+
+function deleteEntry(id) {
+    entries.value = entries.value.filter(e => e.id !== id);
+    save();
+    emit('show-toast', '条目已删除', 'info');
+}
+
+function toggleEntry(entry) {
+    entry.enabled = !entry.enabled;
+    save();
+}
+
+// ── Tag 式关键词输入 ──
+function addKeyword() {
+    const kw = keywordInput.value.trim();
+    if (!kw || !editingEntry.value) return;
+    // 支持逗号/空格批量添加
+    const newKeywords = kw.split(/[,，]/).map(k => k.trim()).filter(Boolean);
+    for (const k of newKeywords) {
+        if (!editingEntry.value.keywords.includes(k)) {
+            editingEntry.value.keywords.push(k);
+        }
+    }
+    keywordInput.value = '';
+}
+
+function removeKeyword(index) {
+    editingEntry.value?.keywords.splice(index, 1);
+}
+
+function handleKeywordKeydown(e) {
+    if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        addKeyword();
+    }
+    // Backspace 删最后一个 tag
+    if (e.key === 'Backspace' && !keywordInput.value && editingEntry.value?.keywords.length) {
+        editingEntry.value.keywords.pop();
+    }
+}
+
+// ── 导入/导出 ──
+function handleExport() {
+    if (entries.value.length === 0) {
+        emit('show-toast', '世界书为空，没有可导出的内容', 'error');
+        return;
+    }
+    exportWorldBook(entries.value, props.currentRole?.name || 'worldbook');
+    emit('show-toast', '世界书已导出 ✓', 'success');
+}
+
+function triggerImport() {
+    importFileRef.value?.click();
+}
+
+function handleImportFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const result = importWorldBook(e.target.result);
+        if (result.success) {
+            // 合并而不是覆盖：避免误操作丢失现有条目
+            entries.value.push(...result.entries);
+            save();
+            emit('show-toast', `成功导入 ${result.entries.length} 条世界书条目 ✓`, 'success');
+        } else {
+            emit('show-toast', `导入失败: ${result.error}`, 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+</script>
+
+<template>
+  <div class="space-y-4">
+
+    <!-- 标题与操作 -->
+    <div class="flex items-center justify-between">
+      <div class="section-title" style="margin:0">
+        📖 世界书
+        <span v-if="entries.length" class="badge-count">{{ enabledCount }}/{{ entries.length }}</span>
+      </div>
+      <div class="flex gap-2">
+        <button @click="triggerImport" class="wb-action-btn">📥 导入</button>
+        <button @click="handleExport" class="wb-action-btn">📤 导出</button>
+        <button @click="addEntry" class="wb-action-btn primary">➕ 新增</button>
+      </div>
+    </div>
+    <p class="section-desc">定义世界观设定（地点、物品、历史等），对话中提到关键词时自动注入到 AI 上下文</p>
+    <input ref="importFileRef" type="file" accept=".json" class="hidden" @change="handleImportFile">
+
+    <!-- 编辑表单 -->
+    <div v-if="editingEntry" class="wb-edit-form">
+      <div class="wb-form-header">
+        <span class="text-sm font-medium text-gray-200">{{ entries.some(e => e.id === editingEntry.id) ? '编辑条目' : '新建条目' }}</span>
+        <button @click="cancelEdit" class="wb-close-btn">✕</button>
+      </div>
+
+      <!-- 名称 -->
+      <div class="wb-field">
+        <label>条目名称</label>
+        <input v-model="editingEntry.name" type="text" placeholder="如：蒙德城、风之神殿" class="api-input">
+      </div>
+
+      <!-- 关键词 (Tag Input) -->
+      <div class="wb-field">
+        <label>触发关键词 <span class="text-gray-600 font-normal">（任一匹配即激活）</span></label>
+        <div class="wb-tag-input-wrap">
+          <span v-for="(kw, i) in editingEntry.keywords" :key="i" class="wb-tag">
+            {{ kw }}
+            <button @click="removeKeyword(i)" class="wb-tag-remove">×</button>
+          </span>
+          <input v-model="keywordInput"
+                 type="text"
+                 class="wb-tag-input"
+                 placeholder="输入关键词，按回车添加…"
+                 @keydown="handleKeywordKeydown"
+                 @blur="addKeyword">
+        </div>
+      </div>
+
+      <!-- 内容 -->
+      <div class="wb-field">
+        <label>Lore 内容 <span class="text-gray-600 font-normal">（注入到 AI 上下文的文本）</span></label>
+        <textarea v-model="editingEntry.content" rows="5" class="api-input wb-textarea"
+                  placeholder="描述这个世界设定的详细内容…"></textarea>
+      </div>
+
+      <!-- 优先级 + 位置 -->
+      <div class="wb-row">
+        <div class="wb-field flex-1">
+          <label>优先级</label>
+          <div class="param-header">
+            <span class="param-value">{{ editingEntry.priority }}</span>
+          </div>
+          <input v-model.number="editingEntry.priority" type="range" min="0" max="100" step="5" class="param-slider">
+          <div class="param-scale"><span>0 · 低</span><span>50 · 标准</span><span>100 · 高</span></div>
+        </div>
+        <div class="wb-field" style="min-width:140px">
+          <label>注入位置</label>
+          <select v-model="editingEntry.position" class="api-input">
+            <option value="before_char">角色设定前</option>
+            <option value="after_char">对话上下文前</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 保存/取消 -->
+      <div class="flex gap-2 mt-2">
+        <button @click="saveEntry" class="wb-save-btn">✅ 保存</button>
+        <button @click="cancelEdit" class="wb-cancel-btn">取消</button>
+      </div>
+    </div>
+
+    <!-- 条目列表 -->
+    <template v-if="!editingEntry">
+      <div v-if="entries.length > 0" class="space-y-2">
+        <div v-for="entry in entries" :key="entry.id" class="wb-entry"
+             :class="{ disabled: !entry.enabled }">
+          <div class="wb-entry-main" @click="editEntry(entry)">
+            <div class="wb-entry-header">
+              <span class="wb-entry-name">{{ entry.name || '(未命名)' }}</span>
+              <span class="wb-entry-priority" :class="entry.priority >= 70 ? 'high' : entry.priority >= 30 ? 'mid' : 'low'">
+                P{{ entry.priority }}
+              </span>
+            </div>
+            <div class="wb-entry-keywords">
+              <span v-for="(kw, i) in entry.keywords.slice(0, 5)" :key="i" class="wb-keyword-pill">{{ kw }}</span>
+              <span v-if="entry.keywords.length > 5" class="wb-keyword-more">+{{ entry.keywords.length - 5 }}</span>
+            </div>
+            <p class="wb-entry-preview">{{ entry.content?.slice(0, 80) }}{{ entry.content?.length > 80 ? '…' : '' }}</p>
+          </div>
+          <div class="wb-entry-actions">
+            <button @click.stop="toggleEntry(entry)"
+                    class="wb-toggle" :class="{ on: entry.enabled }"
+                    :title="entry.enabled ? '点击禁用' : '点击启用'">
+              {{ entry.enabled ? '✅' : '⬜' }}
+            </button>
+            <button @click.stop="deleteEntry(entry.id)" class="wb-delete-btn" title="删除">🗑️</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 空状态 -->
+      <div v-else class="empty-state">
+        <div class="empty-state-icon">📖</div>
+        <div class="empty-state-text">还没有世界书条目</div>
+        <div class="empty-state-hint">点击上方「新增」添加世界设定，或导入 SillyTavern 格式的 Lorebook</div>
+      </div>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+/* ── 操作按钮 ── */
+.wb-action-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #a1a1aa;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.wb-action-btn:hover { background: rgba(255, 255, 255, 0.1); color: #d4d4d8; }
+.wb-action-btn.primary { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border-color: rgba(99, 102, 241, 0.25); }
+.wb-action-btn.primary:hover { background: rgba(99, 102, 241, 0.25); }
+
+/* ── 编辑表单 ── */
+.wb-edit-form {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px;
+}
+.wb-form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.wb-close-btn { background: none; border: none; color: #71717a; cursor: pointer; font-size: 16px; padding: 2px 6px; }
+.wb-close-btn:hover { color: #d4d4d8; }
+.wb-field { margin-bottom: 12px; }
+.wb-field label { display: block; font-size: 12px; color: #a1a1aa; margin-bottom: 4px; }
+.wb-row { display: flex; gap: 12px; }
+.wb-textarea { font-family: inherit; resize: vertical; min-height: 80px; line-height: 1.6; }
+
+/* ── Tag Input ── */
+.wb-tag-input-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  min-height: 36px;
+  align-items: center;
+  cursor: text;
+  transition: border-color 0.15s;
+}
+.wb-tag-input-wrap:focus-within { border-color: rgba(99, 102, 241, 0.5); }
+.wb-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: rgba(99, 102, 241, 0.18);
+  color: #c7d2fe;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.wb-tag-remove {
+  background: none;
+  border: none;
+  color: #818cf8;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 1px;
+  line-height: 1;
+  opacity: 0.6;
+}
+.wb-tag-remove:hover { opacity: 1; color: #f87171; }
+.wb-tag-input {
+  flex: 1;
+  min-width: 100px;
+  background: none;
+  border: none;
+  outline: none;
+  color: #e5e7eb;
+  font-size: 13px;
+  padding: 2px 0;
+}
+.wb-tag-input::placeholder { color: #52525b; }
+
+/* ── 保存/取消按钮 ── */
+.wb-save-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.wb-save-btn:hover { background: rgba(99, 102, 241, 0.3); }
+.wb-cancel-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #71717a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.wb-cancel-btn:hover { color: #a1a1aa; }
+
+/* ── 条目列表 ── */
+.wb-entry {
+  display: flex;
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.15s;
+}
+.wb-entry:hover { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.12); }
+.wb-entry.disabled { opacity: 0.45; }
+.wb-entry-main {
+  flex: 1;
+  padding: 10px 12px;
+  cursor: pointer;
+  min-width: 0;
+}
+.wb-entry-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.wb-entry-name { font-size: 13px; font-weight: 500; color: #e5e7eb; }
+.wb-entry-priority {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+.wb-entry-priority.high { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+.wb-entry-priority.mid { background: rgba(234, 179, 8, 0.12); color: #fde68a; }
+.wb-entry-priority.low { background: rgba(255, 255, 255, 0.06); color: #71717a; }
+.wb-entry-keywords { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 4px; }
+.wb-keyword-pill {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+  border-radius: 3px;
+}
+.wb-keyword-more { font-size: 10px; color: #52525b; align-self: center; }
+.wb-entry-preview {
+  font-size: 11px;
+  color: #71717a;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wb-entry-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+.wb-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px;
+  transition: transform 0.15s;
+}
+.wb-toggle:hover { transform: scale(1.15); }
+.wb-delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+.wb-delete-btn:hover { opacity: 1; }
+</style>

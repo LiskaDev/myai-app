@@ -1,6 +1,6 @@
 /**
  * 🧩 contextAssembler.js — 上下文组装器
- * 负责：按优先级拼装所有模块输出、注入内容偏好、开场白、对话窗口
+ * 负责：按优先级拼装所有模块输出、注入世界书、内容偏好、开场白、对话窗口
  */
 
 /**
@@ -9,15 +9,24 @@
  * @param {Array}  options.coreBlocks    - P0+P1 核心身份块
  * @param {Array}  options.styleBlocks   - P2 风格参考块
  * @param {Array}  options.memoryBlocks  - P3 剧情参考块
+ * @param {Object} [options.loreBlocks]  - 📖 世界书匹配结果 { before: string[], after: string[] }
  * @param {Object} options.role          - 当前角色
  * @param {Array}  options.messages      - 全部消息数组（ref.value）
  * @returns {Array} 最终的 apiMessages
  */
-export function assemblePrompt({ coreBlocks, styleBlocks, memoryBlocks, role, messages }) {
+export function assemblePrompt({ coreBlocks, styleBlocks, memoryBlocks, loreBlocks, role, messages }) {
     const apiMessages = [];
 
     // ── 1. P0+P1 核心身份（最高优先级，永远保留）──
     apiMessages.push(...coreBlocks);
+
+    // ── 1.5 📖 世界书 Lore（before_char：在角色身份之后、风格参考之前）──
+    if (loreBlocks?.before?.length) {
+        apiMessages.push({
+            role: 'system',
+            content: `[World Lore — 以下是当前场景相关的世界观设定，请在角色扮演中自然融入]\n${loreBlocks.before.join('\n\n')}`,
+        });
+    }
 
     // ── 2. P2 风格参考 ──
     apiMessages.push(...styleBlocks);
@@ -40,6 +49,14 @@ export function assemblePrompt({ coreBlocks, styleBlocks, memoryBlocks, role, me
     // ── 5. 开场白记忆注入 ──
     if (role.firstMessage && messages.length > 0 && messages[0]?.role === 'user') {
         apiMessages.push({ role: 'assistant', content: role.firstMessage });
+    }
+
+    // ── 5.5 📖 世界书 Lore（after_char：在对话窗口之前，紧贴上下文）──
+    if (loreBlocks?.after?.length) {
+        apiMessages.push({
+            role: 'system',
+            content: `[Additional Lore — 补充世界设定]\n${loreBlocks.after.join('\n\n')}`,
+        });
     }
 
     // ── 6. 对话窗口（近期全文）──

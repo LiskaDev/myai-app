@@ -7,6 +7,7 @@ import RoleAdvancedSettings from './settings/RoleAdvancedSettings.vue';
 import CharacterDepthSettings from './settings/CharacterDepthSettings.vue';
 import MemoryManager from './settings/MemoryManager.vue';
 import UserPersonaSettings from './settings/UserPersonaSettings.vue';
+import WorldBookSettings from './settings/WorldBookSettings.vue';
 
 // ===== 通用设置所需的模型列表 =====
 const MODEL_PRESETS = [
@@ -173,6 +174,7 @@ const activeTab = ref(defaultTab);
 const ROLE_SECTIONS = [
   { id: 'basic',    icon: '📋', label: '基础设定' },
   { id: 'depth',    icon: '✨', label: '人设深度' },
+  { id: 'worldbook',icon: '📖', label: '世界书' },
   { id: 'advanced', icon: '🔧', label: '外观 & 背景' },
 ];
 const activeRoleSection = ref('basic');
@@ -293,6 +295,9 @@ function handleOverlayClick(e) {
               @show-toast="(msg, type) => emit('show-toast', msg, type)" />
             <CharacterDepthSettings v-else-if="activeRoleSection === 'depth'"
               :currentRole="currentRole" />
+            <WorldBookSettings v-else-if="activeRoleSection === 'worldbook'"
+              :currentRole="currentRole"
+              @show-toast="(msg, type) => emit('show-toast', msg, type)" />
             <RoleAdvancedSettings v-else-if="activeRoleSection === 'advanced'"
               :currentRole="currentRole" :availableVoices="availableVoices"
               @show-toast="(msg, type) => emit('show-toast', msg, type)" />
