@@ -69,6 +69,8 @@ const groupedEntries = computed(() => {
 });
 
 const selectedCount = computed(() => selectedIds.value.size);
+const isAllSelected = computed(() => extractedEntries.value.length > 0 && selectedIds.value.size === extractedEntries.value.length);
+const isNoneSelected = computed(() => selectedIds.value.size === 0);
 
 // ── 文件处理 ──
 function handleFile(file) {
@@ -548,8 +550,8 @@ const progressPercent = computed(() => {
           <div class="wbe-preview-header">
             <span class="wbe-preview-count">提取完成：{{ extractedEntries.length }} 条设定</span>
             <div class="wbe-select-actions">
-              <button @click="selectAll" class="wbe-btn-sm">全选</button>
-              <button @click="selectNone" class="wbe-btn-sm">全不选</button>
+              <button @click="selectAll" class="wbe-btn-sm" :class="{ active: isAllSelected }">全选</button>
+              <button @click="selectNone" class="wbe-btn-sm" :class="{ active: isNoneSelected }">全不选</button>
             </div>
           </div>
 
@@ -665,6 +667,7 @@ const progressPercent = computed(() => {
   transition: all 0.15s;
 }
 .wbe-btn-sm:hover { background: rgba(255,255,255,0.1); color: #d4d4d8; }
+.wbe-btn-sm.active { background: rgba(99,102,241,0.2); color: #a5b4fc; border-color: rgba(99,102,241,0.3); }
 .wbe-btn-sm.primary { background: rgba(99,102,241,0.15); color: #a5b4fc; border-color: rgba(99,102,241,0.2); }
 
 /* ── 进度 ── */
