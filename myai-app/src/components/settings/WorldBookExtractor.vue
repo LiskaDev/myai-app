@@ -77,10 +77,25 @@ function handleFile(file) {
         return;
     }
     fileName.value = file.name;
+
+    // 先用 UTF-8 读，如果乱码则用 GBK 重读
     const reader = new FileReader();
     reader.onload = (e) => {
-        fileText.value = e.target.result;
-        chunks.value = splitIntoChunks(fileText.value, CHUNK_SIZE);
+        const text = e.target.result;
+        // 检测是否有乱码（U+FFFD 替换字符）
+        const garbledRatio = (text.match(/\uFFFD/g) || []).length / Math.max(text.length, 1);
+        if (garbledRatio > 0.05) {
+            // 乱码超过 5%，用 GBK 重读
+            const gbkReader = new FileReader();
+            gbkReader.onload = (e2) => {
+                fileText.value = e2.target.result;
+                chunks.value = splitIntoChunks(fileText.value, CHUNK_SIZE);
+            };
+            gbkReader.readAsText(file, 'GBK');
+        } else {
+            fileText.value = text;
+            chunks.value = splitIntoChunks(text, CHUNK_SIZE);
+        }
     };
     reader.readAsText(file, 'utf-8');
 }
