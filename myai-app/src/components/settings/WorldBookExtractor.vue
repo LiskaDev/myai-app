@@ -139,6 +139,51 @@ function splitIntoChunks(text, size) {
     return result;
 }
 
+/**
+ * 健壮的 JSON 数组提取 — 处理各种 AI 输出格式
+ * 1. 去掉 <think> 推理标签
+ * 2. 去掉 markdown 代码块
+ * 3. 在自由文本中找到 [...] JSON 数组
+ */
+function extractJsonArray(raw) {
+    if (!raw || !raw.trim()) return [];
+
+    // 1. 去掉 <think>...</think> 推理内容
+    let text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+    // 2. 去掉 markdown 代码块包裹
+    text = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+
+    // 3. 直接尝试解析
+    try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) return parsed;
+    } catch { /* 继续尝试 */ }
+
+    // 4. 在文本中找到第一个 [ ... ] 块（括号匹配）
+    const startIdx = text.indexOf('[');
+    if (startIdx === -1) return [];
+
+    let depth = 0;
+    let endIdx = -1;
+    for (let i = startIdx; i < text.length; i++) {
+        if (text[i] === '[') depth++;
+        if (text[i] === ']') depth--;
+        if (depth === 0) { endIdx = i; break; }
+    }
+
+    if (endIdx === -1) return [];
+
+    try {
+        const parsed = JSON.parse(text.slice(startIdx, endIdx + 1));
+        if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+        console.warn('[Extractor] JSON 解析失败:', e.message, '\n原始内容:', text.slice(0, 200));
+    }
+
+    return [];
+}
+
 // ── AI 提取 ──
 const SYSTEM_PROMPT = `你是一个专业的小说设定提取助手。请从以下文本中提取所有出现的世界观设定，包括：地点、种族、势力、功法/魔法体系、重要物品、历史事件等。
 
@@ -209,13 +254,11 @@ async function processChunks(startFrom) {
             if (!res.ok) throw new Error(`API ${res.status}`);
 
             const data = await res.json();
-            let content = data.choices?.[0]?.message?.content || '[]';
+            let content = data.choices?.[0]?.message?.content || '';
 
-            // 容错：strip markdown 代码块
-            content = content.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-
-            const entries = JSON.parse(content);
-            if (Array.isArray(entries)) {
+            // 容错：提取 JSON 数组
+            const entries = extractJsonArray(content);
+            if (entries.length > 0) {
                 for (const e of entries) {
                     e._chunkIndex = i;
                     extractedEntries.value.push(e);
@@ -280,10 +323,9 @@ async function retryFailed() {
             });
             if (!res.ok) throw new Error(`API ${res.status}`);
             const data = await res.json();
-            let content = data.choices?.[0]?.message?.content || '[]';
-            content = content.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-            const entries = JSON.parse(content);
-            if (Array.isArray(entries)) {
+            let content = data.choices?.[0]?.message?.content || '';
+            const entries = extractJsonArray(content);
+            if (entries.length > 0) {
                 for (const e of entries) { e._chunkIndex = i; extractedEntries.value.push(e); }
             }
         } catch (err) {
