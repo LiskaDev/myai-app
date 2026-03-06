@@ -1009,6 +1009,9 @@ function handleOverlayClick(e) {
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
 }
+@media (max-width: 640px) {
+  .modal-overlay { padding: 0; align-items: flex-end; }
+}
 
 /* ===== 弹窗主体 ===== */
 .modal-container {
@@ -1020,6 +1023,13 @@ function handleOverlayClick(e) {
   box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
   display: flex; flex-direction: column;
   overflow: hidden;
+}
+@media (max-width: 640px) {
+  .modal-container {
+    border-radius: 20px 20px 0 0;
+    height: 92dvh;
+    max-width: 100%;
+  }
 }
 
 /* ===== 头部 ===== */
@@ -1061,10 +1071,26 @@ function handleOverlayClick(e) {
 }
 .modal-tab-icon { font-size: 13px; }
 .modal-tab-label { font-size: 12px; }
+@media (max-width: 640px) {
+  .modal-tabs {
+    padding: 10px 12px 0;
+    overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0;
+  }
+  .modal-tabs::-webkit-scrollbar { display: none; }
+  .modal-tab { padding: 6px 10px 8px; font-size: 11.5px; }
+  .modal-tab-icon { font-size: 12px; }
+  .modal-tab-label { font-size: 11px; }
+}
 
 /* ===== Body：左 + 右 ===== */
 .modal-body {
   display: flex; flex: 1; overflow: hidden;
+}
+@media (max-width: 640px) {
+  .modal-body { flex-direction: column; }
 }
 
 /* ===== 左侧导航 ===== */
@@ -1092,6 +1118,34 @@ function handleOverlayClick(e) {
 .sidebar-item.active { background: rgba(139,92,246,0.15); color: rgba(167,139,250,1); }
 .sidebar-item-icon { font-size: 13px; flex-shrink: 0; }
 
+/* 手机端：sidebar 变横向滚动 Tab 条 */
+@media (max-width: 640px) {
+  .modal-sidebar {
+    width: 100%; flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 6px 10px;
+    overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 4px; flex-shrink: 0;
+  }
+  .modal-sidebar::-webkit-scrollbar { display: none; }
+  .sidebar-section-label { display: none; }
+  .sidebar-item {
+    width: auto; flex-shrink: 0;
+    padding: 6px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.04);
+  }
+  .sidebar-item.active {
+    background: rgba(139,92,246,0.2);
+    color: #c4b5fd;
+  }
+}
+
 /* ===== 右侧内容 ===== */
 .modal-content {
   flex: 1; overflow-y: auto; padding: 20px 24px;
@@ -1099,6 +1153,9 @@ function handleOverlayClick(e) {
 .modal-content::-webkit-scrollbar { width: 4px; }
 .modal-content::-webkit-scrollbar-track { background: transparent; }
 .modal-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+@media (max-width: 640px) {
+  .modal-content { padding: 16px 16px 24px; }
+}
 
 /* 无左导航的全宽内容 */
 .modal-content-full {
@@ -1107,6 +1164,9 @@ function handleOverlayClick(e) {
 .modal-content-full::-webkit-scrollbar { width: 4px; }
 .modal-content-full::-webkit-scrollbar-track { background: transparent; }
 .modal-content-full::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+@media (max-width: 640px) {
+  .modal-content-full { padding: 16px 16px 24px; }
+}
 
 /* ===== 通用内容样式 ===== */
 .section-title {
@@ -1378,11 +1438,11 @@ function handleOverlayClick(e) {
     align-items: flex-end;
   }
 
-  /* 弹窗：全宽 + 顶部圆角 + 90vh 高 */
+  /* 弹窗：全宽 + 顶部圆角 + 92dvh 高 */
   .modal-container {
     max-width: 100%;
     width: 100%;
-    height: min(92vh, 680px);
+    height: 92dvh;
     border-radius: 20px 20px 0 0;
   }
 
@@ -1413,25 +1473,31 @@ function handleOverlayClick(e) {
     border-bottom: 1px solid rgba(255,255,255,0.07);
     padding: 8px 12px;
     flex-direction: row;
+    flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
     flex-shrink: 0;
-    gap: 4px;
+    gap: 6px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
   .modal-sidebar::-webkit-scrollbar { display: none; }
   .sidebar-section-label { display: none; }
   .sidebar-item {
+    width: auto;
     flex-shrink: 0;
     padding: 5px 13px;
     border-radius: 20px;
-    background: rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
     font-size: 12px;
     white-space: nowrap;
+    color: rgba(180,185,210,0.85);
   }
   .sidebar-item.active {
     background: rgba(139,92,246,0.2);
+    border-color: rgba(139,92,246,0.4);
+    color: #c4b5fd;
   }
 
   /* 内容区：缩减内边距 */
