@@ -29,6 +29,8 @@ import OnboardingOverlay from './components/OnboardingOverlay.vue';
 import RoleCardGenerator from './components/RoleCardGenerator.vue';
 import CardLibraryModal from './components/CardLibraryModal.vue';
 import CharacterHome from './components/CharacterHome.vue';
+import NovelMode from './components/novel/NovelMode.vue';
+import { useNovelStore } from './composables/useNovelStore.js';
 
 // Initialize State
 const appState = useAppState();
@@ -61,6 +63,45 @@ function handleSelectRole(roleId) {
   groupChat.exitGroupMode();
   appState.switchRole(roleId);
   showHomePage.value = false;
+}
+
+// 🌏 小说冒险模式
+const novelStore = useNovelStore();
+const showNovelMode  = ref(false);
+const novelBook      = ref(null);
+const novelSave      = ref(null);
+const novelSlotIndex = ref(0);
+
+function handleStartNovel({ book, slotIndex, save }) {
+  novelBook.value      = book;
+  novelSave.value      = save || null;
+  novelSlotIndex.value = slotIndex ?? 0;
+  showNovelMode.value  = true;
+  showHomePage.value   = false;
+}
+
+function handleNovelSaveBook(payload) {
+  novelStore.loadBooks();
+  const { slotIndex, saveData, bookUpdates, deleteBook } = payload;
+  if (deleteBook && novelBook.value) {
+    novelStore.deleteBook(novelBook.value.id);
+    showNovelMode.value = false;
+    showHomePage.value  = true;
+    return;
+  }
+  if (bookUpdates && novelBook.value) {
+    novelStore.updateBook(novelBook.value.id, bookUpdates);
+    novelBook.value = novelStore.getBook(novelBook.value.id);
+  }
+  if (saveData !== undefined && novelBook.value) {
+    const existing = novelBook.value.saves?.[slotIndex];
+    if (existing) {
+      novelStore.updateSave(novelBook.value.id, slotIndex, saveData);
+    } else {
+      novelStore.createSave(novelBook.value.id, slotIndex, saveData);
+    }
+    novelBook.value = novelStore.getBook(novelBook.value.id);
+  }
 }
 
 const showCreateGroupModal = ref(false);
@@ -958,10 +999,23 @@ function handleAvatarError(type, roleId) {
 <template>
   <!-- 🏠 角色选择主页 -->
   <CharacterHome
-    v-if="showHomePage"
+    v-if="showHomePage && !showNovelMode"
     :role-list="roleList"
+    :global-settings="globalSettings"
     @select-role="handleSelectRole"
     @open-settings="showSettings = true"
+    @start-novel="handleStartNovel"
+  />
+
+  <!-- 🌏 小说冒险模式 -->
+  <NovelMode
+    v-if="showNovelMode && novelBook"
+    :book="novelBook"
+    :save="novelSave"
+    :slot-index="novelSlotIndex"
+    :global-settings="globalSettings"
+    @exit="showNovelMode = false; showHomePage = true"
+    @save-book="handleNovelSaveBook"
   />
 
   <!-- 主界面（对话模式） -->

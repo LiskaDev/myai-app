@@ -7,51 +7,148 @@
       <p class="home-subtitle">选择一个角色，开始你的故事</p>
     </div>
 
-    <!-- 角色卡片网格 -->
-    <div class="home-grid">
-      <div
-        v-for="role in roleList"
-        :key="role.id"
-        class="role-card"
-        @click="$emit('select-role', role.id)"
-      >
-        <!-- 卡片光效 -->
-        <div class="role-card-glow"></div>
-
-        <!-- 头像 -->
-        <div class="role-card-avatar">
-          <img v-if="role.avatar" :src="role.avatar" :alt="role.name" @error="$event.target.style.display='none'" />
-          <div v-else class="role-card-avatar-placeholder">🎭</div>
-        </div>
-
-        <!-- 角色信息 -->
-        <div class="role-card-info">
-          <h3 class="role-card-name">{{ role.name }}</h3>
-          <p class="role-card-desc">{{ role.styleGuide || '点击开始对话' }}</p>
-        </div>
-
-        <!-- 世界观标签 -->
-        <div v-if="role.worldLogic" class="role-card-tag">
-          {{ getWorldTag(role.worldLogic) }}
-        </div>
-
-        <!-- 已有对话指示器 -->
-        <div v-if="hasHistory(role)" class="role-card-badge" title="已有对话">
-          💬
-        </div>
-      </div>
+    <!-- Tab 切换 -->
+    <div class="home-tabs">
+      <button :class="['home-tab', activeTab === 'role' && 'active']" @click="activeTab = 'role'">
+        👤 角色
+      </button>
+      <button :class="['home-tab', activeTab === 'world' && 'active']" @click="switchToWorld">
+        🌏 世界
+      </button>
     </div>
 
+    <!-- ── 角色 Tab ── -->
+    <template v-if="activeTab === 'role'">
+      <div class="home-grid">
+        <div
+          v-for="role in roleList"
+          :key="role.id"
+          class="role-card"
+          @click="$emit('select-role', role.id)"
+        >
+          <div class="role-card-glow"></div>
+          <div class="role-card-avatar">
+            <img v-if="role.avatar" :src="role.avatar" :alt="role.name" @error="$event.target.style.display='none'" />
+            <div v-else class="role-card-avatar-placeholder">🎭</div>
+          </div>
+          <div class="role-card-info">
+            <h3 class="role-card-name">{{ role.name }}</h3>
+            <p class="role-card-desc">{{ role.styleGuide || '点击开始对话' }}</p>
+          </div>
+          <div v-if="role.worldLogic" class="role-card-tag">
+            {{ getWorldTag(role.worldLogic) }}
+          </div>
+          <div v-if="hasHistory(role)" class="role-card-badge" title="已有对话">💬</div>
+        </div>
+      </div>
+    </template>
 
+    <!-- ── 世界 Tab ── -->
+    <template v-else>
+      <div class="world-section">
+        <!-- 世界 Tab 内导航标题 -->
+        <div v-if="worldNav !== 'library'" class="world-nav-header">
+          <button class="world-back-btn" @click="goBackInWorld">← 返回</button>
+          <span class="world-nav-title">
+            <span v-if="worldNav === 'import'">导入新书</span>
+            <span v-else-if="worldNav === 'save-select' && selectedBook">
+              {{ selectedBook.title }}
+            </span>
+          </span>
+        </div>
+
+        <!-- 书库 -->
+        <BookLibrary
+          v-if="worldNav === 'library'"
+          :book-list="novelStore.bookList.value"
+          @select-book="onSelectBook"
+          @import="worldNav = 'import'"
+          @delete-book="onDeleteBook"
+        />
+
+        <!-- 导入 -->
+        <BookImport
+          v-else-if="worldNav === 'import'"
+          :global-settings="globalSettings"
+          @done="onImportDone"
+          @cancel="worldNav = 'library'"
+        />
+
+        <!-- 存档选择 -->
+        <SaveSelect
+          v-else-if="worldNav === 'save-select' && selectedBook"
+          :book="selectedBook"
+          @select-save="onSelectSave"
+          @back="worldNav = 'library'"
+        />
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue';
+import BookLibrary from './novel/BookLibrary.vue';
+import BookImport  from './novel/BookImport.vue';
+import SaveSelect  from './novel/SaveSelect.vue';
+import { useNovelStore } from '../composables/useNovelStore.js';
+
 const props = defineProps({
-  roleList: { type: Array, required: true },
+  roleList:       { type: Array,  required: true },
+  globalSettings: { type: Object, default: () => ({}) },
 });
 
-defineEmits(['select-role']);
+const emit = defineEmits(['select-role', 'start-novel']);
+
+// ── Tab / 世界子导航 ──
+const activeTab  = ref('role');
+const worldNav   = ref('library');   // 'library' | 'import' | 'save-select'
+const selectedBook = ref(null);
+
+// ── Novel Store ──
+const novelStore = useNovelStore();
+onMounted(() => novelStore.loadBooks());
+
+function switchToWorld() {
+  activeTab.value = 'world';
+  worldNav.value  = 'library';
+  novelStore.loadBooks(); // 刷新
+}
+
+function goBackInWorld() {
+  if (worldNav.value === 'import' || worldNav.value === 'save-select') {
+    worldNav.value  = 'library';
+    selectedBook.value = null;
+  }
+}
+
+// ── 书库操作 ──
+function onSelectBook(book) {
+  selectedBook.value = book;
+  worldNav.value     = 'save-select';
+}
+
+function onDeleteBook(bookId) {
+  if (!confirm('确定要删除这本书吗？所有存档将一并删除，此操作无法撤销。')) return;
+  novelStore.deleteBook(bookId);
+}
+
+function onImportDone(book) {
+  novelStore.createBook({
+    title:      book.title,
+    coverEmoji: book.coverEmoji,
+    worldEntries: book.worldEntries,
+  });
+  // find the newly added book and navigate to save-select
+  novelStore.loadBooks();
+  selectedBook.value = novelStore.bookList.value[novelStore.bookList.value.length - 1];
+  worldNav.value = 'save-select';
+}
+
+// ── 存档选择 ──
+function onSelectSave({ slotIndex, save }) {
+  emit('start-novel', { book: selectedBook.value, slotIndex, save });
+}
 
 function getWorldTag(worldLogic) {
   if (worldLogic.includes('怪物猎人') || worldLogic.includes('猎人世界')) return '🐉 怪猎';
@@ -76,6 +173,81 @@ function hasHistory(role) {
 </script>
 
 <style scoped>
+/* ===== Tabs ===== */
+.home-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 4px;
+  margin-bottom: 28px;
+  animation: fadeSlideUp 0.5s ease-out both;
+  animation-delay: 0.05s;
+}
+
+.home-tab {
+  flex: 1;
+  padding: 8px 20px;
+  border-radius: 20px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s;
+  letter-spacing: 0.5px;
+}
+
+.home-tab.active {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.6), rgba(59, 130, 246, 0.5));
+  color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.25);
+}
+
+.home-tab:not(.active):hover {
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ===== World Section ===== */
+.world-section {
+  width: 100%;
+  max-width: 880px;
+  animation: fadeSlideUp 0.4s ease-out both;
+}
+
+.world-nav-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.world-back-btn {
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.world-back-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.world-nav-title {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 1px;
+}
+
 .character-home {
   position: fixed;
   inset: 0;
