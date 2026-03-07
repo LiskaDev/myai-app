@@ -4,8 +4,9 @@
  * 逻辑复用自 WorldBookExtractor.vue 的 TXT 提取模式
  * 完成后 emit('done', book) 返回新书对象
  */
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed } from 'vue';
 import { splitIntoChunks } from '../../utils/novelUtils.js';
+import ModelConfigPanel from './ModelConfigPanel.vue';
 
 const props = defineProps({
   globalSettings: { type: Object, required: true },
@@ -39,33 +40,40 @@ const failedChunks = ref([]);
 const extractionAbort = ref(null);
 const error = ref('');
 
-// ── 費用估算 ──
-const MODEL_PRICE_MAP = [
-  { key: 'deepseek-reasoner', price: 0.004 },
-  { key: 'deepseek-r1',       price: 0.004 },
-  { key: 'deepseek-v3',       price: 0.002 },
-  { key: 'deepseek-chat',     price: 0.001 },
-  { key: 'qwen-max',          price: 0.004 },
-  { key: 'qwen-plus',         price: 0.0008 },
-  { key: 'qwen-turbo',        price: 0.0003 },
-  { key: 'gpt-4o-mini',       price: 0.001 },
-  { key: 'gpt-4o',            price: 0.018 },
-  { key: 'gpt-4',             price: 0.05 },
-  { key: 'gpt-3.5',           price: 0.002 },
-  { key: 'claude-3-5',        price: 0.022 },
-  { key: 'claude-3-haiku',    price: 0.002 },
-  { key: 'claude-3',          price: 0.05 },
-  { key: 'gemini-2',          price: 0.001 },
-  { key: 'gemini-1.5-flash',  price: 0.001 },
-  { key: 'gemini-1.5-pro',    price: 0.009 },
-];
-const localModel    = ref('');
-const showModelEdit = ref(false);
-const modelInputRef = ref(null);
+// ── 费用估算（价格单位：¥/百万 token，按需更新此表）──
+const MODEL_PRICING = {
+  'deepseek-chat':      { input: 2,    inputCached: 0.2,  output: 3   },
+  'deepseek-reasoner':  { input: 2,    inputCached: 0.2,  output: 3   },
+  'deepseek-r1':        { input: 2,    inputCached: 0.2,  output: 3   },
+  'deepseek-v3':        { input: 2,    inputCached: 0.2,  output: 8   },
+  'gpt-4o-mini':        { input: 1.1,  inputCached: 0.28, output: 4.3 },
+  'gpt-4o':             { input: 18,   inputCached: 9,    output: 72  },
+  'gpt-4':              { input: 216,  inputCached: 108,  output: 432 },
+  'gpt-3.5':            { input: 11,   inputCached: 5.5,  output: 15  },
+  'claude-3-5-sonnet':  { input: 22,   inputCached: 2.7,  output: 108 },
+  'claude-3-5-haiku':   { input: 2.9,  inputCached: 0.72, output: 14  },
+  'claude-3-haiku':     { input: 1.8,  inputCached: 0.45, output: 8.6 },
+  'claude-3-opus':      { input: 108,  inputCached: 27,   output: 540 },
+  'gemini-2.0-flash':   { input: 0.54, inputCached: 0.09, output: 2.3 },
+  'gemini-1.5-flash':   { input: 0.54, inputCached: 0.09, output: 2.2 },
+  'gemini-1.5-pro':     { input: 8.6,  inputCached: 2.2,  output: 34  },
+  'qwen-max':           { input: 8,    inputCached: 2,    output: 24  },
+  'qwen-plus':          { input: 0.8,  inputCached: 0.2,  output: 2.4 },
+  'qwen-turbo':         { input: 0.3,  inputCached: 0.075,output: 0.6 },
+};
 
-function editModel() {
-  showModelEdit.value = true;
-  nextTick(() => modelInputRef.value?.focus());
+// 本次提取专用配置（不修改全局设置）
+const localConfig    = ref({ baseUrl: '', apiKey: '', model: '' });
+const showConfigPanel = ref(false);
+
+function findPricing(name) {
+  if (!name) return null;
+  const n = name.toLowerCase();
+  if (MODEL_PRICING[n]) return MODEL_PRICING[n];
+  for (const [key, p] of Object.entries(MODEL_PRICING)) {
+    if (n.includes(key) || key.includes(n)) return p;
+  }
+  return null;
 }
 
 const totalChars = computed(() => fileText.value.length);
@@ -74,25 +82,33 @@ const progress = computed(() => {
   return Math.round(((currentChunkIndex.value + 1) / chunks.value.length) * 100);
 });
 
-const estimatedTokens = computed(() => Math.round(totalChars.value / 1.5));
-const modelName = computed(() =>
-  localModel.value || props.globalSettings.bgModel || props.globalSettings.model || 'deepseek-chat'
-);
-const modelPrice = computed(() => {
-  const name = modelName.value.toLowerCase();
-  const entry = MODEL_PRICE_MAP.find(e => name.includes(e.key));
-  return entry ? entry.price : null;
+// 输入 token 估算：中文约 1.5 字/token
+const estInputTokens  = computed(() => Math.round(totalChars.value / 1.5));
+// 输出 token 估算：每块平均提取 200 token 的 JSON
+const estOutputTokens = computed(() => chunks.value.length * 200);
+const currentPricing  = computed(() => findPricing(localConfig.value.model));
+// 最低费用：输入全命中缓存
+const costMin = computed(() => {
+  const p = currentPricing.value;
+  if (!p) return null;
+  return (estInputTokens.value * p.inputCached + estOutputTokens.value * p.output) / 1_000_000;
 });
-const estimatedCost = computed(() =>
-  modelPrice.value !== null ? (estimatedTokens.value / 1000) * modelPrice.value : null
-);
-const costLevel = computed(() => {
-  const c = estimatedCost.value;
-  if (c === null) return 'unknown';
-  if (c < 1)  return 'low';
-  if (c < 5)  return 'mid';
-  return 'high';
+// 最高费用：输入全未命中缓存
+const costMax = computed(() => {
+  const p = currentPricing.value;
+  if (!p) return null;
+  return (estInputTokens.value * p.input + estOutputTokens.value * p.output) / 1_000_000;
 });
+const costRangeClass = computed(() => {
+  const c = costMax.value;
+  if (c === null) return 'cost-unknown';
+  if (c < 1) return 'cost-low';
+  if (c < 5) return 'cost-mid';
+  return 'cost-high';
+});
+function fmtCost(v) {
+  return v < 0.01 ? v.toFixed(4) : v.toFixed(2);
+}
 
 // ── EXTRACT_SYSTEM_PROMPT (same as WorldBookExtractor) ──
 const EXTRACT_SYSTEM_PROMPT = `你是一个专业的小说设定提取助手。请从以下文本中提取所有出现的世界观设定，包括：地点、种族、势力、功法/魔法体系、重要物品、历史事件等。
@@ -127,14 +143,14 @@ function handleFile(file) {
       gbkReader.onload = (e2) => {
         fileText.value = e2.target.result;
         chunks.value = splitIntoChunks(fileText.value, CHUNK_SIZE);
-        localModel.value = props.globalSettings.bgModel || props.globalSettings.model || 'deepseek-chat';
+        localConfig.value = initLocalConfig();
         phase.value = PHASE.CONFIG;
       };
       gbkReader.readAsText(file, 'GBK');
     } else {
       fileText.value = text;
       chunks.value = splitIntoChunks(text, CHUNK_SIZE);
-      localModel.value = props.globalSettings.bgModel || props.globalSettings.model || 'deepseek-chat';
+      localConfig.value = initLocalConfig();
       phase.value = PHASE.CONFIG;
     }
   };
@@ -179,12 +195,20 @@ function extractJsonArray(raw) {
   return [];
 }
 
-function getApiConfig() {
+function initLocalConfig() {
   const s = props.globalSettings;
   return {
-    baseUrl: (s.bgBaseUrl || s.baseUrl || 'https://api.deepseek.com').replace(/\/+$/, ''),
-    apiKey:  s.bgApiKey || s.apiKey || '',
-    model:   localModel.value || s.bgModel || s.model || 'deepseek-chat',
+    baseUrl: s.bgBaseUrl || s.baseUrl || 'https://api.deepseek.com',
+    apiKey:  s.bgApiKey  || s.apiKey  || '',
+    model:   s.bgModel   || s.model   || 'deepseek-chat',
+  };
+}
+
+function getApiConfig() {
+  return {
+    baseUrl: (localConfig.value.baseUrl || 'https://api.deepseek.com').replace(/\/+$/, ''),
+    apiKey:  localConfig.value.apiKey  || '',
+    model:   localConfig.value.model   || 'deepseek-chat',
   };
 }
 
@@ -340,33 +364,38 @@ function finish() {
 
       <!-- 费用估算 -->
       <div class="cost-estimate">
-        <div class="cost-row">
-          <span class="cost-label">当前模型</span>
-          <span v-if="!showModelEdit" class="cost-model-name">{{ modelName }}</span>
-          <input
-            v-else
-            ref="modelInputRef"
-            v-model="localModel"
-            class="model-edit-input"
-            @blur="showModelEdit = false"
-            @keydown.enter="showModelEdit = false"
-          />
-          <button class="change-model-btn" @click="showModelEdit ? (showModelEdit = false) : editModel()">
-            {{ showModelEdit ? '确定' : '更换' }}
+        <div class="cost-header-row">
+          <div>
+            <div class="cost-range-label">预计费用</div>
+            <div v-if="costMin !== null" :class="['cost-range', costRangeClass]">
+              <span v-if="costRangeClass === 'cost-high'">⚠️ </span>
+              ¥{{ fmtCost(costMin) }} ~ ¥{{ fmtCost(costMax) }}
+            </div>
+            <div v-else class="cost-range cost-unknown">费用未知，请确认模型定价后再开始</div>
+          </div>
+          <button class="change-model-btn" @click="showConfigPanel = !showConfigPanel">
+            {{ showConfigPanel ? '收起' : '更换模型' }}
           </button>
         </div>
-        <div class="cost-row">
-          <span class="cost-label">预计消耗</span>
-          <span class="cost-tokens">约 {{ estimatedTokens.toLocaleString() }} tokens</span>
+
+        <div class="cost-meta-row">
+          <span class="cost-meta-item">模型：<span class="cost-model-name">{{ localConfig.model }}</span></span>
+          <span class="cost-meta-item">Token：约 {{ estInputTokens.toLocaleString() }} 输入 · {{ estOutputTokens.toLocaleString() }} 输出</span>
         </div>
-        <div class="cost-row">
-          <span class="cost-label">预计费用</span>
-          <span v-if="estimatedCost !== null" :class="['cost-value', 'cost-' + costLevel]">
-            <span v-if="costLevel === 'high'">⚠️ </span>约 ¥{{ estimatedCost < 0.01 ? estimatedCost.toFixed(4) : estimatedCost.toFixed(2) }}
-            <span class="cost-unit">（¥{{ modelPrice }}/千token）</span>
-          </span>
-          <span v-else class="cost-value cost-unknown">该模型无定价数据</span>
+
+        <div v-if="currentPricing" class="cost-hint">
+          ℹ️ 左侧为全部命中缓存的最低费用，右侧为全部未命中时的最高费用，首次导入通常接近上限
         </div>
+        <div v-else-if="localConfig.model" class="cost-hint cost-hint-warn">
+          ⚠️ 该模型无定价数据，请确认费用后再开始
+        </div>
+
+        <!-- 模型配置面板（点击「更换模型」展开）-->
+        <ModelConfigPanel
+          v-if="showConfigPanel"
+          v-model="localConfig"
+          @close="showConfigPanel = false"
+        />
       </div>
 
       <div class="config-note">
@@ -655,44 +684,31 @@ function finish() {
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
-.cost-row {
+.cost-header-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
 }
-.cost-label {
+.cost-range-label {
+  font-size: 11px;
   color: rgba(255,255,255,0.35);
-  flex-shrink: 0;
-  width: 64px;
+  margin-bottom: 4px;
+  letter-spacing: 0.3px;
 }
-.cost-model-name {
-  color: rgba(192,132,252,0.85);
-  font-family: monospace;
-  font-size: 12px;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.cost-range {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
 }
-.model-edit-input {
-  flex: 1;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(139,92,246,0.4);
-  border-radius: 6px;
-  padding: 4px 10px;
-  color: rgba(255,255,255,0.85);
-  font-size: 12px;
-  font-family: monospace;
-  outline: none;
-  min-width: 0;
-}
+.cost-low    { color: #4ade80; }
+.cost-mid    { color: #fbbf24; }
+.cost-high   { color: #f87171; }
+.cost-unknown { color: rgba(255,255,255,0.35); font-size: 13px; font-weight: 400; }
 .change-model-btn {
-  padding: 3px 10px;
+  padding: 4px 12px;
   background: rgba(139,92,246,0.12);
   border: 1px solid rgba(139,92,246,0.25);
   border-radius: 8px;
@@ -700,27 +716,31 @@ function finish() {
   font-size: 11px;
   cursor: pointer;
   flex-shrink: 0;
+  white-space: nowrap;
   transition: all 0.2s;
 }
 .change-model-btn:hover {
   background: rgba(139,92,246,0.2);
   border-color: rgba(139,92,246,0.4);
 }
-.cost-tokens {
-  color: rgba(255,255,255,0.55);
+.cost-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
 }
-.cost-value {
-  font-size: 13px;
-  font-weight: 500;
-}
-.cost-low  { color: #4ade80; }
-.cost-mid  { color: #fbbf24; }
-.cost-high { color: #f87171; }
-.cost-unknown { color: rgba(255,255,255,0.35); font-size: 12px; }
-.cost-unit {
+.cost-meta-item {
   font-size: 11px;
   color: rgba(255,255,255,0.35);
-  margin-left: 4px;
-  font-weight: 400;
 }
+.cost-model-name {
+  color: rgba(192,132,252,0.75);
+  font-family: monospace;
+}
+.cost-hint {
+  font-size: 11px;
+  color: rgba(255,255,255,0.28);
+  line-height: 1.5;
+}
+.cost-hint-warn { color: rgba(251,191,36,0.65); }
 </style>
