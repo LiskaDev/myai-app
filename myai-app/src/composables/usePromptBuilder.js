@@ -53,9 +53,9 @@ export function usePromptBuilder(appState) {
 
         const memoryBlocks = buildMemoryContext(role, timelineText, personaSummary);
 
-        // ── P3.5：向量记忆检索（与世界书语义搜索独立，无条件尝试，失败静默降级）──
+        // ── P3.5：向量记忆检索（enableVectorMemory 开关控制，失败静默降级）──
         const latestUserMsg = messages.value.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
-        const vectorMemories = latestUserMsg
+        const vectorMemories = (appState.globalSettings?.enableVectorMemory && latestUserMsg)
             ? await retrieveRelevantMemories(role.id, latestUserMsg)
             : [];
 

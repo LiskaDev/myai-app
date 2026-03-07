@@ -385,6 +385,7 @@ ${rawContent}`;
 
     let isUpdatingCard = false;
     let isGeneratingChapter = false;
+    let isSyncingVector = false;
 
     /**
      * 🗂️ 章节摘要：将窗口外的旧消息归档为章节摘要
@@ -617,11 +618,16 @@ ${dialogueText}
      * @param {string} sessionId
      */
     async function syncMemoriesToVector(role, sessionId) {
+        if (isSyncingVector) return;
+        if (!globalSettings.enableVectorMemory) return;
         if (!globalSettings.apiKey) return;
 
         const latestChapter = (role.chapterSummaries || []).slice(-1)[0];
         if (!latestChapter?.summary) return;
+        // 去重：同一章已同步过则跳过
+        if (role._lastVectorSyncedChapter === latestChapter.chapterIndex) return;
 
+        isSyncingVector = true;
         const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com')
             .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
         const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
@@ -682,9 +688,14 @@ ${latestChapter.summary}`,
             if (saveRes.ok) {
                 const saved = await saveRes.json();
                 console.log(`[VectorMemory] ✅ 已保存 ${saved.saved} 条向量记忆`);
+                // 记录已同步的章节编号，防止重复写入
+                role._lastVectorSyncedChapter = latestChapter.chapterIndex;
+                saveData();
             }
         } catch (err) {
             console.warn('[VectorMemory] syncMemoriesToVector 失败:', err.message);
+        } finally {
+            isSyncingVector = false;
         }
     }
 

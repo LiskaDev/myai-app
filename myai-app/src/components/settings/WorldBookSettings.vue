@@ -164,6 +164,13 @@ function toggleSemantic() {
         props.globalSettings.semanticSearchEnabled = !props.globalSettings.semanticSearchEnabled;
     }
 }
+
+// ── 向量记忆开关 ──
+function toggleVectorMemory() {
+    if (props.globalSettings) {
+        props.globalSettings.enableVectorMemory = !props.globalSettings.enableVectorMemory;
+    }
+}
 </script>
 
 <template>
@@ -193,6 +200,17 @@ function toggleSemantic() {
       </div>
       <button @click="toggleSemantic" class="wb-toggle-switch" :class="{ on: globalSettings?.semanticSearchEnabled }">
         {{ globalSettings?.semanticSearchEnabled ? 'ON' : 'OFF' }}
+      </button>
+    </div>
+
+    <!-- 向量记忆开关（仅 Vercel 部署有效） -->
+    <div class="wb-semantic-toggle">
+      <div class="wb-semantic-info">
+        <span class="wb-semantic-label">💾 向量记忆</span>
+        <span class="wb-semantic-desc">章节归档后自动提取关键记忆写入数据库，每次对话语义检索相关历史。仅 Vercel 部署有效</span>
+      </div>
+      <button @click="toggleVectorMemory" class="wb-toggle-switch" :class="{ on: globalSettings?.enableVectorMemory }">
+        {{ globalSettings?.enableVectorMemory ? 'ON' : 'OFF' }}
       </button>
     </div>
 
