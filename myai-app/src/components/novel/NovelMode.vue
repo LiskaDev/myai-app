@@ -6,6 +6,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { streamChat, parseStateFromResponse, extractNarrative, buildNovelSystemPrompt, callChat } from '../../utils/novelUtils.js';
 import BookSettings from './BookSettings.vue';
+import { saveNovelMessages } from '../../composables/useNovelDB.js';
 
 const props = defineProps({
   book:           { type: Object, required: true },
@@ -44,16 +45,27 @@ let toastTimer       = null;
 // ── STATE 侧边栏 ──
 const stateStats    = computed(() => currentState.value?.stats || {});
 const stateItems    = computed(() => currentState.value?.items || []);
-const stateNpcs     = computed(() => currentState.value?.npcs  || []);
+const stateNpcs     = computed(() => (currentState.value?.npcs || []).filter(n => !n.deceased));
+const stateDeceased = computed(() => (currentState.value?.npcs || []).filter(n => n.deceased));
 const stateLocation = computed(() => currentState.value?.location || null);
 const stateQuests   = computed(() => currentState.value?.quests || []);
 
-// ── API 设置 ──
-const apiSettings = computed(() => ({
-  baseUrl: props.globalSettings.baseUrl || 'https://api.deepseek.com',
-  apiKey:  props.globalSettings.apiKey || '',
-  model:   props.globalSettings.model  || 'deepseek-chat',
-}));
+// ── API 设置（优先读书籍专用模型，未配置则回落全局）──
+const apiSettings = computed(() => {
+  const nm = props.book.novelModel;
+  if (nm?.apiKey) {
+    return {
+      baseUrl: (nm.baseUrl || 'https://api.deepseek.com').replace(/\/+$/, ''),
+      apiKey:  nm.apiKey,
+      model:   nm.model || 'deepseek-chat',
+    };
+  }
+  return {
+    baseUrl: props.globalSettings.baseUrl || 'https://api.deepseek.com',
+    apiKey:  props.globalSettings.apiKey || '',
+    model:   props.globalSettings.model  || 'deepseek-chat',
+  };
+});
 
 // ── 初始化消息历史 → 显示块 ──
 function rebuildDisplayBlocks() {
@@ -235,6 +247,9 @@ async function finalizeResponse(fullText, _userText) {
 
 // ── 自动存档 ──
 async function autoSave() {
+  // 直接写 IndexedDB（Vue emit 无法 await 父组件的 async 处理函数）
+  await saveNovelMessages(props.book.id, props.slotIndex, messages.value);
+  // 仅 emit 元数据到 App.vue 更新 localStorage
   emit('save-book', {
     slotIndex: props.slotIndex,
     saveData: {
@@ -243,7 +258,6 @@ async function autoSave() {
       updatedAt: Date.now(),
       chapterTitle: chapterTitle.value,
       state: currentState.value,
-      messages: messages.value,
       chapterSummaries: chapterSummaries.value,
     },
   });
@@ -373,6 +387,13 @@ function renderStatValue(stat) {
   return stat.value ?? '';
 }
 
+// 流式渲染时安全过滤：遇到 <!--STATE: 就截断（closing --> 可能还没到达）
+function streamingNarrative(text) {
+  if (!text) return '';
+  const idx = text.indexOf('<!--STATE:');
+  return idx !== -1 ? text.slice(0, idx).trimEnd() : text;
+}
+
 function npcDots(npc) {
   const rel = Math.max(-5, Math.min(5, npc.relation || 0));
   const abs = Math.abs(rel);
@@ -455,6 +476,17 @@ function npcDots(npc) {
           </div>
         </div>
 
+        <!-- 已逝 NPC -->
+        <div class="s-section" v-if="stateDeceased.length">
+          <div class="s-title s-title-dim">已逝</div>
+          <div v-for="npc in stateDeceased" :key="npc.name" class="npc-item npc-deceased">
+            <div class="npc-info">
+              <span class="npc-name">{{ npc.name }}</span>
+              <span class="npc-role">{{ npc.role }}</span>
+            </div>
+          </div>
+        </div>
+
         <!-- 当前位置 -->
         <div class="s-section" v-if="stateLocation">
           <div class="s-title">当前</div>
@@ -527,7 +559,7 @@ function npcDots(npc) {
 
             <!-- Streaming block -->
             <div v-if="isStreaming" class="narr-block streaming-block">
-              <p>{{ extractNarrative(streamingText) || streamingText }}<span class="cursor"></span></p>
+              <p>{{ streamingNarrative(streamingText) }}<span class="cursor"></span></p>
             </div>
 
             <!-- Generating indicator (before any text arrives) -->
@@ -729,6 +761,9 @@ function npcDots(npc) {
 .rdot.ally { background: var(--jade); }
 .rdot.enemy { background: var(--red); }
 .rdot.neutral { background: var(--gold-dim); }
+.s-title-dim { color: rgba(255,255,255,0.2) !important; }
+.npc-deceased { opacity: 0.4; }
+.npc-deceased .npc-name { text-decoration: line-through; }
 
 .location-badge { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.02); border: 1px solid rgba(200,168,74,0.1); border-radius: 6px; padding: 7px 9px; }
 .loc-icon { font-size: 14px; }

@@ -52,7 +52,7 @@ export function useNovelStore() {
     await deleteAllBookMessages(bookId);
   }
 
-  function createSave(bookId, slotIndex, { label, state, messages = [], chapterTitle = '' }) {
+  function createSave(bookId, slotIndex, { label, state, chapterTitle = '', chapterSummaries = [] }) {
     const book = bookList.value.find(b => b.id === bookId);
     if (!book) return null;
     const saveData = {
@@ -61,6 +61,7 @@ export function useNovelStore() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       chapterTitle,
+      chapterSummaries,
       state: state || {},
       // messages 不再存入 localStorage，由调用方写入 IndexedDB
     };

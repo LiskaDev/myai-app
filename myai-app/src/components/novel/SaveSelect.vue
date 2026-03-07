@@ -1,22 +1,11 @@
 <script setup>
-import { ref, computed } from 'vue';
-import ModelConfigPanel from './ModelConfigPanel.vue';
+import { computed } from 'vue';
 
 const props = defineProps({
-  book:           { type: Object, required: true },
-  globalSettings: { type: Object, default: () => ({}) },
+  book: { type: Object, required: true },
 });
 
-const emit = defineEmits(['select-save', 'back', 'update-model']);
-
-const gameModel      = ref(props.book.novelModel ? { ...props.book.novelModel } : { baseUrl: '', apiKey: '', model: '' });
-const showModelPanel = ref(false);
-
-function onModelSave(config) {
-  gameModel.value = config;
-  showModelPanel.value = false;
-  emit('update-model', { novelModel: config });
-}
+const emit = defineEmits(['select-save', 'back']);
 
 function formatDate(ts) {
   if (!ts) return '';
@@ -64,19 +53,6 @@ const slots = computed(() => {
         </template>
       </div>
     </div>
-
-    <!-- 游玩模型 -->
-    <div class="model-bar">
-      <span class="model-bar-label">游玩模型</span>
-      <span class="model-bar-name">{{ gameModel.model || globalSettings.model || 'deepseek-chat（全局）' }}</span>
-      <button class="model-bar-btn" @click="showModelPanel = !showModelPanel">⚙ 切换</button>
-    </div>
-    <ModelConfigPanel
-      v-if="showModelPanel"
-      :model-value="gameModel"
-      @update:model-value="onModelSave"
-      @close="showModelPanel = false"
-    />
 
     <button class="back-btn" @click="$emit('back')">← 返回书库</button>
   </div>
@@ -226,46 +202,5 @@ const slots = computed(() => {
 .back-btn:hover {
   border-color: rgba(255,255,255,0.2);
   color: rgba(255,255,255,0.65);
-}
-
-/* ── Model Bar ── */
-.model-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  margin-bottom: 12px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 12px;
-}
-.model-bar-label {
-  font-size: 11px;
-  color: rgba(255,255,255,0.3);
-  letter-spacing: 0.5px;
-  flex-shrink: 0;
-}
-.model-bar-name {
-  font-size: 12px;
-  color: rgba(200,168,74,0.75);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.model-bar-btn {
-  padding: 4px 10px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  color: rgba(255,255,255,0.45);
-  font-size: 11px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.2s;
-}
-.model-bar-btn:hover {
-  border-color: rgba(200,168,74,0.35);
-  color: rgba(200,168,74,0.8);
 }
 </style>

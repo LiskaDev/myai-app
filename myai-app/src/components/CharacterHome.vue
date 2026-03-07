@@ -84,10 +84,8 @@
         <SaveSelect
           v-else-if="worldNav === 'save-select' && selectedBook"
           :book="selectedBook"
-          :global-settings="globalSettings"
           @select-save="onSelectSave"
           @back="worldNav = 'library'"
-          @update-model="onBookSettingsUpdated"
         />
       </div>
     </template>

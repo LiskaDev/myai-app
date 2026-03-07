@@ -100,6 +100,8 @@ async function handleStartNovel({ book, slotIndex, save }) {
 
 async function handleNovelSaveBook(payload) {
   novelStore.loadBooks();
+  // loadBooks() 重建了 bookList，刷新 novelBook 引用避免使用旧对象
+  if (novelBook.value) novelBook.value = novelStore.getBook(novelBook.value.id);
   const { slotIndex, saveData, bookUpdates, deleteBook, deleteSaveSlot } = payload;
 
   // 删除整本书

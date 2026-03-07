@@ -109,7 +109,9 @@ const groupedEntries = computed(() => {
 });
 const collapsedGroups = ref({});
 function toggleGroup(cat) {
-  collapsedGroups.value = { ...collapsedGroups.value, [cat]: !collapsedGroups.value[cat] };
+  // undefined/true = 折叠（默认），false = 展开
+  const expanded = collapsedGroups.value[cat] === false;
+  collapsedGroups.value = { ...collapsedGroups.value, [cat]: expanded ? undefined : false };
 }
 
 // ── 存档管理 ──
@@ -191,9 +193,9 @@ function formatDate(ts) {
               <div class="group-header" @click="toggleGroup(cat)">
                 <span class="group-name">{{ cat }}</span>
                 <span class="group-count">({{ catEntries.length }})</span>
-                <span class="group-chevron">{{ collapsedGroups[cat] ? '▶' : '▼' }}</span>
+                <span class="group-chevron">{{ collapsedGroups[cat] !== false ? '▶' : '▼' }}</span>
               </div>
-              <template v-if="!collapsedGroups[cat]">
+              <template v-if="collapsedGroups[cat] === false">
                 <div
                   v-for="entry in catEntries"
                   :key="entry.name + entry._idx"

@@ -67,52 +67,73 @@ export async function streamChat(messages, settings, onChunk, signal) {
   const baseUrl = (settings.baseUrl || 'https://api.deepseek.com').replace(/\/+$/, '');
   const { apiKey, model } = settings;
 
-  const res = await fetch(`${baseUrl}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: model || 'deepseek-chat',
-      messages,
-      stream: true,
-      temperature: 0.9,
-      max_tokens: 2000,
-    }),
-    signal,
-  });
-
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => '');
-    throw new Error(`API ${res.status}: ${errBody.slice(0, 120)}`);
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let fullText = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split('\n');
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const data = line.slice(6);
-      if (data === '[DONE]') continue;
-      try {
-        const json = JSON.parse(data);
-        const delta = json.choices?.[0]?.delta?.content || '';
-        if (delta) {
-          fullText += delta;
-          onChunk(delta, fullText);
-        }
-      } catch { /* skip malformed SSE line */ }
+  // 30s 无响应超时 + 转发调用方的 abort 信号
+  let lastActivity = Date.now();
+  const timeoutCtrl = new AbortController();
+  const timeoutId = setInterval(() => {
+    if (Date.now() - lastActivity > 30_000) {
+      clearInterval(timeoutId);
+      timeoutCtrl.abort();
     }
-  }
+  }, 2_000);
+  const onCallerAbort = () => { clearInterval(timeoutId); timeoutCtrl.abort(); };
+  signal?.addEventListener('abort', onCallerAbort);
 
-  return fullText;
+  let reader;
+  try {
+    const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: model || 'deepseek-chat',
+        messages,
+        stream: true,
+        temperature: 0.9,
+        max_tokens: 2000,
+      }),
+      signal: timeoutCtrl.signal,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      throw new Error(`API ${res.status}: ${errBody.slice(0, 120)}`);
+    }
+
+    reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let isDone = false;
+
+    while (!isDone) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      lastActivity = Date.now();
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') { isDone = true; break; }
+        try {
+          const json = JSON.parse(data);
+          const delta = json.choices?.[0]?.delta?.content || '';
+          if (delta) {
+            fullText += delta;
+            onChunk(delta, fullText);
+          }
+        } catch { /* skip malformed SSE line */ }
+      }
+    }
+
+    return fullText;
+  } finally {
+    clearInterval(timeoutId);
+    signal?.removeEventListener('abort', onCallerAbort);
+    reader?.cancel().catch(() => {});
+  }
 }
 
 /**
