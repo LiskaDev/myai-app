@@ -66,6 +66,15 @@ const MODEL_PRICING = {
 const localConfig    = ref({ baseUrl: '', apiKey: '', model: '' });
 const showConfigPanel = ref(false);
 
+// 游玩模型（独立于提取模型）
+const gameModel          = ref({ baseUrl: '', apiKey: '', model: '' });
+const showGameModelPanel = ref(false);
+
+function saveGameModel(config) {
+  gameModel.value = { ...config };
+  showGameModelPanel.value = false;
+}
+
 function findPricing(name) {
   if (!name) return null;
   const n = name.toLowerCase();
@@ -312,6 +321,7 @@ function finish() {
     difficulty: 1,
     worldEntries: extractedEntries.value,
     saves: [null, null, null, null],
+    novelModel: { ...gameModel.value },
   };
   emit('done', book);
 }
@@ -448,6 +458,24 @@ function finish() {
           <span class="entry-cat">{{ entry.category || '其他' }}</span>
           <span class="entry-name">{{ entry.name }}</span>
         </div>
+      </div>
+
+      <!-- 游玩模型（可选） -->
+      <div class="game-model-section">
+        <div class="game-model-bar">
+          <span class="game-model-label">游玩模型</span>
+          <span class="game-model-name">{{ gameModel.model || localConfig.model || '跟随全局设置' }}</span>
+          <button class="game-model-btn" @click="showGameModelPanel = !showGameModelPanel">
+            {{ showGameModelPanel ? '收起' : '⚙ 配置' }}
+          </button>
+        </div>
+        <div v-if="!gameModel.apiKey" class="game-model-hint">可选：单独为此书配置游玩模型（与提取模型无关）</div>
+        <ModelConfigPanel
+          v-if="showGameModelPanel"
+          :model-value="gameModel"
+          @update:model-value="saveGameModel"
+          @close="showGameModelPanel = false"
+        />
       </div>
 
       <div class="preview-btns">
@@ -613,6 +641,14 @@ function finish() {
 
 .preview-summary { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
 .preview-summary strong { color: rgba(192,132,252,0.9); }
+
+/* ── Game Model Section ── */
+.game-model-section { margin: 16px 0 4px; }
+.game-model-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; }
+.game-model-label { font-size: 11px; color: rgba(255,255,255,0.3); flex-shrink: 0; }
+.game-model-name { font-size: 12px; color: rgba(200,168,74,0.75); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-model-btn { padding: 4px 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: rgba(255,255,255,0.45); font-size: 11px; cursor: pointer; flex-shrink: 0; }
+.game-model-hint { font-size: 11px; color: rgba(255,255,255,0.2); padding: 4px 2px; }
 
 /* ── Buttons ── */
 .error-msg {

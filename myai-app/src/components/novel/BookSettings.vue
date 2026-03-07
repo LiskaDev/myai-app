@@ -1,5 +1,6 @@
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
+import ModelConfigPanel from './ModelConfigPanel.vue';
 
 const props = defineProps({
   book:           { type: Object, required: true },
@@ -15,6 +16,20 @@ const editingEntry = ref(null); // { index, entry }
 const newEntry = reactive({ name: '', keywords: '', content: '', category: '其他' });
 const showAddForm = ref(false);
 const CATEGORIES = ['地理', '种族', '势力', '功法', '物品', '历史', '人物', '其他'];
+
+// ── 游玩模型配置 ──
+const localNovelModel = ref(
+  props.book.novelModel
+    ? { ...props.book.novelModel }
+    : { baseUrl: '', apiKey: '', model: '' }
+);
+const showModelPanel = ref(false);
+const showModelKey   = ref(false);
+
+function handleNovelModelSave(config) {
+  localNovelModel.value = config;
+  emit('book-updated', { novelModel: config });
+}
 
 // ── 风格/难度 ──
 const STYLES = [
@@ -82,6 +97,21 @@ function addEntry() {
   showAddForm.value = false;
 }
 
+// ── 世界书分组折叠 ──
+const groupedEntries = computed(() => {
+  const groups = {};
+  for (const [i, entry] of (props.book.worldEntries || []).entries()) {
+    const cat = entry.category || '其他';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push({ ...entry, _idx: i });
+  }
+  return groups;
+});
+const collapsedGroups = ref({});
+function toggleGroup(cat) {
+  collapsedGroups.value = { ...collapsedGroups.value, [cat]: !collapsedGroups.value[cat] };
+}
+
 // ── 存档管理 ──
 function deleteSaveSlot(slotIndex) {
   if (!confirm(`确定删除存档${slotIndex + 1}？此操作无法撤销。`)) return;
@@ -109,6 +139,7 @@ function formatDate(ts) {
       <div class="bs-tabs">
         <button :class="['bs-tab', activeTab === 'world' && 'active']"    @click="activeTab = 'world'">世界书</button>
         <button :class="['bs-tab', activeTab === 'style' && 'active']"    @click="activeTab = 'style'">风格难度</button>
+        <button :class="['bs-tab', activeTab === 'model' && 'active']"    @click="activeTab = 'model'">游玩模型</button>
         <button :class="['bs-tab', activeTab === 'saves' && 'active']"    @click="activeTab = 'saves'">存档管理</button>
         <button :class="['bs-tab', activeTab === 'danger' && 'active', 'danger-tab']" @click="activeTab = 'danger'">危险区</button>
       </div>
@@ -149,23 +180,35 @@ function formatDate(ts) {
             </div>
           </div>
 
-          <!-- Entry List -->
-          <div class="entry-list">
-            <div
-              v-for="(entry, idx) in (book.worldEntries || [])"
-              :key="entry.name + idx"
-              class="entry-row"
-            >
-              <div class="entry-row-info">
-                <span class="entry-cat">{{ entry.category || '其他' }}</span>
-                <span class="entry-name">{{ entry.name }}</span>
-              </div>
-              <div class="entry-row-btns">
-                <button class="icon-btn edit" @click="startEditEntry(idx)">✏</button>
-                <button class="icon-btn del"  @click="deleteEntry(idx)">✕</button>
-              </div>
-            </div>
+          <!-- Entry List (grouped) -->
+          <div class="entry-groups">
             <div v-if="!book.worldEntries?.length" class="empty-hint">暂无世界书条目</div>
+            <div
+              v-for="(catEntries, cat) in groupedEntries"
+              :key="cat"
+              class="entry-group"
+            >
+              <div class="group-header" @click="toggleGroup(cat)">
+                <span class="group-name">{{ cat }}</span>
+                <span class="group-count">({{ catEntries.length }})</span>
+                <span class="group-chevron">{{ collapsedGroups[cat] ? '▶' : '▼' }}</span>
+              </div>
+              <template v-if="!collapsedGroups[cat]">
+                <div
+                  v-for="entry in catEntries"
+                  :key="entry.name + entry._idx"
+                  class="entry-row"
+                >
+                  <div class="entry-row-info">
+                    <span class="entry-name">{{ entry.name }}</span>
+                  </div>
+                  <div class="entry-row-btns">
+                    <button class="icon-btn edit" @click="startEditEntry(entry._idx)">✏</button>
+                    <button class="icon-btn del"  @click="deleteEntry(entry._idx)">✕</button>
+                  </div>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
 
@@ -196,6 +239,44 @@ function formatDate(ts) {
           </div>
 
           <button class="save-style-btn" @click="saveStyleSettings">保存设置</button>
+        </div>
+
+        <!-- ── 游玩模型 Tab ── -->
+        <div v-else-if="activeTab === 'model'" class="tab-model">
+          <div class="model-tab-hint">
+            配置后本书对局将使用此模型，不配置则跟随全局设置。
+          </div>
+
+          <div class="form-section">
+            <label class="form-label">Base URL</label>
+            <input class="form-input" v-model="localNovelModel.baseUrl" placeholder="https://api.deepseek.com" autocomplete="off" />
+          </div>
+
+          <div class="form-section">
+            <label class="form-label">API Key</label>
+            <div class="model-key-row">
+              <input
+                :type="showModelKey ? 'text' : 'password'"
+                class="form-input model-key-input"
+                v-model="localNovelModel.apiKey"
+                placeholder="sk-..."
+                autocomplete="new-password"
+              />
+              <button class="model-eye-btn" @click="showModelKey = !showModelKey">{{ showModelKey ? '🙈' : '👁️' }}</button>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <label class="form-label">模型名称</label>
+            <input class="form-input" v-model="localNovelModel.model" placeholder="deepseek-chat" autocomplete="off" />
+          </div>
+
+          <div v-if="!localNovelModel.apiKey" class="model-hint-bs">未填写 API Key 时使用全局模型设置</div>
+
+          <div class="model-tab-btns">
+            <button class="save-style-btn" @click="handleNovelModelSave(localNovelModel)">保存模型配置</button>
+            <button v-if="localNovelModel.apiKey" class="clear-model-btn" @click="handleNovelModelSave({ baseUrl: '', apiKey: '', model: '' })">清除（跟随全局）</button>
+          </div>
         </div>
 
         <!-- ── 存档管理 Tab ── -->
@@ -318,6 +399,45 @@ function formatDate(ts) {
 .diff-desc { margin-top: 8px; font-size: 11px; color: rgba(255,255,255,0.3); line-height: 1.6; min-height: 18px; }
 .save-style-btn { padding: 10px 24px; background: rgba(200,168,74,0.15); border: 1px solid rgba(200,168,74,0.3); border-radius: 20px; color: #c8a84a; font-size: 13px; cursor: pointer; transition: all 0.2s; }
 .save-style-btn:hover { background: rgba(200,168,74,0.25); }
+
+/* ── 游玩模型配置 ── */
+.model-row-bs {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 6px;
+}
+.model-name-bs {
+  font-size: 12px; color: rgba(192,132,252,0.8); font-family: monospace;
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.model-cfg-btn {
+  padding: 3px 12px; background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.25);
+  border-radius: 8px; color: rgba(192,132,252,0.8); font-size: 11px; cursor: pointer;
+  flex-shrink: 0; transition: all 0.2s;
+}
+.model-cfg-btn:hover { background: rgba(139,92,246,0.2); }
+.model-hint-bs { font-size: 11px; color: rgba(255,255,255,0.25); margin-bottom: 8px; }
+
+/* ── 游玩模型 Tab ── */
+.tab-model { display: flex; flex-direction: column; gap: 4px; }
+.model-tab-hint { font-size: 12px; color: rgba(255,255,255,0.3); margin-bottom: 12px; line-height: 1.6; }
+.model-key-row { display: flex; gap: 6px; }
+.model-key-input { flex: 1; }
+.model-eye-btn { padding: 0 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 13px; flex-shrink: 0; }
+.model-tab-btns { display: flex; gap: 8px; margin-top: 8px; }
+.clear-model-btn { padding: 10px 18px; background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: rgba(255,255,255,0.35); font-size: 13px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; }
+.clear-model-btn:hover { border-color: rgba(239,68,68,0.3); color: #f87171; }
+
+/* ── Entry Groups ── */
+.entry-groups { display: flex; flex-direction: column; gap: 2px; }
+.group-header {
+  display: flex; align-items: center; gap: 6px; padding: 7px 10px;
+  cursor: pointer; border-radius: 8px; background: rgba(255,255,255,0.02);
+  user-select: none; transition: background 0.15s;
+}
+.group-header:hover { background: rgba(255,255,255,0.05); }
+.group-name { font-size: 12px; color: rgba(200,168,74,0.8); font-weight: 500; }
+.group-count { font-size: 11px; color: rgba(255,255,255,0.3); }
+.group-chevron { font-size: 8px; color: rgba(255,255,255,0.25); margin-left: auto; }
 
 /* ── Saves Tab ── */
 .save-slot-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.02); margin-bottom: 8px; }
