@@ -4,7 +4,7 @@
  * 逻辑复用自 WorldBookExtractor.vue 的 TXT 提取模式
  * 完成后 emit('done', book) 返回新书对象
  */
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { splitIntoChunks } from '../../utils/novelUtils.js';
 
 const props = defineProps({
@@ -39,10 +39,59 @@ const failedChunks = ref([]);
 const extractionAbort = ref(null);
 const error = ref('');
 
+// ── 費用估算 ──
+const MODEL_PRICE_MAP = [
+  { key: 'deepseek-reasoner', price: 0.004 },
+  { key: 'deepseek-r1',       price: 0.004 },
+  { key: 'deepseek-v3',       price: 0.002 },
+  { key: 'deepseek-chat',     price: 0.001 },
+  { key: 'qwen-max',          price: 0.004 },
+  { key: 'qwen-plus',         price: 0.0008 },
+  { key: 'qwen-turbo',        price: 0.0003 },
+  { key: 'gpt-4o-mini',       price: 0.001 },
+  { key: 'gpt-4o',            price: 0.018 },
+  { key: 'gpt-4',             price: 0.05 },
+  { key: 'gpt-3.5',           price: 0.002 },
+  { key: 'claude-3-5',        price: 0.022 },
+  { key: 'claude-3-haiku',    price: 0.002 },
+  { key: 'claude-3',          price: 0.05 },
+  { key: 'gemini-2',          price: 0.001 },
+  { key: 'gemini-1.5-flash',  price: 0.001 },
+  { key: 'gemini-1.5-pro',    price: 0.009 },
+];
+const localModel    = ref('');
+const showModelEdit = ref(false);
+const modelInputRef = ref(null);
+
+function editModel() {
+  showModelEdit.value = true;
+  nextTick(() => modelInputRef.value?.focus());
+}
+
 const totalChars = computed(() => fileText.value.length);
 const progress = computed(() => {
   if (!chunks.value.length) return 0;
   return Math.round(((currentChunkIndex.value + 1) / chunks.value.length) * 100);
+});
+
+const estimatedTokens = computed(() => Math.round(totalChars.value / 1.5));
+const modelName = computed(() =>
+  localModel.value || props.globalSettings.bgModel || props.globalSettings.model || 'deepseek-chat'
+);
+const modelPrice = computed(() => {
+  const name = modelName.value.toLowerCase();
+  const entry = MODEL_PRICE_MAP.find(e => name.includes(e.key));
+  return entry ? entry.price : null;
+});
+const estimatedCost = computed(() =>
+  modelPrice.value !== null ? (estimatedTokens.value / 1000) * modelPrice.value : null
+);
+const costLevel = computed(() => {
+  const c = estimatedCost.value;
+  if (c === null) return 'unknown';
+  if (c < 1)  return 'low';
+  if (c < 5)  return 'mid';
+  return 'high';
 });
 
 // ── EXTRACT_SYSTEM_PROMPT (same as WorldBookExtractor) ──
@@ -78,12 +127,14 @@ function handleFile(file) {
       gbkReader.onload = (e2) => {
         fileText.value = e2.target.result;
         chunks.value = splitIntoChunks(fileText.value, CHUNK_SIZE);
+        localModel.value = props.globalSettings.bgModel || props.globalSettings.model || 'deepseek-chat';
         phase.value = PHASE.CONFIG;
       };
       gbkReader.readAsText(file, 'GBK');
     } else {
       fileText.value = text;
       chunks.value = splitIntoChunks(text, CHUNK_SIZE);
+      localModel.value = props.globalSettings.bgModel || props.globalSettings.model || 'deepseek-chat';
       phase.value = PHASE.CONFIG;
     }
   };
@@ -132,8 +183,8 @@ function getApiConfig() {
   const s = props.globalSettings;
   return {
     baseUrl: (s.bgBaseUrl || s.baseUrl || 'https://api.deepseek.com').replace(/\/+$/, ''),
-    apiKey: s.bgApiKey || s.apiKey || '',
-    model: s.bgModel || s.model || 'deepseek-chat',
+    apiKey:  s.bgApiKey || s.apiKey || '',
+    model:   localModel.value || s.bgModel || s.model || 'deepseek-chat',
   };
 }
 
@@ -284,6 +335,37 @@ function finish() {
             :class="['emoji-btn', coverEmoji === e && 'active']"
             @click="coverEmoji = e"
           >{{ e }}</button>
+        </div>
+      </div>
+
+      <!-- 费用估算 -->
+      <div class="cost-estimate">
+        <div class="cost-row">
+          <span class="cost-label">当前模型</span>
+          <span v-if="!showModelEdit" class="cost-model-name">{{ modelName }}</span>
+          <input
+            v-else
+            ref="modelInputRef"
+            v-model="localModel"
+            class="model-edit-input"
+            @blur="showModelEdit = false"
+            @keydown.enter="showModelEdit = false"
+          />
+          <button class="change-model-btn" @click="showModelEdit ? (showModelEdit = false) : editModel()">
+            {{ showModelEdit ? '确定' : '更换' }}
+          </button>
+        </div>
+        <div class="cost-row">
+          <span class="cost-label">预计消耗</span>
+          <span class="cost-tokens">约 {{ estimatedTokens.toLocaleString() }} tokens</span>
+        </div>
+        <div class="cost-row">
+          <span class="cost-label">预计费用</span>
+          <span v-if="estimatedCost !== null" :class="['cost-value', 'cost-' + costLevel]">
+            <span v-if="costLevel === 'high'">⚠️ </span>约 ¥{{ estimatedCost < 0.01 ? estimatedCost.toFixed(4) : estimatedCost.toFixed(2) }}
+            <span class="cost-unit">（¥{{ modelPrice }}/千token）</span>
+          </span>
+          <span v-else class="cost-value cost-unknown">该模型无定价数据</span>
         </div>
       </div>
 
@@ -564,5 +646,81 @@ function finish() {
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+/* ── Cost Estimate ── */
+.cost-estimate {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cost-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.cost-label {
+  color: rgba(255,255,255,0.35);
+  flex-shrink: 0;
+  width: 64px;
+}
+.cost-model-name {
+  color: rgba(192,132,252,0.85);
+  font-family: monospace;
+  font-size: 12px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.model-edit-input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(139,92,246,0.4);
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: rgba(255,255,255,0.85);
+  font-size: 12px;
+  font-family: monospace;
+  outline: none;
+  min-width: 0;
+}
+.change-model-btn {
+  padding: 3px 10px;
+  background: rgba(139,92,246,0.12);
+  border: 1px solid rgba(139,92,246,0.25);
+  border-radius: 8px;
+  color: rgba(192,132,252,0.8);
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.change-model-btn:hover {
+  background: rgba(139,92,246,0.2);
+  border-color: rgba(139,92,246,0.4);
+}
+.cost-tokens {
+  color: rgba(255,255,255,0.55);
+}
+.cost-value {
+  font-size: 13px;
+  font-weight: 500;
+}
+.cost-low  { color: #4ade80; }
+.cost-mid  { color: #fbbf24; }
+.cost-high { color: #f87171; }
+.cost-unknown { color: rgba(255,255,255,0.35); font-size: 12px; }
+.cost-unit {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  margin-left: 4px;
+  font-weight: 400;
 }
 </style>
