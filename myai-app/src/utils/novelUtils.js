@@ -197,7 +197,7 @@ ${summaryBlock}
     "有上限的字段": {"value": 80, "max": 100}
   },
   "items": [{"name": "物品名", "rarity": "epic|rare|common", "count": 1}],
-  "npcs": [{"name": "名字", "role": "关系描述", "relation": -5到5的整数, "type": "ally|enemy|neutral"}],
+  "npcs": [{"name": "名字", "role": "关系描述", "relation": -5到5的整数, "type": "ally|enemy|neutral", "deceased": false}],
   "location": {"main": "主要地点", "sub": "详细位置"},
   "quests": [{"text": "任务描述", "active": true或false}],
   "events": [{"text": "事件描述", "type": "info|danger|obtain|mystery"}],
@@ -210,5 +210,6 @@ ${summaryBlock}
 - stats 字段完全由你根据世界观自定义，不要拘泥于固定格式
 - suggestions 每轮必须提供3条符合当前情境的行动建议
 - 保持 STATE 与叙事内容一致，每轮更新所有变化的字段
-- 若玩家行动有悖于世界规律或能力范围，请在叙事中自然处理后果`;
+- 若玩家行动有悖于世界规律或能力范围，请在叙事中自然处理后果
+- 已确认死亡的 NPC 将 deceased 设为 true，死亡前的 relation 值保持不变`;
 }

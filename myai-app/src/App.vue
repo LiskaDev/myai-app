@@ -123,19 +123,13 @@ async function handleNovelSaveBook(payload) {
     novelBook.value = novelStore.getBook(novelBook.value.id);
   }
 
-  // 保存存档（自动/手动）
+  // 保存存档（messages 已由 NovelMode 直接写入 IndexedDB，此处只更新 localStorage 元数据）
   if (saveData !== undefined && novelBook.value) {
-    // 把 messages 拆出来写 IndexedDB
-    const { messages: msgs, ...metaData } = saveData;
-    if (msgs) {
-      await saveNovelMessages(novelBook.value.id, slotIndex, msgs);
-    }
-
     const existing = novelBook.value.saves?.[slotIndex];
     if (existing) {
-      novelStore.updateSave(novelBook.value.id, slotIndex, metaData);
+      novelStore.updateSave(novelBook.value.id, slotIndex, saveData);
     } else {
-      novelStore.createSave(novelBook.value.id, slotIndex, metaData);
+      novelStore.createSave(novelBook.value.id, slotIndex, saveData);
     }
     novelBook.value = novelStore.getBook(novelBook.value.id);
   }

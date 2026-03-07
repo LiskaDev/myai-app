@@ -55,6 +55,12 @@
               {{ selectedBook.title }}
             </span>
           </span>
+          <button
+            v-if="worldNav === 'save-select' && selectedBook"
+            class="world-settings-btn"
+            @click="showBookSettings = true"
+            title="书籍设置"
+          >⚙</button>
         </div>
 
         <!-- 书库 -->
@@ -84,6 +90,17 @@
       </div>
     </template>
   </div>
+
+  <!-- 书籍设置面板（视图层覆盖）-->
+  <BookSettings
+    v-if="showBookSettings && selectedBook"
+    :book="selectedBook"
+    :global-settings="globalSettings"
+    @close="showBookSettings = false"
+    @book-updated="onBookSettingsUpdated"
+    @delete-book="onBookSettingsDelete"
+    @delete-save="onBookSettingsDeleteSave"
+  />
 </template>
 
 <script setup>
@@ -91,6 +108,7 @@ import { ref, onMounted } from 'vue';
 import BookLibrary from './novel/BookLibrary.vue';
 import BookImport  from './novel/BookImport.vue';
 import SaveSelect  from './novel/SaveSelect.vue';
+import BookSettings from './novel/BookSettings.vue';
 import { useNovelStore } from '../composables/useNovelStore.js';
 
 const props = defineProps({
@@ -101,9 +119,10 @@ const props = defineProps({
 const emit = defineEmits(['select-role', 'start-novel']);
 
 // ── Tab / 世界子导航 ──
-const activeTab  = ref('role');
-const worldNav   = ref('library');   // 'library' | 'import' | 'save-select'
-const selectedBook = ref(null);
+const activeTab      = ref('role');
+const worldNav       = ref('library');   // 'library' | 'import' | 'save-select'
+const selectedBook   = ref(null);
+const showBookSettings = ref(false);
 
 // ── Novel Store ──
 const novelStore = useNovelStore();
@@ -131,6 +150,29 @@ function onSelectBook(book) {
 async function onDeleteBook(bookId) {
   if (!confirm('确定要删除这本书吗？所有存档将一并删除，此操作无法撤销。')) return;
   await novelStore.deleteBook(bookId);
+}
+
+// ── 书籍设置（从存档选择页打开）──
+async function onBookSettingsUpdated(updates) {
+  if (!selectedBook.value) return;
+  novelStore.updateBook(selectedBook.value.id, updates);
+  novelStore.loadBooks();
+  selectedBook.value = novelStore.getBook(selectedBook.value.id);
+}
+
+async function onBookSettingsDelete() {
+  if (!selectedBook.value) return;
+  await novelStore.deleteBook(selectedBook.value.id);
+  showBookSettings.value = false;
+  worldNav.value = 'library';
+  selectedBook.value = null;
+}
+
+async function onBookSettingsDeleteSave({ deleteSaveSlot }) {
+  if (!selectedBook.value) return;
+  await novelStore.deleteSave(selectedBook.value.id, deleteSaveSlot);
+  novelStore.loadBooks();
+  selectedBook.value = novelStore.getBook(selectedBook.value.id);
 }
 
 function onImportDone(book) {
@@ -246,6 +288,27 @@ function hasHistory(role) {
   font-size: 15px;
   color: rgba(255, 255, 255, 0.55);
   letter-spacing: 1px;
+}
+
+.world-settings-btn {
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.world-settings-btn:hover {
+  border-color: rgba(200, 168, 74, 0.4);
+  color: rgba(200, 168, 74, 0.9);
 }
 
 .character-home {
