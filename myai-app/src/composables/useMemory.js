@@ -1,6 +1,32 @@
 import { acquireBackgroundLock, releaseBackgroundLock, isBackgroundLocked } from './useTimeline';
 import { useBackgroundTasks } from './useBackgroundTasks';
 
+/**
+ * 🧠 向量记忆检索（独立导出，供 usePromptBuilder 直接调用）
+ * @param {string} characterId
+ * @param {string} currentMessage - 当前用户消息，用作语义查询
+ * @returns {Promise<string[]>} 相关记忆文本数组（最多5条）
+ */
+export async function retrieveRelevantMemories(characterId, currentMessage) {
+    if (!characterId || !currentMessage) return [];
+    try {
+        const res = await fetch('/api/memory-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                characterId,
+                query: currentMessage.slice(0, 500),
+                limit: 5,
+            }),
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.results || [];
+    } catch {
+        return [];
+    }
+}
+
 // 章节摘要配置
 const CHAPTER_TRIGGER_COUNT = 15;   // 每积累 15 条未归档消息触发
 const MAX_CHAPTERS = 8;             // 最多保留 8 章，超出时最早的合并为远古摘要
@@ -586,6 +612,83 @@ ${dialogueText}
     }
 
     /**
+     * 🧠 向量记忆同步：章节摘要完成后调用，提取结构化记忆并写入 Supabase
+     * @param {Object} role - 当前角色对象
+     * @param {string} sessionId
+     */
+    async function syncMemoriesToVector(role, sessionId) {
+        if (!globalSettings.apiKey) return;
+
+        const latestChapter = (role.chapterSummaries || []).slice(-1)[0];
+        if (!latestChapter?.summary) return;
+
+        const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com')
+            .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
+        const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
+        const rawModel = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
+        const model = rawModel.includes('reasoner') ? 'deepseek-chat' : rawModel;
+
+        try {
+            const response = await fetch(`${baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    model,
+                    max_tokens: 400,
+                    temperature: 0.3,
+                    messages: [{
+                        role: 'user',
+                        content: `从以下剧情摘要中提取3-5条关键记忆，每条记忆包含重要度(1-5)和类型。
+类型可以是：event（事件）、relation（关系变化）、fact（事实/设定）。
+只保留重要度≥3的记忆。直接返回合法JSON数组，格式：
+[{"content":"...","importance":4,"memory_type":"event"}]
+不要任何额外说明或代码块。
+
+摘要内容：
+${latestChapter.summary}`,
+                    }],
+                }),
+                signal: AbortSignal.timeout(20000),
+            });
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+            const aiResponse = (data.choices?.[0]?.message?.content || '').trim();
+
+            const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) return;
+
+            const memories = JSON.parse(jsonMatch[0]);
+            if (!Array.isArray(memories) || memories.length === 0) return;
+
+            const filtered = memories.filter(m => m.importance >= 3 && m.content)
+                .map(m => ({ content: m.content, importance: m.importance, memory_type: m.memory_type || m.type || 'event' }));
+            if (filtered.length === 0) return;
+
+            const saveRes = await fetch('/api/memory-save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    characterId: role.id,
+                    sessionId: sessionId || role.id,
+                    memories: filtered,
+                }),
+            });
+
+            if (saveRes.ok) {
+                const saved = await saveRes.json();
+                console.log(`[VectorMemory] ✅ 已保存 ${saved.saved} 条向量记忆`);
+            }
+        } catch (err) {
+            console.warn('[VectorMemory] syncMemoriesToVector 失败:', err.message);
+        }
+    }
+
+    /**
      * 📡 主入口：AI 回复完成后调用，自动判断是否触发章节摘要 / 认知卡更新
      * @param {Object} role - 当前角色对象
      * @param {Array} allMessages - 完整消息列表
@@ -635,6 +738,9 @@ ${dialogueText}
 
         triggerChapterSummary(role, messagesToArchive)
             .then(() => {
+                // 同步最新章节到向量记忆（语义搜索功能）
+                syncMemoriesToVector(role, role.id).catch(() => {});
+
                 // 归档成功后检查是否还有积压，继续追赶
                 const newArchived = (role.chapterSummaries || [])
                     .reduce((sum, c) => sum + c.messageCount, 0);
@@ -683,5 +789,7 @@ ${dialogueText}
         triggerChapterSummary,
         triggerMemoryCardUpdate,
         checkAndTriggerMemorySystems,
+        // v7.0 向量记忆
+        syncMemoriesToVector,
     };
 }

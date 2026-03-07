@@ -10,11 +10,12 @@
  * @param {Array}  options.styleBlocks   - P2 风格参考块
  * @param {Array}  options.memoryBlocks  - P3 剧情参考块
  * @param {Object} [options.loreBlocks]  - 📖 世界书匹配结果 { before: string[], after: string[] }
+ * @param {Array}  [options.vectorMemoryBlocks] - P3.5 向量记忆块（语义检索的相关历史记忆）
  * @param {Object} options.role          - 当前角色
  * @param {Array}  options.messages      - 全部消息数组（ref.value）
  * @returns {Array} 最终的 apiMessages
  */
-export function assemblePrompt({ coreBlocks, styleBlocks, memoryBlocks, loreBlocks, role, messages }) {
+export function assemblePrompt({ coreBlocks, styleBlocks, memoryBlocks, loreBlocks, vectorMemoryBlocks, role, messages }) {
     const apiMessages = [];
 
     // ── 1. P0+P1 核心身份（最高优先级，永远保留）──
@@ -33,6 +34,15 @@ export function assemblePrompt({ coreBlocks, styleBlocks, memoryBlocks, loreBloc
 
     // ── 3. P3 剧情参考（token 紧张时优先裁剪这部分）──
     apiMessages.push(...memoryBlocks);
+
+    // ── 3.5 P3.5 向量记忆（语义检索，相关历史记忆）──
+    if (vectorMemoryBlocks?.length) {
+        apiMessages.push({
+            role: 'system',
+            content: `[相关历史记忆 — 以下是与当前对话语义相关的重要历史事件，可作为背景参考]
+${vectorMemoryBlocks.join('\n\n')}`,
+        });
+    }
 
     // ── 4. 内容偏好（user 角色注入）──
     if (role.contentPreferences && role.contentPreferences.trim()) {

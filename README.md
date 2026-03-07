@@ -44,6 +44,7 @@
 - **AI 记忆精简** — 一键用 AI 压缩冗长记忆，节省 Token
 - **自动摘要** — 对话过长时自动生成剧情摘要（单聊 & 群聊均支持）
 - **认知画像卡** — 自动跟踪用户特征、关键事件和关系阶段
+- **🧠 向量记忆 (v7.0)** — 重要记忆自动向量化存储（Supabase pgvector + SiliconFlow Embedding），对话时语义搜索召回相关记忆注入上下文
 
 ### 👥 多角色群聊
 - **群聊创建** — 选择 2-8 个角色组建群聊，设置群名和主题描述
@@ -267,7 +268,9 @@ myai-app/
 │       └── validation.js              # 输入验证
 ├── api/                               # Vercel Serverless Functions
 │   ├── worldbook-embed.js             # 📖 世界书 embedding 存储
-│   └── worldbook-search.js            # 🧠 向量语义搜索
+│   ├── worldbook-search.js            # 🧠 世界书向量语义搜索
+│   ├── memory-save.js                 # 🧠 向量记忆存储
+│   └── memory-search.js               # 🧠 向量记忆检索
 ├── tests/                             # Vitest 单元测试
 └── index.html
 ```
