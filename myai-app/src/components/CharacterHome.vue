@@ -128,9 +128,9 @@ function onSelectBook(book) {
   worldNav.value     = 'save-select';
 }
 
-function onDeleteBook(bookId) {
+async function onDeleteBook(bookId) {
   if (!confirm('确定要删除这本书吗？所有存档将一并删除，此操作无法撤销。')) return;
-  novelStore.deleteBook(bookId);
+  await novelStore.deleteBook(bookId);
 }
 
 function onImportDone(book) {

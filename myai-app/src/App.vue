@@ -31,6 +31,7 @@ import CardLibraryModal from './components/CardLibraryModal.vue';
 import CharacterHome from './components/CharacterHome.vue';
 import NovelMode from './components/novel/NovelMode.vue';
 import { useNovelStore } from './composables/useNovelStore.js';
+import { saveNovelMessages, loadNovelMessages, deleteNovelMessages } from './composables/useNovelDB.js';
 
 // Initialize State
 const appState = useAppState();
@@ -72,33 +73,69 @@ const novelBook      = ref(null);
 const novelSave      = ref(null);
 const novelSlotIndex = ref(0);
 
-function handleStartNovel({ book, slotIndex, save }) {
+async function handleStartNovel({ book, slotIndex, save }) {
   novelBook.value      = book;
-  novelSave.value      = save || null;
   novelSlotIndex.value = slotIndex ?? 0;
+
+  if (save) {
+    // 从 IndexedDB 加载 messages
+    let msgs = await loadNovelMessages(book.id, slotIndex);
+
+    // 向后兼容：旧存档 messages 在 localStorage 里，一次性迁移到 IndexedDB
+    if (msgs.length === 0 && save.messages?.length > 0) {
+      msgs = save.messages;
+      await saveNovelMessages(book.id, slotIndex, msgs);
+      // 从 localStorage save 对象里清掉 messages 节省空间
+      novelStore.updateSave(book.id, slotIndex, { messages: undefined });
+    }
+
+    novelSave.value = { ...save, messages: msgs };
+  } else {
+    novelSave.value = null;
+  }
+
   showNovelMode.value  = true;
   showHomePage.value   = false;
 }
 
-function handleNovelSaveBook(payload) {
+async function handleNovelSaveBook(payload) {
   novelStore.loadBooks();
-  const { slotIndex, saveData, bookUpdates, deleteBook } = payload;
+  const { slotIndex, saveData, bookUpdates, deleteBook, deleteSaveSlot } = payload;
+
+  // 删除整本书
   if (deleteBook && novelBook.value) {
-    novelStore.deleteBook(novelBook.value.id);
+    await novelStore.deleteBook(novelBook.value.id);
     showNovelMode.value = false;
     showHomePage.value  = true;
     return;
   }
+
+  // 删除单个存档位
+  if (deleteSaveSlot !== undefined && novelBook.value) {
+    await novelStore.deleteSave(novelBook.value.id, deleteSaveSlot);
+    novelBook.value = novelStore.getBook(novelBook.value.id);
+    return;
+  }
+
+  // 更新书籍元数据（风格、难度、世界书等）
   if (bookUpdates && novelBook.value) {
     novelStore.updateBook(novelBook.value.id, bookUpdates);
     novelBook.value = novelStore.getBook(novelBook.value.id);
   }
+
+  // 保存存档（自动/手动）
   if (saveData !== undefined && novelBook.value) {
+    // 把 messages 拆出来写 IndexedDB
+    const { messages: msgs, ...metaData } = saveData;
+    if (msgs) {
+      await saveNovelMessages(novelBook.value.id, slotIndex, msgs);
+    }
+
     const existing = novelBook.value.saves?.[slotIndex];
     if (existing) {
-      novelStore.updateSave(novelBook.value.id, slotIndex, saveData);
+      novelStore.updateSave(novelBook.value.id, slotIndex, metaData);
     } else {
-      novelStore.createSave(novelBook.value.id, slotIndex, saveData);
+      novelStore.createSave(novelBook.value.id, slotIndex, metaData);
     }
     novelBook.value = novelStore.getBook(novelBook.value.id);
   }
@@ -1016,6 +1053,7 @@ function handleAvatarError(type, roleId) {
     :global-settings="globalSettings"
     @exit="showNovelMode = false; showHomePage = true"
     @save-book="handleNovelSaveBook"
+    @delete-save="handleNovelSaveBook"
   />
 
   <!-- 主界面（对话模式） -->

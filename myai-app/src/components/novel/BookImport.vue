@@ -1,0 +1,568 @@
+<script setup>
+/**
+ * BookImport.vue — TXT 文件上传 + AI 分块提取世界书条目
+ * 逻辑复用自 WorldBookExtractor.vue 的 TXT 提取模式
+ * 完成后 emit('done', book) 返回新书对象
+ */
+import { ref, computed } from 'vue';
+import { splitIntoChunks } from '../../utils/novelUtils.js';
+
+const props = defineProps({
+  globalSettings: { type: Object, required: true },
+});
+
+const emit = defineEmits(['done', 'cancel']);
+
+// ── 阶段 ──
+const PHASE = { UPLOAD: 'upload', CONFIG: 'config', EXTRACTING: 'extracting', PREVIEW: 'preview' };
+const phase = ref(PHASE.UPLOAD);
+
+// ── 文件 ──
+const fileText = ref('');
+const fileName = ref('');
+const isDragging = ref(false);
+const fileInputRef = ref(null);
+const CHUNK_SIZE = 8000;
+const chunks = ref([]);
+
+// ── 书籍配置 ──
+const bookTitle = ref('');
+const coverEmoji = ref('📖');
+const EMOJI_PRESETS = ['📖', '⚔️', '🏔️', '🌊', '🔮', '🌌', '🏯', '🎴', '🌸', '🐉'];
+
+// ── 提取进度 ──
+const extractedEntries = ref([]);
+const currentChunkIndex = ref(0);
+const isPaused = ref(false);
+const isStopped = ref(false);
+const failedChunks = ref([]);
+const extractionAbort = ref(null);
+const error = ref('');
+
+const totalChars = computed(() => fileText.value.length);
+const progress = computed(() => {
+  if (!chunks.value.length) return 0;
+  return Math.round(((currentChunkIndex.value + 1) / chunks.value.length) * 100);
+});
+
+// ── EXTRACT_SYSTEM_PROMPT (same as WorldBookExtractor) ──
+const EXTRACT_SYSTEM_PROMPT = `你是一个专业的小说设定提取助手。请从以下文本中提取所有出现的世界观设定，包括：地点、种族、势力、功法/魔法体系、重要物品、历史事件等。
+
+重要规则：
+- 忽略所有非正文内容：广告、水印、版权声明、译者注、章节标题、作者声明、平台推广、求票求收藏等
+- 只提取故事内首次出现或有详细描写的设定，不要重复提取同一设定
+- 人物角色不算世界设定（不要提取主角、配角等人物信息）
+
+严格只返回 JSON 数组，不要任何解释文字，不要 markdown 代码块。
+格式：
+[{"name":"条目名","keywords":["词1","词2"],"content":"详细描述100-200字","category":"地理|种族|势力|功法|物品|历史|其他"}]
+如果该段文本没有可提取的设定，返回空数组 []`;
+
+// ── 文件处理 ──
+function handleFile(file) {
+  if (!file || !file.name.endsWith('.txt')) {
+    error.value = '请上传 .txt 文件';
+    return;
+  }
+  error.value = '';
+  fileName.value = file.name;
+  // Try auto-detect title from filename
+  bookTitle.value = file.name.replace(/\.txt$/i, '').replace(/[-_]/g, ' ').trim();
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const garbledRatio = (text.match(/\uFFFD/g) || []).length / Math.max(text.length, 1);
+    if (garbledRatio > 0.05) {
+      const gbkReader = new FileReader();
+      gbkReader.onload = (e2) => {
+        fileText.value = e2.target.result;
+        chunks.value = splitIntoChunks(fileText.value, CHUNK_SIZE);
+        phase.value = PHASE.CONFIG;
+      };
+      gbkReader.readAsText(file, 'GBK');
+    } else {
+      fileText.value = text;
+      chunks.value = splitIntoChunks(text, CHUNK_SIZE);
+      phase.value = PHASE.CONFIG;
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function handleFileDrop(e) {
+  e.preventDefault();
+  isDragging.value = false;
+  const file = e.dataTransfer?.files?.[0];
+  if (file) handleFile(file);
+}
+
+function handleFileInput(e) {
+  const file = e.target.files?.[0];
+  if (file) handleFile(file);
+  e.target.value = '';
+}
+
+// ── 提取 JSON ──
+function extractJsonArray(raw) {
+  if (!raw?.trim()) return [];
+  let text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  text = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+  try {
+    const p = JSON.parse(text);
+    if (Array.isArray(p)) return p;
+  } catch { /* continue */ }
+  const start = text.indexOf('[');
+  if (start === -1) return [];
+  let depth = 0, end = -1;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '[') depth++;
+    if (text[i] === ']') depth--;
+    if (depth === 0) { end = i; break; }
+  }
+  if (end === -1) return [];
+  try {
+    const p = JSON.parse(text.slice(start, end + 1));
+    if (Array.isArray(p)) return p;
+  } catch { /* ignore */ }
+  return [];
+}
+
+function getApiConfig() {
+  const s = props.globalSettings;
+  return {
+    baseUrl: (s.bgBaseUrl || s.baseUrl || 'https://api.deepseek.com').replace(/\/+$/, ''),
+    apiKey: s.bgApiKey || s.apiKey || '',
+    model: s.bgModel || s.model || 'deepseek-chat',
+  };
+}
+
+// ── 开始提取 ──
+async function startExtraction() {
+  const { apiKey } = getApiConfig();
+  if (!apiKey) { error.value = '请先在设置中配置 API Key'; return; }
+  if (!bookTitle.value.trim()) { error.value = '请填写书名'; return; }
+
+  phase.value = PHASE.EXTRACTING;
+  extractedEntries.value = [];
+  failedChunks.value = [];
+  error.value = '';
+  isPaused.value = false;
+  isStopped.value = false;
+  currentChunkIndex.value = 0;
+  await processChunks(0);
+}
+
+async function processChunks(startFrom) {
+  const { baseUrl, apiKey, model } = getApiConfig();
+
+  for (let i = startFrom; i < chunks.value.length; i++) {
+    if (isStopped.value) break;
+    while (isPaused.value && !isStopped.value) {
+      await new Promise(r => setTimeout(r, 200));
+    }
+    if (isStopped.value) break;
+
+    currentChunkIndex.value = i;
+
+    try {
+      const controller = new AbortController();
+      extractionAbort.value = controller;
+
+      const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: EXTRACT_SYSTEM_PROMPT },
+            { role: 'user', content: `请提取以下文本中的世界观设定：\n\n${chunks.value[i]}` },
+          ],
+          temperature: 0.3,
+          max_tokens: 4000,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      const data = await res.json();
+      const entries = extractJsonArray(data.choices?.[0]?.message?.content || '');
+      for (const e of entries) {
+        e._chunkIndex = i;
+        extractedEntries.value.push(e);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') break;
+      console.warn(`[BookImport] 块 ${i} 失败:`, err.message);
+      failedChunks.value.push(i);
+    }
+
+    if (i < chunks.value.length - 1 && !isStopped.value) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+
+  // dedup
+  const map = new Map();
+  for (const e of extractedEntries.value) {
+    const key = e.name?.trim();
+    if (!key) continue;
+    const existing = map.get(key);
+    if (!existing || (e.content || '').length > (existing.content || '').length) {
+      map.set(key, e);
+    }
+  }
+  extractedEntries.value = Array.from(map.values());
+  phase.value = PHASE.PREVIEW;
+}
+
+function pauseExtraction() { isPaused.value = true; }
+function resumeExtraction() { isPaused.value = false; }
+function stopExtraction() {
+  isStopped.value = true;
+  extractionAbort.value?.abort();
+}
+
+// ── 完成 ──
+function finish() {
+  const book = {
+    id: crypto.randomUUID(),
+    title: bookTitle.value.trim() || fileName.value,
+    coverEmoji: coverEmoji.value,
+    createdAt: Date.now(),
+    style: 'xianxia',
+    difficulty: 1,
+    worldEntries: extractedEntries.value,
+    saves: [null, null, null, null],
+  };
+  emit('done', book);
+}
+</script>
+
+<template>
+  <div class="book-import">
+
+    <!-- Upload Phase -->
+    <div v-if="phase === 'upload'" class="phase-upload">
+      <div class="phase-title">📄 导入小说</div>
+      <div
+        class="drop-zone"
+        :class="{ dragging: isDragging }"
+        @dragover.prevent="isDragging = true"
+        @dragleave="isDragging = false"
+        @drop="handleFileDrop"
+        @click="fileInputRef?.click()"
+      >
+        <div class="drop-icon">📄</div>
+        <div class="drop-text">拖入 .txt 文件，或点击选择</div>
+        <div class="drop-sub">支持大型小说文件，将分段提取世界观设定</div>
+      </div>
+      <input ref="fileInputRef" type="file" accept=".txt" style="display:none" @change="handleFileInput" />
+      <div v-if="error" class="error-msg">⚠️ {{ error }}</div>
+      <button class="cancel-btn" @click="$emit('cancel')">取消</button>
+    </div>
+
+    <!-- Config Phase -->
+    <div v-else-if="phase === 'config'" class="phase-config">
+      <div class="phase-title">⚙️ 书籍设置</div>
+      <div class="file-info">已读入：{{ fileName }}（{{ (totalChars / 10000).toFixed(1) }} 万字，共 {{ chunks.length }} 块）</div>
+
+      <div class="form-group">
+        <label class="form-label">书名</label>
+        <input v-model="bookTitle" class="form-input" placeholder="请输入书名" maxlength="40" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">封面图标</label>
+        <div class="emoji-picker">
+          <button
+            v-for="e in EMOJI_PRESETS"
+            :key="e"
+            :class="['emoji-btn', coverEmoji === e && 'active']"
+            @click="coverEmoji = e"
+          >{{ e }}</button>
+        </div>
+      </div>
+
+      <div class="config-note">
+        <span>✨</span>
+        <span>AI 将依次分析每个段落，自动提取地点、势力、功法等世界观条目。提取完成后你可以预览并确认导入。</span>
+      </div>
+
+      <div v-if="error" class="error-msg">⚠️ {{ error }}</div>
+
+      <div class="config-btns">
+        <button class="cancel-btn" @click="phase = 'upload'">← 返回</button>
+        <button class="start-btn" @click="startExtraction">开始提取 →</button>
+      </div>
+    </div>
+
+    <!-- Extracting Phase -->
+    <div v-else-if="phase === 'extracting'" class="phase-extracting">
+      <div class="phase-title">🔍 正在提取世界观…</div>
+
+      <div class="extract-progress">
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" :style="{ width: progress + '%' }"></div>
+        </div>
+        <div class="progress-text">
+          块 {{ currentChunkIndex + 1 }} / {{ chunks.length }} &nbsp;·&nbsp; {{ progress }}%
+        </div>
+      </div>
+
+      <div class="entry-count">已提取 {{ extractedEntries.length }} 条设定</div>
+
+      <div v-if="failedChunks.length" class="failed-note">⚠️ {{ failedChunks.length }} 块处理失败（将跳过）</div>
+
+      <div class="extract-btns">
+        <button v-if="!isPaused" class="pause-btn" @click="pauseExtraction">⏸ 暂停</button>
+        <button v-else class="resume-btn" @click="resumeExtraction">▶ 继续</button>
+        <button class="stop-btn" @click="stopExtraction">⏹ 停止并预览</button>
+      </div>
+    </div>
+
+    <!-- Preview Phase -->
+    <div v-else-if="phase === 'preview'" class="phase-preview">
+      <div class="phase-title">✅ 提取完成</div>
+      <div class="preview-summary">
+        共提取 <strong>{{ extractedEntries.length }}</strong> 条世界观条目
+        <span v-if="failedChunks.length">（{{ failedChunks.length }} 块失败）</span>
+      </div>
+
+      <div class="entry-list">
+        <div v-for="entry in extractedEntries" :key="entry.name" class="entry-item">
+          <span class="entry-cat">{{ entry.category || '其他' }}</span>
+          <span class="entry-name">{{ entry.name }}</span>
+        </div>
+      </div>
+
+      <div class="preview-btns">
+        <button class="cancel-btn" @click="$emit('cancel')">取消导入</button>
+        <button class="finish-btn" @click="finish">导入书库 →</button>
+      </div>
+    </div>
+
+  </div>
+</template>
+
+<style scoped>
+.book-import {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 0 40px;
+}
+
+.phase-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 24px;
+  letter-spacing: 1px;
+}
+
+/* ── Drop Zone ── */
+.drop-zone {
+  border: 2px dashed rgba(139,92,246,0.3);
+  border-radius: 16px;
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  background: rgba(139,92,246,0.04);
+  margin-bottom: 16px;
+}
+.drop-zone:hover, .drop-zone.dragging {
+  border-color: rgba(139,92,246,0.6);
+  background: rgba(139,92,246,0.08);
+}
+.drop-icon { font-size: 40px; margin-bottom: 12px; }
+.drop-text { font-size: 15px; color: rgba(255,255,255,0.7); margin-bottom: 6px; }
+.drop-sub { font-size: 12px; color: rgba(255,255,255,0.35); }
+
+/* ── File Info ── */
+.file-info {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.04);
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+/* ── Form ── */
+.form-group { margin-bottom: 18px; }
+.form-label {
+  display: block;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+.form-input {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: rgba(255,255,255,0.85);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-input:focus { border-color: rgba(139,92,246,0.5); }
+
+.emoji-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.emoji-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.emoji-btn.active {
+  background: rgba(139,92,246,0.2);
+  border-color: rgba(139,92,246,0.5);
+}
+.emoji-btn:hover { border-color: rgba(255,255,255,0.2); }
+
+.config-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(59,130,246,0.06);
+  border: 1px solid rgba(59,130,246,0.15);
+  border-radius: 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+/* ── Progress ── */
+.extract-progress { margin: 20px 0; }
+.progress-bar-wrap {
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(139,92,246,0.8), rgba(59,130,246,0.8));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+.progress-text { font-size: 12px; color: rgba(255,255,255,0.4); }
+.entry-count { font-size: 14px; color: rgba(192,132,252,0.8); margin: 8px 0; }
+.failed-note { font-size: 12px; color: rgba(239,68,68,0.7); margin: 6px 0; }
+
+/* ── Entry List ── */
+.entry-list {
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 16px 0;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 8px;
+}
+.entry-list::-webkit-scrollbar { width: 3px; }
+.entry-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.entry-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.entry-item:hover { background: rgba(255,255,255,0.03); }
+.entry-cat {
+  padding: 1px 7px;
+  background: rgba(139,92,246,0.12);
+  border-radius: 8px;
+  color: rgba(192,132,252,0.8);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.entry-name { color: rgba(255,255,255,0.7); }
+
+.preview-summary { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+.preview-summary strong { color: rgba(192,132,252,0.9); }
+
+/* ── Buttons ── */
+.error-msg {
+  font-size: 12px;
+  color: #f87171;
+  margin-bottom: 12px;
+}
+
+.config-btns, .preview-btns, .extract-btns {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.cancel-btn {
+  padding: 10px 22px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cancel-btn:hover { border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
+
+.start-btn, .finish-btn {
+  padding: 10px 28px;
+  background: linear-gradient(135deg, rgba(139,92,246,0.8), rgba(59,130,246,0.7));
+  border: none;
+  border-radius: 20px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+.start-btn:hover, .finish-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(139,92,246,0.3);
+}
+
+.pause-btn, .resume-btn {
+  padding: 9px 20px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.stop-btn {
+  padding: 9px 20px;
+  background: rgba(139,92,246,0.1);
+  border: 1px solid rgba(139,92,246,0.25);
+  border-radius: 16px;
+  color: rgba(192,132,252,0.8);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+</style>
