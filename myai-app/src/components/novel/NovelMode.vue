@@ -17,10 +17,11 @@ const props = defineProps({
 const emit = defineEmits(['exit', 'save-book', 'delete-save']);
 
 // ── 书籍/存档状态 ──
-const currentState = ref(props.save?.state || {});
-const messages     = ref(props.save?.messages ? [...props.save.messages] : []);
-const chapterTitle = ref(props.save?.chapterTitle || '');
-const isNewGame    = !props.save;
+const currentState      = ref(props.save?.state || {});
+const messages          = ref(props.save?.messages ? [...props.save.messages] : []);
+const chapterTitle      = ref(props.save?.chapterTitle || '');
+const chapterSummaries  = ref(props.save?.chapterSummaries ? [...props.save.chapterSummaries] : []);
+const isNewGame         = !props.save;
 
 // ── 小说显示块 ──
 // blocks = [{ type: 'narr'|'player', text, events }]
@@ -77,15 +78,31 @@ function rebuildDisplayBlocks() {
 // ── 系统提示词 ──
 function getSystemPrompt() {
   return buildNovelSystemPrompt(props.book, {
-    chapterSummaries: props.save?.chapterSummaries || [],
+    chapterSummaries: chapterSummaries.value,
   });
 }
 
-// ── API messages 构造 ──
+// ── 滑动窗口：按字符数截取最近的消息（避免超上下文窗口）──
+const MSG_CHAR_LIMIT = 8000;
+
+function buildMessageWindow(allMessages) {
+  const filtered = allMessages.filter(m => m.role === 'user' || m.role === 'assistant');
+  let charCount = 0;
+  const window = [];
+  for (let i = filtered.length - 1; i >= 0; i--) {
+    charCount += (filtered[i].content || '').length;
+    if (charCount > MSG_CHAR_LIMIT && window.length > 0) break;
+    window.unshift(filtered[i]);
+  }
+  return window;
+}
+
+// ── API messages 构造（使用滑动窗口）──
 function buildApiMessages(userText) {
+  const windowMsgs = buildMessageWindow(messages.value);
   const apiMsgs = [
     { role: 'system', content: getSystemPrompt() },
-    ...messages.value.filter(m => m.role === 'user' || m.role === 'assistant'),
+    ...windowMsgs,
   ];
   if (userText) {
     apiMsgs.push({ role: 'user', content: userText });
@@ -207,6 +224,13 @@ async function finalizeResponse(fullText, _userText) {
 
   // Auto-save
   await autoSave();
+
+  // ── 章节摘要触发（后台静默，不阻塞玩家输入）──
+  const assistantCount = messages.value.filter(m => m.role === 'assistant').length;
+  const SUMMARY_INTERVAL = 20;
+  if (assistantCount > 0 && assistantCount % SUMMARY_INTERVAL === 0) {
+    triggerChapterSummary();
+  }
 }
 
 // ── 自动存档 ──
@@ -220,8 +244,50 @@ async function autoSave() {
       chapterTitle: chapterTitle.value,
       state: currentState.value,
       messages: messages.value,
+      chapterSummaries: chapterSummaries.value,
     },
   });
+}
+
+// ── 章节摘要生成（后台非流式，不阻塞 UI）──
+async function triggerChapterSummary() {
+  try {
+    // 取滑动窗口外的旧消息作为摘要材料
+    const windowMsgs = buildMessageWindow(messages.value);
+    const windowFirstIdx = messages.value.indexOf(windowMsgs[0]);
+    if (windowFirstIdx <= 0) return; // 没有窗口外的旧消息，无需摘要
+
+    const oldMessages = messages.value.slice(0, windowFirstIdx)
+      .filter(m => m.role === 'user' || m.role === 'assistant');
+    if (oldMessages.length < 4) return; // 太短不值得摘要
+
+    // 取最近 20 条旧消息的叙事文本
+    const recentOld = oldMessages.slice(-20)
+      .map(m => {
+        if (m.role === 'user') return `[玩家行动] ${m.content}`;
+        return extractNarrative(m.content).slice(0, 300);
+      })
+      .join('\n');
+
+    const summaryPrompt = [
+      { role: 'system', content: `你是一个小说章节摘要生成器。请用 2-4 句话概括以下叙事内容的核心事件和变化，保留重要人名、地名、变故。用第三人称客观叙述，不加任何标题或格式。` },
+      { role: 'user', content: recentOld },
+    ];
+
+    const summary = await callChat(summaryPrompt, apiSettings.value);
+    if (summary?.trim()) {
+      chapterSummaries.value.push({
+        round: messages.value.filter(m => m.role === 'assistant').length,
+        summary: summary.trim(),
+        createdAt: Date.now(),
+      });
+      // 摘要生成后自动存档（持久化 chapterSummaries）
+      await autoSave();
+    }
+  } catch (err) {
+    console.warn('[NovelMode] 章节摘要生成失败:', err.message);
+    // 静默失败，不影响玩家体验
+  }
 }
 
 // ── 手动存档弹窗 ──
