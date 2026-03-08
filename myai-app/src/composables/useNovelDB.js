@@ -59,7 +59,7 @@ export async function saveNovelMessages(bookId, slotIndex, messages) {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
             const store = tx.objectStore(STORE_NAME);
-            store.put(messages, makeKey(bookId, slotIndex));
+            store.put(JSON.parse(JSON.stringify(messages)), makeKey(bookId, slotIndex));
             tx.oncomplete = () => resolve();
             tx.onerror = () => {
                 console.error('[useNovelDB] save failed:', tx.error);

@@ -7,7 +7,7 @@ const props = defineProps({
   globalSettings: { type: Object, required: true },
 });
 
-const emit = defineEmits(['close', 'book-updated', 'delete-book', 'delete-save']);
+const emit = defineEmits(['close', 'book-updated', 'delete-book', 'delete-save', 'load-save']);
 
 const activeTab = ref('world'); // 'world' | 'style' | 'saves' | 'danger'
 
@@ -29,6 +29,17 @@ const showModelKey   = ref(false);
 function handleNovelModelSave(config) {
   localNovelModel.value = config;
   emit('book-updated', { novelModel: config });
+}
+
+// 当前实际生效来源：'book' | 'global' | 'none'
+const effectiveSource = computed(() => {
+  if (localNovelModel.value.apiKey) return 'book';
+  if (props.globalSettings?.apiKey)  return 'global';
+  return 'none';
+});
+function maskKey(key) {
+  if (!key || key.length < 6) return key || '';
+  return key.slice(0, 6) + '…' + key.slice(-4);
 }
 
 // ── 风格/难度 ──
@@ -245,8 +256,23 @@ function formatDate(ts) {
 
         <!-- ── 游玩模型 Tab ── -->
         <div v-else-if="activeTab === 'model'" class="tab-model">
+
+          <!-- 当前生效来源 banner -->
+          <div :class="['model-source-status', 'source-' + effectiveSource]">
+            <template v-if="effectiveSource === 'book'">
+              ✅ 当前使用：书籍专属模型
+            </template>
+            <template v-else-if="effectiveSource === 'global'">
+              🔗 当前使用：全局设置（回退）
+              <span class="source-detail">{{ globalSettings.model || 'deepseek-chat' }} · {{ maskKey(globalSettings.apiKey) }}</span>
+            </template>
+            <template v-else>
+              ⚠️ API Key 未配置，游戏将无法运行
+            </template>
+          </div>
+
           <div class="model-tab-hint">
-            配置后本书对局将使用此模型，不配置则跟随全局设置。
+            此处填写后优先级高于全局设置，留空则自动跟随全局。
           </div>
 
           <div class="form-section">
@@ -273,8 +299,6 @@ function formatDate(ts) {
             <input class="form-input" v-model="localNovelModel.model" placeholder="deepseek-chat" autocomplete="off" />
           </div>
 
-          <div v-if="!localNovelModel.apiKey" class="model-hint-bs">未填写 API Key 时使用全局模型设置</div>
-
           <div class="model-tab-btns">
             <button class="save-style-btn" @click="handleNovelModelSave(localNovelModel)">保存模型配置</button>
             <button v-if="localNovelModel.apiKey" class="clear-model-btn" @click="handleNovelModelSave({ baseUrl: '', apiKey: '', model: '' })">清除（跟随全局）</button>
@@ -290,7 +314,10 @@ function formatDate(ts) {
                 <div class="save-slot-chapter">{{ save.chapterTitle || '冒险中' }}</div>
                 <div class="save-slot-date">{{ formatDate(save.updatedAt) }}</div>
               </div>
-              <button class="del-save-btn" @click="deleteSaveSlot(i)">删除</button>
+              <div class="save-slot-actions">
+                <button class="load-save-btn" @click="emit('load-save', i)">读取</button>
+                <button class="del-save-btn" @click="deleteSaveSlot(i)">删除</button>
+              </div>
             </template>
             <template v-else>
               <div class="save-slot-empty">存档位 {{ i+1 }} — 空</div>
@@ -417,11 +444,17 @@ function formatDate(ts) {
   flex-shrink: 0; transition: all 0.2s;
 }
 .model-cfg-btn:hover { background: rgba(139,92,246,0.2); }
-.model-hint-bs { font-size: 11px; color: rgba(255,255,255,0.25); margin-bottom: 8px; }
-
 /* ── 游玩模型 Tab ── */
 .tab-model { display: flex; flex-direction: column; gap: 4px; }
-.model-tab-hint { font-size: 12px; color: rgba(255,255,255,0.3); margin-bottom: 12px; line-height: 1.6; }
+.model-tab-hint { font-size: 12px; color: rgba(255,255,255,0.3); margin-bottom: 4px; line-height: 1.6; }
+.model-source-status {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 9px 13px; border-radius: 10px; font-size: 12px; margin-bottom: 10px;
+}
+.source-book   { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); color: rgba(110,231,183,0.95); }
+.source-global { background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.2);  color: rgba(147,197,253,0.95); }
+.source-none   { background: rgba(251,146,60,0.1); border: 1px solid rgba(251,146,60,0.25); color: rgba(253,186,116,0.95); }
+.source-detail { font-size: 11px; opacity: 0.7; font-family: monospace; }
 .model-key-row { display: flex; gap: 6px; }
 .model-key-input { flex: 1; }
 .model-eye-btn { padding: 0 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 13px; flex-shrink: 0; }
@@ -448,6 +481,9 @@ function formatDate(ts) {
 .save-slot-label { font-size: 12px; color: rgba(200,168,74,0.7); }
 .save-slot-chapter { font-size: 14px; color: rgba(255,255,255,0.75); }
 .save-slot-date { font-size: 11px; color: rgba(255,255,255,0.25); }
+.save-slot-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.load-save-btn { padding: 5px 14px; background: rgba(200,168,74,0.08); border: 1px solid rgba(200,168,74,0.2); border-radius: 12px; color: var(--gold, #c8a84a); font-size: 11px; cursor: pointer; transition: all 0.2s; }
+.load-save-btn:hover { background: rgba(200,168,74,0.18); }
 .del-save-btn { padding: 5px 14px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 12px; color: #f87171; font-size: 11px; cursor: pointer; transition: all 0.2s; }
 .del-save-btn:hover { background: rgba(239,68,68,0.18); }
 

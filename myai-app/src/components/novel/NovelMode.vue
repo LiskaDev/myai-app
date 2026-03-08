@@ -6,7 +6,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { streamChat, parseStateFromResponse, extractNarrative, buildNovelSystemPrompt, callChat } from '../../utils/novelUtils.js';
 import BookSettings from './BookSettings.vue';
-import { saveNovelMessages } from '../../composables/useNovelDB.js';
+import { saveNovelMessages, loadNovelMessages } from '../../composables/useNovelDB.js';
 
 const props = defineProps({
   book:           { type: Object, required: true },
@@ -15,11 +15,11 @@ const props = defineProps({
   globalSettings: { type: Object, required: true },
 });
 
-const emit = defineEmits(['exit', 'save-book', 'delete-save']);
+const emit = defineEmits(['exit', 'save-book', 'delete-save', 'load-save']);
 
 // ── 书籍/存档状态 ──
 const currentState      = ref(props.save?.state || {});
-const messages          = ref(props.save?.messages ? [...props.save.messages] : []);
+const messages          = ref([]);  // 始终从 IndexedDB 异步加载，props.save 中无 messages 字段
 const chapterTitle      = ref(props.save?.chapterTitle || '');
 const chapterSummaries  = ref(props.save?.chapterSummaries ? [...props.save.chapterSummaries] : []);
 const isNewGame         = !props.save;
@@ -35,7 +35,7 @@ const userInput      = ref('');
 const suggestions    = ref([]);
 const showSidebar    = ref(false);
 const showSettings   = ref(false);
-const showSaveModal  = ref(false);
+const showSavePanel  = ref(false);
 const novelAreaRef   = ref(null);
 const inputRef       = ref(null);
 const abortCtrl      = ref(null);
@@ -156,8 +156,19 @@ async function initNewGame() {
 
     await finalizeResponse(fullText, null);
   } catch (err) {
-    if (err.name !== 'AbortError') showToast(`生成失败: ${err.message}`);
-    displayBlocks.value.pop(); // remove streaming block if any
+    if (err.name !== 'AbortError') {
+      console.error('[NovelMode] initNewGame error:', err);
+      // 保留已输出的部分内容，不清空
+      if (streamingText.value) {
+        displayBlocks.value.push({
+          type: 'narr',
+          text: extractNarrative(streamingText.value),
+          events: [],
+        });
+        messages.value.push({ role: 'assistant', content: streamingText.value });
+      }
+      showToast(`生成中断: ${err.message}`);
+    }
   } finally {
     isStreaming.value  = false;
     streamingText.value = '';
@@ -203,9 +214,19 @@ async function sendAction() {
 
     await finalizeResponse(fullText, text);
   } catch (err) {
-    if (err.name !== 'AbortError') showToast(`生成失败: ${err.message}`);
-    isStreaming.value = false;
-    streamingText.value = '';
+    if (err.name !== 'AbortError') {
+      console.error('[NovelMode] sendAction error:', err);
+      // 保留已输出的部分内容
+      if (streamingText.value) {
+        displayBlocks.value.push({
+          type: 'narr',
+          text: extractNarrative(streamingText.value),
+          events: [],
+        });
+        messages.value.push({ role: 'assistant', content: streamingText.value });
+      }
+      showToast(`生成中断: ${err.message}`);
+    }
   } finally {
     isStreaming.value = false;
     streamingText.value = '';
@@ -234,10 +255,7 @@ async function finalizeResponse(fullText, _userText) {
     if (newState.chapterTitle) chapterTitle.value = newState.chapterTitle;
   }
 
-  // Auto-save
-  await autoSave();
-
-  // ── 章节摘要触发（后台静默，不阻塞玩家输入）──
+  // 章节摘要触发（后台静默，不阻塞玩家输入）
   const assistantCount = messages.value.filter(m => m.role === 'assistant').length;
   const SUMMARY_INTERVAL = 20;
   if (assistantCount > 0 && assistantCount % SUMMARY_INTERVAL === 0) {
@@ -245,46 +263,62 @@ async function finalizeResponse(fullText, _userText) {
   }
 }
 
-// ── 自动存档 ──
-async function autoSave() {
-  // 直接写 IndexedDB（Vue emit 无法 await 父组件的 async 处理函数）
-  await saveNovelMessages(props.book.id, props.slotIndex, messages.value);
-  // 仅 emit 元数据到 App.vue 更新 localStorage
-  emit('save-book', {
-    slotIndex: props.slotIndex,
-    saveData: {
-      slotIndex: props.slotIndex,
-      label: `存档${props.slotIndex + 1}`,
-      updatedAt: Date.now(),
-      chapterTitle: chapterTitle.value,
-      state: currentState.value,
-      chapterSummaries: chapterSummaries.value,
-    },
-  });
+// ── 手动存档面板 ──
+function openSaveModal() {
+  showSavePanel.value = true;
+}
+
+// 存档位信息（从父组件传入的 book 读取）
+const saveSlots = computed(() => props.book.saves || [null, null, null, null]);
+
+async function saveToSlot(slotIndex) {
+  // 如果该存档位已有数据，确认覆盖
+  if (saveSlots.value[slotIndex]) {
+    if (!confirm(`存档位 ${slotIndex + 1} 已有数据，确定覆盖？`)) return;
+  }
+
+  try {
+    // 1. 写 messages 到 IndexedDB
+    await saveNovelMessages(props.book.id, slotIndex, messages.value);
+
+    // 2. 写元数据到 localStorage
+    emit('save-book', {
+      slotIndex,
+      saveData: {
+        slotIndex,
+        label: `存档${slotIndex + 1}`,
+        updatedAt: Date.now(),
+        chapterTitle: chapterTitle.value,
+        state: currentState.value,
+        chapterSummaries: chapterSummaries.value,
+      },
+    });
+
+    showToast(`已保存到存档位 ${slotIndex + 1}`);
+    showSavePanel.value = false;
+  } catch (err) {
+    console.error('[NovelMode] saveToSlot error:', err);
+    showToast(`存档失败: ${err.message}`);
+  }
 }
 
 // ── 章节摘要生成（后台非流式，不阻塞 UI）──
 async function triggerChapterSummary() {
   try {
-    // 取滑动窗口外的旧消息作为摘要材料
     const windowMsgs = buildMessageWindow(messages.value);
     const windowFirstIdx = messages.value.indexOf(windowMsgs[0]);
-    if (windowFirstIdx <= 0) return; // 没有窗口外的旧消息，无需摘要
+    if (windowFirstIdx <= 0) return;
 
     const oldMessages = messages.value.slice(0, windowFirstIdx)
       .filter(m => m.role === 'user' || m.role === 'assistant');
-    if (oldMessages.length < 4) return; // 太短不值得摘要
+    if (oldMessages.length < 4) return;
 
-    // 取最近 20 条旧消息的叙事文本
     const recentOld = oldMessages.slice(-20)
-      .map(m => {
-        if (m.role === 'user') return `[玩家行动] ${m.content}`;
-        return extractNarrative(m.content).slice(0, 300);
-      })
+      .map(m => m.role === 'user' ? `[玩家行动] ${m.content}` : extractNarrative(m.content).slice(0, 300))
       .join('\n');
 
     const summaryPrompt = [
-      { role: 'system', content: `你是一个小说章节摘要生成器。请用 2-4 句话概括以下叙事内容的核心事件和变化，保留重要人名、地名、变故。用第三人称客观叙述，不加任何标题或格式。` },
+      { role: 'system', content: '你是一个小说章节摘要生成器。请用 2-4 句话概括以下叙事内容的核心事件和变化，保留重要人名、地名、变故。用第三人称客观叙述。' },
       { role: 'user', content: recentOld },
     ];
 
@@ -295,19 +329,10 @@ async function triggerChapterSummary() {
         summary: summary.trim(),
         createdAt: Date.now(),
       });
-      // 摘要生成后自动存档（持久化 chapterSummaries）
-      await autoSave();
     }
   } catch (err) {
     console.warn('[NovelMode] 章节摘要生成失败:', err.message);
-    // 静默失败，不影响玩家体验
   }
-}
-
-// ── 手动存档弹窗 ──
-async function openSaveModal() {
-  await autoSave();
-  showToast('已保存');
 }
 
 // ── 行动建议 ──
@@ -361,17 +386,62 @@ function handleDeleteBook() {
   }
 }
 
+// ── 游戏内读取存档（从 BookSettings 触发）──
+async function handleLoadSave(slotIndex) {
+  if (!confirm('读取此存档将丢失当前未保存的进度，确认继续？')) return;
+  const save = props.book.saves?.[slotIndex];
+  if (!save) {
+    showToast('存档位为空');
+    return;
+  }
+
+  try {
+    const msgs = await loadNovelMessages(props.book.id, slotIndex);
+
+    // 恢复状态
+    messages.value = msgs;
+    currentState.value = save.state || {};
+    chapterTitle.value = save.chapterTitle || '';
+    chapterSummaries.value = save.chapterSummaries ? [...save.chapterSummaries] : [];
+    if (currentState.value.suggestions) suggestions.value = currentState.value.suggestions;
+
+    // 重建显示块
+    rebuildDisplayBlocks();
+    showSettings.value = false;
+    showToast(`已加载存档 ${slotIndex + 1}`);
+    await nextTick();
+    scrollToBottom();
+  } catch (err) {
+    console.error('[NovelMode] handleLoadSave error:', err);
+    showToast(`读档失败: ${err.message}`);
+  }
+}
+
 // ── 初始化 ──
 onMounted(async () => {
+  if (!isNewGame) {
+    // 继续存档：从 IndexedDB 加载消息历史（save 元数据在 props 中，但 messages 只存 IDB）
+    try {
+      const msgs = await loadNovelMessages(props.book.id, props.slotIndex);
+      messages.value = msgs;
+    } catch (err) {
+      console.error('[NovelMode] onMounted: 加载存档 messages 失败', err);
+      showToast('存档消息加载失败，请重试');
+    }
+  }
+
   if (messages.value.length > 0) {
     rebuildDisplayBlocks();
     await nextTick();
     scrollToBottom();
-    // restore suggestions from last save
     const lastState = currentState.value;
     if (lastState?.suggestions) suggestions.value = lastState.suggestions;
   } else if (isNewGame) {
     await initNewGame();
+  }
+  // 若是继续存档但 messages 为空（存档损坏），保持空白并给提示
+  else {
+    showToast('存档内容为空，可能已损坏');
   }
 });
 
@@ -637,6 +707,36 @@ function npcDots(npc) {
     <!-- ── Toast ── -->
     <div class="novel-toast" :class="{ visible: toast.show }">{{ toast.msg }}</div>
 
+    <!-- ── 手动存档面板 ── -->
+    <div v-if="showSavePanel" class="save-panel-overlay" @click.self="showSavePanel = false">
+      <div class="save-panel">
+        <div class="save-panel-header">
+          <span class="save-panel-title">📖 存档管理</span>
+          <button class="save-panel-close" @click="showSavePanel = false">✕</button>
+        </div>
+        <div class="save-panel-slots">
+          <div
+            v-for="(slot, i) in saveSlots"
+            :key="i"
+            class="save-slot"
+            @click="saveToSlot(i)"
+          >
+            <template v-if="slot">
+              <div class="save-slot-info">
+                <span class="save-slot-label">{{ slot.label || `存档${i + 1}` }}</span>
+                <span class="save-slot-chapter">{{ slot.chapterTitle || '冒险中' }}</span>
+              </div>
+              <span class="save-slot-time">{{ new Date(slot.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</span>
+            </template>
+            <template v-else>
+              <span class="save-slot-empty">存档位 {{ i + 1 }} — 空</span>
+              <span class="save-slot-hint">点击保存</span>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── 书籍设置 ── -->
     <BookSettings
       v-if="showSettings"
@@ -646,6 +746,7 @@ function npcDots(npc) {
       @book-updated="handleBookUpdated"
       @delete-book="handleDeleteBook"
       @delete-save="payload => $emit('delete-save', payload)"
+      @load-save="handleLoadSave"
     />
   </div>
 </template>
@@ -853,6 +954,48 @@ function npcDots(npc) {
 /* ── Toast ── */
 .novel-toast { position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%) translateY(10px); background: rgba(32,24,16,0.95); border: 1px solid rgba(200,168,74,0.3); color: var(--ink-mid); font-size: 12px; letter-spacing: 1px; padding: 7px 18px; border-radius: 20px; z-index: 300; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; }
 .novel-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Save Panel Overlay ── */
+.save-panel-overlay {
+  position: fixed; inset: 0; z-index: 250;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.save-panel {
+  background: #13100c;
+  border: 1px solid rgba(200,168,74,0.2);
+  border-radius: 16px;
+  width: 100%; max-width: 440px;
+  overflow: hidden;
+}
+.save-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(200,168,74,0.1);
+}
+.save-panel-title { font-size: 15px; color: var(--gold); letter-spacing: 2px; }
+.save-panel-close {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.4); cursor: pointer; font-size: 11px; transition: all 0.2s;
+}
+.save-panel-close:hover { background: rgba(239,68,68,0.15); color: #f87171; }
+.save-panel-slots { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.save-slot {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-radius: 10px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(200,168,74,0.08);
+  cursor: pointer; transition: all 0.2s;
+}
+.save-slot:hover { background: rgba(200,168,74,0.06); border-color: rgba(200,168,74,0.25); }
+.save-slot-info { display: flex; flex-direction: column; gap: 2px; }
+.save-slot-label { font-size: 13px; color: var(--gold); }
+.save-slot-chapter { font-size: 12px; color: var(--ink-dim); }
+.save-slot-time { font-size: 11px; color: rgba(255,255,255,0.25); white-space: nowrap; }
+.save-slot-empty { font-size: 13px; color: rgba(255,255,255,0.2); }
+.save-slot-hint { font-size: 11px; color: rgba(200,168,74,0.4); }
 
 /* ── Animations ── */
 @keyframes blink        { 0%,100%{opacity:0.3} 50%{opacity:1} }

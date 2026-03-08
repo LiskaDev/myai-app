@@ -1008,7 +1008,7 @@ function handleOverlayClick(e) {
 <style scoped>
 /* ===== 遮罩 ===== */
 .modal-overlay {
-  position: fixed; inset: 0; z-index: 50;
+  position: fixed; inset: 0; z-index: 200;
   background: rgba(0,0,0,0.6);
   backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center;

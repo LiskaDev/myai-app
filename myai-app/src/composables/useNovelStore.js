@@ -19,7 +19,7 @@ export function useNovelStore() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(bookList.value));
   }
 
-  function createBook({ title, coverEmoji = '📖', worldEntries = [] }) {
+  function createBook({ title, coverEmoji = '📖', worldEntries = [], novelModel = null }) {
     const book = {
       id: crypto.randomUUID(),
       title,
@@ -29,6 +29,7 @@ export function useNovelStore() {
       difficulty: 1,
       worldEntries,
       saves: [null, null, null, null],
+      novelModel: novelModel && novelModel.apiKey ? novelModel : null,
     };
     bookList.value.push(book);
     saveBooks();

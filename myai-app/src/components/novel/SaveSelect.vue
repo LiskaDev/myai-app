@@ -2,10 +2,11 @@
 import { computed } from 'vue';
 
 const props = defineProps({
-  book: { type: Object, required: true },
+  book:           { type: Object, required: true },
+  globalSettings: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(['select-save', 'back']);
+const emit = defineEmits(['select-save', 'back', 'open-settings']);
 
 function formatDate(ts) {
   if (!ts) return '';
@@ -19,6 +20,12 @@ const slots = computed(() => {
     save: props.book.saves?.[i] || null,
   }));
 });
+
+const hasApiKey = computed(() => {
+  const bookKey   = props.book?.novelModel?.apiKey;
+  const globalKey = props.globalSettings?.apiKey;
+  return !!(bookKey || globalKey);
+});
 </script>
 
 <template>
@@ -29,6 +36,16 @@ const slots = computed(() => {
         <span>{{ book.title }}</span>
       </div>
       <div class="save-subtitle">选择存档，开启冒险</div>
+    </div>
+
+    <!-- API Key 缺失警告 -->
+    <div v-if="!hasApiKey" class="no-key-banner">
+      <span class="no-key-icon">⚠️</span>
+      <div class="no-key-text">
+        <strong>未配置 API Key</strong>
+        <span>进入游戏需要先配置 API Key。可在右上角 ⚙ → 游玩模型 中为本书单独配置，或去全局设置配置。</span>
+      </div>
+      <button class="no-key-btn" @click="$emit('open-settings')">去设置</button>
     </div>
 
     <div class="slot-list">
@@ -203,4 +220,40 @@ const slots = computed(() => {
   border-color: rgba(255,255,255,0.2);
   color: rgba(255,255,255,0.65);
 }
+
+/* ── No API Key Banner ── */
+.no-key-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(251,146,60,0.08);
+  border: 1px solid rgba(251,146,60,0.3);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.no-key-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.no-key-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.no-key-text strong { color: rgba(251,146,60,0.9); font-size: 13px; }
+.no-key-text span   { color: rgba(255,255,255,0.45); }
+.no-key-btn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  background: rgba(251,146,60,0.15);
+  border: 1px solid rgba(251,146,60,0.4);
+  border-radius: 20px;
+  color: rgba(251,146,60,0.9);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.no-key-btn:hover { background: rgba(251,146,60,0.25); }
 </style>

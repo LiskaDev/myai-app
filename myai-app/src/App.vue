@@ -31,7 +31,6 @@ import CardLibraryModal from './components/CardLibraryModal.vue';
 import CharacterHome from './components/CharacterHome.vue';
 import NovelMode from './components/novel/NovelMode.vue';
 import { useNovelStore } from './composables/useNovelStore.js';
-import { saveNovelMessages, loadNovelMessages, deleteNovelMessages } from './composables/useNovelDB.js';
 
 // Initialize State
 const appState = useAppState();
@@ -72,59 +71,39 @@ const showNovelMode  = ref(false);
 const novelBook      = ref(null);
 const novelSave      = ref(null);
 const novelSlotIndex = ref(0);
+const NOVEL_SESSION_KEY = 'myai_active_novel_session';
 
-async function handleStartNovel({ book, slotIndex, save }) {
+function handleNovelExit() {
+  showNovelMode.value = false;
+  showHomePage.value  = true;
+  sessionStorage.removeItem(NOVEL_SESSION_KEY);
+}
+
+function handleStartNovel({ book, slotIndex, save }) {
   novelBook.value      = book;
+  novelSave.value      = save || null;
   novelSlotIndex.value = slotIndex ?? 0;
-
-  if (save) {
-    // 从 IndexedDB 加载 messages
-    let msgs = await loadNovelMessages(book.id, slotIndex);
-
-    // 向后兼容：旧存档 messages 在 localStorage 里，一次性迁移到 IndexedDB
-    if (msgs.length === 0 && save.messages?.length > 0) {
-      msgs = save.messages;
-      await saveNovelMessages(book.id, slotIndex, msgs);
-      // 从 localStorage save 对象里清掉 messages 节省空间
-      novelStore.updateSave(book.id, slotIndex, { messages: undefined });
-    }
-
-    novelSave.value = { ...save, messages: msgs };
-  } else {
-    novelSave.value = null;
-  }
-
   showNovelMode.value  = true;
   showHomePage.value   = false;
+  // 刷新页面恢复所需的最小信息（messages 在 IndexedDB，此处只存定位标识）
+  sessionStorage.setItem(NOVEL_SESSION_KEY, JSON.stringify({ bookId: book.id, slotIndex: slotIndex ?? 0 }));
 }
 
 async function handleNovelSaveBook(payload) {
   novelStore.loadBooks();
   // loadBooks() 重建了 bookList，刷新 novelBook 引用避免使用旧对象
   if (novelBook.value) novelBook.value = novelStore.getBook(novelBook.value.id);
-  const { slotIndex, saveData, bookUpdates, deleteBook, deleteSaveSlot } = payload;
-
-  // 删除整本书
+  const { slotIndex, saveData, bookUpdates, deleteBook } = payload;
   if (deleteBook && novelBook.value) {
-    await novelStore.deleteBook(novelBook.value.id);
+    novelStore.deleteBook(novelBook.value.id);
     showNovelMode.value = false;
     showHomePage.value  = true;
     return;
   }
-
-  // 删除单个存档位
-  if (deleteSaveSlot !== undefined && novelBook.value) {
-    await novelStore.deleteSave(novelBook.value.id, deleteSaveSlot);
-    novelBook.value = novelStore.getBook(novelBook.value.id);
-    return;
-  }
-
-  // 更新书籍元数据（风格、难度、世界书等）
   if (bookUpdates && novelBook.value) {
     novelStore.updateBook(novelBook.value.id, bookUpdates);
     novelBook.value = novelStore.getBook(novelBook.value.id);
   }
-
   // 保存存档（messages 已由 NovelMode 直接写入 IndexedDB，此处只更新 localStorage 元数据）
   if (saveData !== undefined && novelBook.value) {
     const existing = novelBook.value.saves?.[slotIndex];
@@ -135,6 +114,15 @@ async function handleNovelSaveBook(payload) {
     }
     novelBook.value = novelStore.getBook(novelBook.value.id);
   }
+}
+
+// 删除存档（由 BookSettings → NovelMode → App.vue 事件链触发）
+async function handleNovelDeleteSave(payload) {
+  if (!novelBook.value) return;
+  const slotIdx = typeof payload === 'number' ? payload : payload.deleteSaveSlot;
+  // deleteSave 内部同时清理 IDB + localStorage
+  await novelStore.deleteSave(novelBook.value.id, slotIdx);
+  novelBook.value = novelStore.getBook(novelBook.value.id);
 }
 
 const showCreateGroupModal = ref(false);
@@ -706,6 +694,29 @@ onUnmounted(() => {
 
 // 🛡️ 首次进入：无 API Key 时自动打开设置面板
 onMounted(() => {
+  // 🎮 刷新页面后恢复小说模式会话
+  const sessionRaw = sessionStorage.getItem(NOVEL_SESSION_KEY);
+  if (sessionRaw) {
+    try {
+      const { bookId, slotIndex } = JSON.parse(sessionRaw);
+      novelStore.loadBooks();
+      const book = novelStore.getBook(bookId);
+      if (book) {
+        const save = book.saves?.[slotIndex] || null;
+        novelBook.value      = book;
+        novelSave.value      = save;
+        novelSlotIndex.value = slotIndex;
+        showNovelMode.value  = true;
+        showHomePage.value   = false;
+      } else {
+        // 书已被删除，清除残留的会话标记
+        sessionStorage.removeItem(NOVEL_SESSION_KEY);
+      }
+    } catch {
+      sessionStorage.removeItem(NOVEL_SESSION_KEY);
+    }
+  }
+
   if (!globalSettings.apiKey) {
     // 延迟一下避免和新手引导冲突
     setTimeout(() => {
@@ -1047,9 +1058,9 @@ function handleAvatarError(type, roleId) {
     :save="novelSave"
     :slot-index="novelSlotIndex"
     :global-settings="globalSettings"
-    @exit="showNovelMode = false; showHomePage = true"
+    @exit="handleNovelExit"
     @save-book="handleNovelSaveBook"
-    @delete-save="handleNovelSaveBook"
+    @delete-save="handleNovelDeleteSave"
   />
 
   <!-- 主界面（对话模式） -->

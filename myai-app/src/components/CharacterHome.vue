@@ -84,8 +84,10 @@
         <SaveSelect
           v-else-if="worldNav === 'save-select' && selectedBook"
           :book="selectedBook"
+          :global-settings="globalSettings"
           @select-save="onSelectSave"
           @back="worldNav = 'library'"
+          @open-settings="$emit('open-settings')"
         />
       </div>
     </template>
@@ -116,7 +118,7 @@ const props = defineProps({
   globalSettings: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(['select-role', 'start-novel']);
+const emit = defineEmits(['select-role', 'start-novel', 'open-settings']);
 
 // ── Tab / 世界子导航 ──
 const activeTab      = ref('role');
@@ -143,7 +145,9 @@ function goBackInWorld() {
 
 // ── 书库操作 ──
 function onSelectBook(book) {
-  selectedBook.value = book;
+  // 从 store 读最新数据，确保 novelModel 等字段是最新状态
+  novelStore.loadBooks();
+  selectedBook.value = novelStore.getBook(book.id) || book;
   worldNav.value     = 'save-select';
 }
 
@@ -177,9 +181,10 @@ async function onBookSettingsDeleteSave({ deleteSaveSlot }) {
 
 function onImportDone(book) {
   novelStore.createBook({
-    title:      book.title,
-    coverEmoji: book.coverEmoji,
+    title:        book.title,
+    coverEmoji:   book.coverEmoji,
     worldEntries: book.worldEntries,
+    novelModel:   book.novelModel || null,
   });
   // find the newly added book and navigate to save-select
   novelStore.loadBooks();
@@ -189,7 +194,14 @@ function onImportDone(book) {
 
 // ── 存档选择 ──
 function onSelectSave({ slotIndex, save }) {
-  emit('start-novel', { book: selectedBook.value, slotIndex, save });
+  const book = selectedBook.value;
+  const hasBookKey = book?.novelModel?.apiKey;
+  const hasGlobalKey = props.globalSettings?.apiKey;
+  if (!hasBookKey && !hasGlobalKey) {
+    // Banner 已经提前告知用户，这里仅用 toast 轻提示，不应用 alert 阻塞会话
+    return;
+  }
+  emit('start-novel', { book, slotIndex, save });
 }
 
 function getWorldTag(worldLogic) {
