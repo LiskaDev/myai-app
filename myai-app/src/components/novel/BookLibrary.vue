@@ -22,6 +22,10 @@ function latestSave(book) {
   if (!saves.length) return null;
   return saves.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b));
 }
+
+function bookTags(book) {
+  return (book.worldEntries || []).slice(0, 4).map(e => e.name).filter(Boolean);
+}
 </script>
 
 <template>
@@ -56,7 +60,11 @@ function latestSave(book) {
               <span>{{ saveCount(book) }}/4 存档</span>
               <span v-if="latestSave(book)"> · {{ latestSave(book).chapterTitle || '未命名' }}</span>
             </div>
-            <div class="book-date">{{ formatDate(book.createdAt) }}</div>
+            <div v-if="bookTags(book).length" class="book-tags">
+              <span v-for="tag in bookTags(book)" :key="tag" class="book-tag">{{ tag }}</span>
+              <span v-if="(book.worldEntries||[]).length > 4" class="book-tag-more">+{{ (book.worldEntries||[]).length - 4 }}</span>
+            </div>
+            <div v-else class="book-date">{{ formatDate(book.createdAt) }}</div>
           </div>
           <button
             class="book-delete"
@@ -226,6 +234,36 @@ function latestSave(book) {
 }
 
 .book-date {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.book-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.book-tag {
+  padding: 2px 7px;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+  font-size: 10px;
+  color: rgba(192, 132, 252, 0.75);
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-tag-more {
+  padding: 2px 7px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.25);
 }

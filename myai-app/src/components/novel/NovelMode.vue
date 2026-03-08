@@ -178,7 +178,7 @@ async function initNewGame() {
         });
         messages.value.push({ role: 'assistant', content: streamingText.value });
       }
-      showToast(`生成中断: ${err.message}`);
+      showToast(friendlyError(err));
     }
   } finally {
     isStreaming.value  = false;
@@ -236,7 +236,7 @@ async function sendAction() {
         });
         messages.value.push({ role: 'assistant', content: streamingText.value });
       }
-      showToast(`生成中断: ${err.message}`);
+      showToast(friendlyError(err));
     }
   } finally {
     isStreaming.value = false;
@@ -293,13 +293,15 @@ async function saveToSlot(slotIndex) {
     await saveNovelMessages(props.book.id, slotIndex, messages.value);
 
     // 2. 写元数据到 localStorage
+    const roundCount = messages.value.filter(m => m.role === 'assistant').length;
+    const titleToSave = chapterTitle.value || `第 ${roundCount} 轮 · 冒险进行中`;
     emit('save-book', {
       slotIndex,
       saveData: {
         slotIndex,
         label: `存档${slotIndex + 1}`,
         updatedAt: Date.now(),
-        chapterTitle: chapterTitle.value,
+        chapterTitle: titleToSave,
         state: currentState.value,
         chapterSummaries: chapterSummaries.value,
       },
@@ -376,6 +378,18 @@ function handleKeydown(e) {
     e.preventDefault();
     sendAction();
   }
+}
+
+// ── 错误信息友好化 ──
+function friendlyError(err) {
+  const msg = err.message || '';
+  if (msg.includes('401') || /unauthorized/i.test(msg)) return 'API Key 无效或已过期，请检查设置';
+  if (msg.includes('402') || /insufficient/i.test(msg)) return '账户余额不足，请充值后重试';
+  if (msg.includes('429') || /rate.?limit/i.test(msg)) return '请求过于频繁，请稍后再试';
+  if (/50[0-9]/.test(msg)) return '服务器暂时故障，请稍后重试';
+  if (/failed to fetch|networkerror/i.test(msg)) return '网络连接失败，请检查网络';
+  if (/timeout|timed out/i.test(msg)) return '请求超时，请重试';
+  return `生成中断（${msg.slice(0, 40)}）`;
 }
 
 // ── Toast ──
@@ -731,12 +745,15 @@ function npcDots(npc) {
           <div
             v-for="(slot, i) in saveSlots"
             :key="i"
-            :class="['save-slot', slot ? 'occupied' : 'empty']"
+            :class="['save-slot', slot ? 'occupied' : 'empty', i === props.slotIndex && 'active-slot']"
             @click="!slot && saveToSlot(i)"
           >
             <template v-if="slot">
               <div class="save-slot-info">
-                <span class="save-slot-label">{{ slot.label || `存档${i + 1}` }}</span>
+                <div class="save-slot-label-row">
+                  <span class="save-slot-label">{{ slot.label || `存档${i + 1}` }}</span>
+                  <span v-if="i === props.slotIndex" class="current-badge">▶ 当前</span>
+                </div>
                 <span class="save-slot-chapter">{{ slot.chapterTitle || '冒险中' }}</span>
               </div>
               <span class="save-slot-time">{{ new Date(slot.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</span>
@@ -1009,6 +1026,9 @@ function npcDots(npc) {
 .save-slot.empty { cursor: pointer; }
 .save-slot.empty:hover { background: rgba(200,168,74,0.06); border-color: rgba(200,168,74,0.25); }
 .save-slot.occupied { cursor: default; }
+.save-slot.active-slot { border-color: rgba(52,211,153,0.35); background: rgba(52,211,153,0.06); }
+.save-slot-label-row { display: flex; align-items: center; gap: 6px; }
+.current-badge { font-size: 10px; color: rgba(52,211,153,0.9); letter-spacing: 0.5px; white-space: nowrap; }
 .save-slot-btns { display: flex; gap: 6px; flex-shrink: 0; }
 .slot-load-btn, .slot-save-btn {
   padding: 4px 10px; font-size: 12px; border-radius: 7px; cursor: pointer; transition: all 0.15s;

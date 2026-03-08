@@ -301,6 +301,65 @@ function stopExtraction() {
   extractionAbort.value?.abort();
 }
 
+async function retryFailed() {
+  if (!failedChunks.value.length) return;
+  const toRetry = [...failedChunks.value];
+  failedChunks.value = [];
+  isStopped.value = false;
+  isPaused.value = false;
+  phase.value = PHASE.EXTRACTING;
+  const { baseUrl, apiKey, model } = getApiConfig();
+  for (let j = 0; j < toRetry.length; j++) {
+    const i = toRetry[j];
+    if (isStopped.value) break;
+    currentChunkIndex.value = i;
+    try {
+      const controller = new AbortController();
+      extractionAbort.value = controller;
+      const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: EXTRACT_SYSTEM_PROMPT },
+            { role: 'user', content: `请提取以下文本中的世界观设定：\n\n${chunks.value[i]}` },
+          ],
+          temperature: 0.3,
+          max_tokens: 4000,
+        }),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      const data = await res.json();
+      const entries = extractJsonArray(data.choices?.[0]?.message?.content || '');
+      for (const e of entries) {
+        e._chunkIndex = i;
+        extractedEntries.value.push(e);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') break;
+      console.warn(`[BookImport] 重试块 ${i} 失败:`, err.message);
+      failedChunks.value.push(i);
+    }
+    if (j < toRetry.length - 1 && !isStopped.value) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+  // 重新去重
+  const map = new Map();
+  for (const e of extractedEntries.value) {
+    const key = e.name?.trim();
+    if (!key) continue;
+    const existing = map.get(key);
+    if (!existing || (e.content || '').length > (existing.content || '').length) {
+      map.set(key, e);
+    }
+  }
+  extractedEntries.value = Array.from(map.values());
+  phase.value = PHASE.PREVIEW;
+}
+
 // ── 完成 ──
 function finish() {
   const book = {
@@ -441,7 +500,11 @@ function finish() {
       <div class="phase-title">✅ 提取完成</div>
       <div class="preview-summary">
         共提取 <strong>{{ extractedEntries.length }}</strong> 条世界观条目
-        <span v-if="failedChunks.length">（{{ failedChunks.length }} 块失败）</span>
+      </div>
+
+      <div v-if="failedChunks.length" class="failed-banner">
+        <span>⚠️ {{ failedChunks.length }} 个分块提取失败，可能丢失部分设定</span>
+        <button class="retry-btn" @click="retryFailed">重试失败块</button>
       </div>
 
       <div class="entry-list">
@@ -614,6 +677,31 @@ function finish() {
 
 .preview-summary { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
 .preview-summary strong { color: rgba(192,132,252,0.9); }
+.failed-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.35);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: rgba(250,120,120,0.9);
+}
+.failed-banner span { flex: 1; }
+.retry-btn {
+  flex-shrink: 0;
+  background: rgba(239,68,68,0.2);
+  border: 1px solid rgba(239,68,68,0.5);
+  color: rgba(255,160,160,0.95);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.retry-btn:hover { background: rgba(239,68,68,0.35); }
 
 /* ── Buttons ── */
 .error-msg {

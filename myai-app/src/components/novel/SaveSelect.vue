@@ -26,6 +26,8 @@ const hasApiKey = computed(() => {
   const globalKey = props.globalSettings?.apiKey;
   return !!(bookKey || globalKey);
 });
+
+const isAllEmpty = computed(() => slots.value.every(s => !s.save));
 </script>
 
 <template>
@@ -49,6 +51,11 @@ const hasApiKey = computed(() => {
     </div>
 
     <div class="slot-list">
+      <!-- 全部空槽时的首次引导 -->
+      <div v-if="isAllEmpty" class="first-time-hint">
+        <span class="fth-arrow">👇</span>
+        <span>选择任意存档位，开始你的第一段冒险</span>
+      </div>
       <div
         v-for="slot in slots"
         :key="slot.index"
@@ -204,6 +211,18 @@ const hasApiKey = computed(() => {
   color: rgba(255,255,255,0.25);
   margin-left: auto;
 }
+
+/* ── First-time hint ── */
+.first-time-hint {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; margin-bottom: 4px;
+  background: rgba(139,92,246,0.07);
+  border: 1px solid rgba(139,92,246,0.2);
+  border-radius: 12px;
+  font-size: 13px; color: rgba(192,132,252,0.85); letter-spacing: 0.5px;
+}
+.fth-arrow { font-size: 16px; animation: bounce 1.2s infinite; }
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(4px)} }
 
 /* ── Back Button ── */
 .back-btn {
