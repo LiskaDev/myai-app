@@ -102,6 +102,7 @@
     @book-updated="onBookSettingsUpdated"
     @delete-book="onBookSettingsDelete"
     @delete-save="onBookSettingsDeleteSave"
+    @load-save="onBookSettingsLoadSave"
   />
 </template>
 
@@ -177,6 +178,15 @@ async function onBookSettingsDeleteSave({ deleteSaveSlot }) {
   await novelStore.deleteSave(selectedBook.value.id, deleteSaveSlot);
   novelStore.loadBooks();
   selectedBook.value = novelStore.getBook(selectedBook.value.id);
+}
+
+function onBookSettingsLoadSave(slotIndex) {
+  const book = selectedBook.value;
+  if (!book) return;
+  const save = book.saves?.[slotIndex];
+  if (!save) return;
+  showBookSettings.value = false;
+  emit('start-novel', { book, slotIndex, save });
 }
 
 function onImportDone(book) {

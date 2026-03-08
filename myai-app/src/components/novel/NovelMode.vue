@@ -42,6 +42,17 @@ const abortCtrl      = ref(null);
 const toast          = ref({ show: false, msg: '' });
 let toastTimer       = null;
 
+// 最近一次存档时的消息数，用于判断是否有未存就离开
+const savedMessageCount = ref(0);
+
+function handleExit() {
+  if (isStreaming.value) { showToast('请等待回复完成后再退出'); return; }
+  if (messages.value.length > savedMessageCount.value) {
+    if (!confirm('还有未存档的内容，确定要离开吗？')) return;
+  }
+  emit('exit');
+}
+
 // ── STATE 侧边栏 ──
 const stateStats    = computed(() => currentState.value?.stats || {});
 const stateItems    = computed(() => currentState.value?.items || []);
@@ -294,6 +305,7 @@ async function saveToSlot(slotIndex) {
       },
     });
 
+    savedMessageCount.value = messages.value.length;
     showToast(`已保存到存档位 ${slotIndex + 1}`);
     showSavePanel.value = false;
   } catch (err) {
@@ -431,6 +443,7 @@ onMounted(async () => {
   }
 
   if (messages.value.length > 0) {
+    savedMessageCount.value = messages.value.length;  // 存档加载时即为基线
     rebuildDisplayBlocks();
     await nextTick();
     scrollToBottom();
@@ -476,7 +489,7 @@ function npcDots(npc) {
   <div class="novel-mode">
     <!-- ── 顶栏 ── -->
     <nav class="topbar">
-      <button class="topbar-back" @click="$emit('exit')" title="返回书库">←</button>
+      <button class="topbar-back" @click="handleExit" title="返回书库">←</button>
       <div class="topbar-title">
         <span class="topbar-name">{{ book.title }}</span>
         <span class="topbar-chapter">{{ chapterTitle }}</span>
@@ -718,8 +731,8 @@ function npcDots(npc) {
           <div
             v-for="(slot, i) in saveSlots"
             :key="i"
-            class="save-slot"
-            @click="saveToSlot(i)"
+            :class="['save-slot', slot ? 'occupied' : 'empty']"
+            @click="!slot && saveToSlot(i)"
           >
             <template v-if="slot">
               <div class="save-slot-info">
@@ -727,6 +740,10 @@ function npcDots(npc) {
                 <span class="save-slot-chapter">{{ slot.chapterTitle || '冒险中' }}</span>
               </div>
               <span class="save-slot-time">{{ new Date(slot.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</span>
+              <div class="save-slot-btns">
+                <button class="slot-load-btn" @click.stop="handleLoadSave(i)">读取</button>
+                <button class="slot-save-btn" @click.stop="saveToSlot(i)">存档</button>
+              </div>
             </template>
             <template v-else>
               <span class="save-slot-empty">存档位 {{ i + 1 }} — 空</span>
@@ -984,12 +1001,23 @@ function npcDots(npc) {
 .save-panel-slots { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
 .save-slot {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px; border-radius: 10px;
+  padding: 10px 16px; border-radius: 10px;
   background: rgba(255,255,255,0.025);
   border: 1px solid rgba(200,168,74,0.08);
-  cursor: pointer; transition: all 0.2s;
+  transition: all 0.2s;
 }
-.save-slot:hover { background: rgba(200,168,74,0.06); border-color: rgba(200,168,74,0.25); }
+.save-slot.empty { cursor: pointer; }
+.save-slot.empty:hover { background: rgba(200,168,74,0.06); border-color: rgba(200,168,74,0.25); }
+.save-slot.occupied { cursor: default; }
+.save-slot-btns { display: flex; gap: 6px; flex-shrink: 0; }
+.slot-load-btn, .slot-save-btn {
+  padding: 4px 10px; font-size: 12px; border-radius: 7px; cursor: pointer; transition: all 0.15s;
+  border: 1px solid; letter-spacing: 0.5px;
+}
+.slot-load-btn { background: rgba(96,165,250,0.1); border-color: rgba(96,165,250,0.25); color: rgba(147,197,253,0.9); }
+.slot-load-btn:hover { background: rgba(96,165,250,0.2); }
+.slot-save-btn { background: rgba(200,168,74,0.08); border-color: rgba(200,168,74,0.2); color: rgba(200,168,74,0.75); }
+.slot-save-btn:hover { background: rgba(200,168,74,0.18); }
 .save-slot-info { display: flex; flex-direction: column; gap: 2px; }
 .save-slot-label { font-size: 13px; color: var(--gold); }
 .save-slot-chapter { font-size: 12px; color: var(--ink-dim); }
