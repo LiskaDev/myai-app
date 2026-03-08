@@ -70,6 +70,8 @@
           @select-book="onSelectBook"
           @import="worldNav = 'import'"
           @delete-book="onDeleteBook"
+          @export-book="onExportBook"
+          @import-book="onImportBookTrigger"
         />
 
         <!-- 导入 -->
@@ -78,6 +80,7 @@
           :global-settings="globalSettings"
           @done="onImportDone"
           @cancel="worldNav = 'library'"
+          @import-save="onImportSaveFile"
         />
 
         <!-- 存档选择 -->
@@ -104,6 +107,20 @@
     @delete-save="onBookSettingsDeleteSave"
     @load-save="onBookSettingsLoadSave"
   />
+
+  <!-- 隐藏文件输入（导入存档用）-->
+  <input
+    ref="importFileRef"
+    type="file"
+    accept=".json"
+    style="display:none"
+    @change="handleImportFile"
+  />
+
+  <!-- 导入/导出反馈 Toast -->
+  <transition name="fade">
+    <div v-if="importToast" class="import-toast">{{ importToast }}</div>
+  </transition>
 </template>
 
 <script setup>
@@ -113,6 +130,7 @@ import BookImport  from './novel/BookImport.vue';
 import SaveSelect  from './novel/SaveSelect.vue';
 import BookSettings from './novel/BookSettings.vue';
 import { useNovelStore } from '../composables/useNovelStore.js';
+import { exportAllBookMessages } from '../composables/useNovelDB.js';
 
 const props = defineProps({
   roleList:       { type: Array,  required: true },
@@ -129,6 +147,16 @@ const showBookSettings = ref(false);
 
 // ── Novel Store ──
 const novelStore = useNovelStore();
+const importFileRef = ref(null);      // 隐藏文件输入
+const importToast   = ref('');        // 简易反馈提示
+let importToastTimer = null;
+
+function showImportToast(msg) {
+  importToast.value = msg;
+  clearTimeout(importToastTimer);
+  importToastTimer = setTimeout(() => { importToast.value = ''; }, 3000);
+}
+
 onMounted(() => novelStore.loadBooks());
 
 function switchToWorld() {
@@ -155,6 +183,96 @@ function onSelectBook(book) {
 async function onDeleteBook(bookId) {
   if (!confirm('确定要删除这本书吗？所有存档将一并删除，此操作无法撤销。')) return;
   await novelStore.deleteBook(bookId);
+}
+
+// ── 导出存档 ──
+async function onExportBook(bookId) {
+  novelStore.loadBooks();
+  const book = novelStore.getBook(bookId);
+  if (!book) return;
+  const slotMessages = await exportAllBookMessages(bookId);
+  const msgMap = Object.fromEntries(slotMessages.map(m => [m.slotIndex, m.messages]));
+
+  const exportData = {
+    version: '1.0',
+    exportedAt: Date.now(),
+    bookMeta: {
+      id:         book.id,
+      title:      book.title,
+      coverEmoji: book.coverEmoji,
+      style:      book.style,
+      difficulty: book.difficulty,
+      createdAt:  book.createdAt,
+    },
+    worldEntries: book.worldEntries || [],
+    saves: (book.saves || []).map((s, i) => {
+      if (!s) return null;
+      return { ...s, slotIndex: i, messages: msgMap[i] || [] };
+    }).filter(Boolean),
+  };
+
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `${book.title.replace(/[\\/:*?"<>|]/g, '_')}_存档.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── 导入存档（触发文件选择）──
+const pendingImportBookId = ref(null);   // 如果非 null 表示"导入到某本书"（预留）
+
+function onImportBookTrigger() {
+  pendingImportBookId.value = null;
+  importFileRef.value?.click();
+}
+
+async function handleImportFile(e) {
+  const file = e.target.files?.[0];
+  e.target.value = '';   // 允许重复选同一文件
+  if (!file) return;
+
+  let raw;
+  try { raw = JSON.parse(await file.text()); } catch {
+    showImportToast('❌ 文件解析失败，请确认是有效的 JSON 文件');
+    return;
+  }
+
+  // 版本检测
+  if (!raw.version || !raw.bookMeta || !Array.isArray(raw.saves)) {
+    showImportToast('❌ 文件格式不兼容，请使用本应用导出的存档文件');
+    return;
+  }
+  if (raw.version !== '1.0') {
+    showImportToast(`❌ 存档版本（${raw.version}）不兼容，请更新应用后重试`);
+    return;
+  }
+
+  // 同名书籍检测
+  novelStore.loadBooks();
+  const existing = novelStore.bookList.value.find(b => b.title === raw.bookMeta.title);
+
+  if (existing) {
+    const choice = confirm(
+      `书库中已有同名书籍《${raw.bookMeta.title}》\n\n` +
+      `点击「确定」覆盖现有数据（现有存档将被替换）\n` +
+      `点击「取消」新建一本（两本同名书并存）`
+    );
+    if (choice) {
+      await novelStore.replaceBook(existing, raw);
+      novelStore.loadBooks();
+      showImportToast(`✅ 已覆盖导入《${raw.bookMeta.title}》`);
+    } else {
+      const newBook = await novelStore.importAsNew(raw);
+      novelStore.loadBooks();
+      showImportToast(`✅ 已新建导入《${newBook.title}》`);
+    }
+  } else {
+    const newBook = await novelStore.importAsNew(raw);
+    novelStore.loadBooks();
+    showImportToast(`✅ 已导入《${newBook.title}》`);
+  }
 }
 
 // ── 书籍设置（从存档选择页打开）──
@@ -195,11 +313,40 @@ function onImportDone(book) {
     coverEmoji:   book.coverEmoji,
     worldEntries: book.worldEntries,
     novelModel:   book.novelModel || null,
+    style:        book.style    || 'xianxia',
+    difficulty:   book.difficulty ?? 1,
   });
   // find the newly added book and navigate to save-select
   novelStore.loadBooks();
   selectedBook.value = novelStore.bookList.value[novelStore.bookList.value.length - 1];
   worldNav.value = 'save-select';
+}
+
+// 导入存档 JSON （来自 BookImport 上传区）
+async function onImportSaveFile(raw) {
+  novelStore.loadBooks();
+  const existing = novelStore.bookList.value.find(b => b.title === raw.bookMeta.title);
+  if (existing) {
+    const choice = confirm(
+      `书库中已有同名书籍《${raw.bookMeta.title}》\n\n` +
+      `点击「确定」覆盖现有数据（现有存档将被替换）\n` +
+      `点击「取消」新建一本（两本同名书并存）`
+    );
+    if (choice) {
+      await novelStore.replaceBook(existing, raw);
+      novelStore.loadBooks();
+      showImportToast(`✅ 已覆盖导入《${raw.bookMeta.title}》`);
+    } else {
+      const newBook = await novelStore.importAsNew(raw);
+      novelStore.loadBooks();
+      showImportToast(`✅ 已新建导入《${newBook.title}》`);
+    }
+  } else {
+    const newBook = await novelStore.importAsNew(raw);
+    novelStore.loadBooks();
+    showImportToast(`✅ 已导入《${newBook.title}》`);
+  }
+  worldNav.value = 'library';
 }
 
 // ── 存档选择 ──
@@ -608,4 +755,24 @@ function hasHistory(role) {
     height: 50px;
   }
 }
+
+/* ── 导入/导出 Toast ── */
+.import-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 15, 40, 0.96);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 14px;
+  padding: 10px 22px;
+  border-radius: 24px;
+  white-space: nowrap;
+  z-index: 999;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+.fade-enter-active, .fade-leave-active { transition: opacity 0.25s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

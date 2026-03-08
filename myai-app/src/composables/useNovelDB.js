@@ -120,6 +120,20 @@ export async function deleteNovelMessages(bookId, slotIndex) {
 }
 
 /**
+ * 导出一本书所有已存在存档的 messages（供 JSON 导出使用）
+ * @param {string} bookId
+ * @returns {Promise<Array<{slotIndex:number, messages:Array}>>}
+ */
+export async function exportAllBookMessages(bookId) {
+  const result = [];
+  for (let i = 0; i < 4; i++) {
+    const msgs = await loadNovelMessages(bookId, i);
+    if (msgs.length > 0) result.push({ slotIndex: i, messages: msgs });
+  }
+  return result;
+}
+
+/**
  * 删除一本书的所有存档 messages（slots 0-3）
  * @param {string} bookId
  */

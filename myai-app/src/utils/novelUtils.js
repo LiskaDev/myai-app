@@ -15,7 +15,12 @@ export function parseStateFromResponse(fullText) {
 
 /** Strip STATE comment from AI response, return pure narrative text */
 export function extractNarrative(fullText) {
-  return fullText.replace(/<!--STATE:[\s\S]*?-->/g, '').trim();
+  return fullText
+    // 标准格式 + 少量空格变体 <!-- STATE: ... -->
+    .replace(/<!--\s*STATE:\s*[\s\S]*?-->/g, '')
+    // 如果 AI 忘记关闭标签，截断到 <!--STATE: 开始处
+    .replace(/<!--\s*STATE:[\s\S]*/g, '')
+    .trim();
 }
 
 /**
@@ -168,8 +173,42 @@ export async function callChat(messages, settings, signal) {
   return data.choices?.[0]?.message?.content || '';
 }
 
+/**
+ * Select world entries relevant to the current context.
+ * Always keeps the first `baseCount` entries (world background anchors),
+ * then fills remaining slots with entries whose name appears in `contextText`.
+ * Total capped at `maxEntries`.
+ */
+function selectWorldEntries(entries, contextText = '', maxEntries = 20, baseCount = 8) {
+  if (!entries || entries.length <= maxEntries) return entries;
+
+  const ctx = contextText.toLowerCase();
+
+  const scored = entries.map((e, idx) => {
+    const name = (e.name || '').toLowerCase();
+    let count = 0, pos = 0;
+    if (name) {
+      while ((pos = ctx.indexOf(name, pos)) !== -1) { count++; pos += name.length; }
+    }
+    return { e, idx, score: count };
+  });
+
+  // 前 baseCount 条按原顺序作为世界背景基础（无论相关性）
+  const baseItems = scored.slice(0, baseCount).map(s => s.e);
+  const baseIdxSet = new Set(scored.slice(0, baseCount).map(s => s.idx));
+
+  // 剩余条目按相关度排序，优先取 score > 0 的
+  const rest = scored
+    .filter(s => !baseIdxSet.has(s.idx))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxEntries - baseCount)
+    .map(s => s.e);
+
+  return [...baseItems, ...rest];
+}
+
 /** Build the novel mode system prompt */
-export function buildNovelSystemPrompt(book, saveSlot = null) {
+export function buildNovelSystemPrompt(book, saveSlot = null, contextText = '') {
   const styleMap = {
     xianxia: '仙侠修真',
     wuxia: '武侠江湖',
@@ -185,10 +224,11 @@ export function buildNovelSystemPrompt(book, saveSlot = null) {
   const styleName = styleMap[book.style] || '仙侠修真';
   const diffName = diffMap[book.difficulty] ?? diffMap[1];
 
-  const worldSummary = (book.worldEntries || [])
-    .slice(0, 30)
-    .map(e => `【${e.name}】${e.content}`)
-    .join('\n');
+  const rawEntries = book.worldEntries || [];
+  const pickedEntries = rawEntries.length > 20
+    ? selectWorldEntries(rawEntries, contextText)
+    : rawEntries;
+  const worldSummary = pickedEntries.map(e => `【${e.name}】${e.content}`).join('\n');
 
   // 章节摘要注入（由 Step 2 生成，此处预留）
   const chapterSummaries = saveSlot?.chapterSummaries || [];
@@ -236,6 +276,13 @@ ${summaryBlock}
 - {"value": "练气七层"}                ← 境界缺少 progress
 - "练气七层"                           ← 裸字符串
 - {"境界": "练气七层"}                  ← 结构改变
+
+## 【绝对禁止】替玩家做决定
+- 禁止替玩家做任何决定、承诺或表态
+- 玩家尚未明确表态时，叙事必须停在“等待玩家回应”的节点
+- 正确示范：描述 NPC 提出请求、期待的神情，然后结束本轮输出
+- 错误示范：在同一轮直接描述玩家点头答应、做出承诺、采取行动
+- suggestions 必须配合情境：当 NPC 提出请求时，建议应是「答应」「拒绝」「要求更多信息」类选项
 
 ## 重要提示
 - stats 字段完全由你根据世界观自定义，不要拘泥于固定格式

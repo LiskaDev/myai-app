@@ -23,6 +23,7 @@ const messages          = ref([]);  // 始终从 IndexedDB 异步加载，props.
 const chapterTitle      = ref(props.save?.chapterTitle || '');
 const chapterSummaries  = ref(props.save?.chapterSummaries ? [...props.save.chapterSummaries] : []);
 const isNewGame         = !props.save;
+const isInitializing    = ref(false);   // 首次开场生成中（区别于普通回合）
 
 // ── 小说显示块 ──
 // blocks = [{ type: 'narr'|'player', text, events }]
@@ -37,6 +38,7 @@ const showSidebar    = ref(false);
 const showSettings   = ref(false);
 const showSavePanel  = ref(false);
 const novelAreaRef   = ref(null);
+const userScrolled   = ref(false);
 const inputRef       = ref(null);
 const abortCtrl      = ref(null);
 const toast          = ref({ show: false, msg: '' });
@@ -100,9 +102,15 @@ function rebuildDisplayBlocks() {
 
 // ── 系统提示词 ──
 function getSystemPrompt() {
+  // 取最近 6 条消息内容作为关键词上下文，用于世界书条目智能筛选
+  const recentCtx = messages.value
+    .slice(-6)
+    .map(m => m.content)
+    .join(' ')
+    .slice(-2000);
   return buildNovelSystemPrompt(props.book, {
     chapterSummaries: chapterSummaries.value,
-  });
+  }, recentCtx);
 }
 
 // ── 滑动窗口：按字符数截取最近的消息（避免超上下文窗口）──
@@ -139,8 +147,10 @@ async function initNewGame() {
     showToast('请先配置 API Key');
     return;
   }
-  isStreaming.value  = true;
-  streamingText.value = '';
+  isStreaming.value   = true;
+  isInitializing.value = true;
+  streamingText.value  = '';
+  userScrolled.value   = false;
 
   const sysPrompt = getSystemPrompt();
   const promptMessages = [
@@ -158,6 +168,7 @@ async function initNewGame() {
       promptMessages,
       apiSettings.value,
       (delta, full) => {
+        isInitializing.value = false;
         streamingText.value = full;
         fullText = full;
         scrollToBottom();
@@ -181,8 +192,9 @@ async function initNewGame() {
       showToast(friendlyError(err));
     }
   } finally {
-    isStreaming.value  = false;
-    streamingText.value = '';
+    isStreaming.value    = false;
+    isInitializing.value = false;
+    streamingText.value  = '';
     scrollToBottom();
   }
 }
@@ -206,6 +218,7 @@ async function sendAction() {
   // 2. 开始流式生成
   isStreaming.value   = true;
   streamingText.value = '';
+  userScrolled.value  = false;
 
   const apiMsgs = buildApiMessages(null); // user msg already pushed
 
@@ -264,6 +277,8 @@ async function finalizeResponse(fullText, _userText) {
     currentState.value = newState;
     if (newState.suggestions?.length) suggestions.value = newState.suggestions;
     if (newState.chapterTitle) chapterTitle.value = newState.chapterTitle;
+  } else {
+    showToast('⚠️ 本轮状态未更新（AI 未返回 STATE 块）');
   }
 
   // 章节摘要触发（后台静默，不阻塞玩家输入）
@@ -356,11 +371,19 @@ function useSuggestion(text) {
 }
 
 // ── 滚动 ──
-async function scrollToBottom() {
+async function scrollToBottom(force = false) {
+  if (!force && userScrolled.value) return;
   await nextTick();
   if (novelAreaRef.value) {
     novelAreaRef.value.scrollTop = novelAreaRef.value.scrollHeight;
   }
+}
+
+function onNovelScroll() {
+  const el = novelAreaRef.value;
+  if (!el) return;
+  // 如果离底部超过 80px 认为用户主动上滚
+  userScrolled.value = el.scrollHeight - el.scrollTop - el.clientHeight > 80;
 }
 
 // ── textarea 自动高度 ──
@@ -445,6 +468,7 @@ async function handleLoadSave(slotIndex) {
 
 // ── 初始化 ──
 onMounted(async () => {
+  novelAreaRef.value?.addEventListener('scroll', onNovelScroll, { passive: true });
   if (!isNewGame) {
     // 继续存档：从 IndexedDB 加载消息历史（save 元数据在 props 中，但 messages 只存 IDB）
     try {
@@ -498,7 +522,7 @@ function renderStatField(key, val) {
 // 流式渲染时安全过滤：遇到 <!--STATE: 就截断（closing --> 可能还没到达）
 function streamingNarrative(text) {
   if (!text) return '';
-  const idx = text.indexOf('<!--STATE:');
+  const idx = text.search(/<!--\s*STATE:/);
   return idx !== -1 ? text.slice(0, idx).trimEnd() : text;
 }
 
@@ -677,7 +701,8 @@ function npcDots(npc) {
                 <div class="gen-dot"></div>
                 <div class="gen-dot"></div>
               </div>
-              <span>正在生成…</span>
+              <span v-if="isInitializing">正在创世，请稍候…</span>
+              <span v-else>正在生成…</span>
             </div>
 
             <div style="height:24px"></div>
@@ -705,7 +730,6 @@ function npcDots(npc) {
                 class="novel-input"
                 placeholder="你打算做什么……"
                 rows="1"
-                :disabled="isStreaming"
                 @input="autoResize($event.target)"
                 @keydown="handleKeydown"
               ></textarea>
@@ -981,7 +1005,6 @@ function npcDots(npc) {
 .novel-input { flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(200,168,74,0.15); border-radius: 10px; padding: 9px 14px; color: var(--ink); font-family: inherit; font-size: 14px; resize: none; outline: none; line-height: 1.7; transition: border-color 0.2s; max-height: 120px; overflow-y: auto; }
 .novel-input:focus { border-color: rgba(200,168,74,0.4); }
 .novel-input::placeholder { color: var(--ink-faint); font-size: 13px; }
-.novel-input:disabled { opacity: 0.5; }
 
 .send-btn { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg,var(--gold-dim),var(--gold)); border: none; color: var(--paper); cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
 .send-btn:hover { transform: scale(1.05); }
