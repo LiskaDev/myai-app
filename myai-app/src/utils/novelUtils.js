@@ -213,9 +213,9 @@ ${summaryBlock}
 <!--STATE:
 {
   "stats": {
-    "字段名": {"value": "值"},
-    "有进度的字段": {"value": "当前", "progress": 68},
-    "有上限的字段": {"value": 80, "max": 100}
+    "字段名": {"value": "文字值"},
+    "有进度的字段（境界/修为等）": {"value": "练气七层", "progress": 68},
+    "有上限的字段（血量/灵力等）": {"value": 80, "max": 100}
   },
   "items": [{"name": "物品名", "rarity": "epic|rare|common", "count": 1}],
   "npcs": [{"name": "名字", "role": "关系描述", "relation": -5到5的整数, "type": "ally|enemy|neutral", "deceased": false}],
@@ -226,6 +226,16 @@ ${summaryBlock}
   "chapterTitle": "第X章 · 标题"
 }
 -->
+
+## stats 字段格式规则（必须严格遵守，不得自行变更结构）
+- 境界/修为类字段：{"value": "练气七层", "progress": 68}  ← 必须有 progress（0-100 整数）
+- 数值上限类字段：{"value": 78, "max": 120}             ← 必须有 max，value 为数字
+- 纯文字类字段：  {"value": "未开启"}                   ← 只用 value，不加其他键
+
+禁止输出：
+- {"value": "练气七层"}                ← 境界缺少 progress
+- "练气七层"                           ← 裸字符串
+- {"境界": "练气七层"}                  ← 结构改变
 
 ## 重要提示
 - stats 字段完全由你根据世界观自定义，不要拘泥于固定格式

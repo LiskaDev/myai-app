@@ -30,6 +30,20 @@ const chunks = ref([]);
 const bookTitle = ref('');
 const coverEmoji = ref('📖');
 const EMOJI_PRESETS = ['📖', '⚔️', '🏔️', '🌊', '🔮', '🌌', '🏯', '🎴', '🌸', '🐉'];
+const selectedStyle = ref('xianxia');
+const selectedDifficulty = ref(1);
+const STYLE_OPTIONS = [
+  { value: 'xianxia',    label: '仙侠修真' },
+  { value: 'wuxia',      label: '武侠江湖' },
+  { value: 'modern',     label: '现代都市' },
+  { value: 'apocalypse', label: '末日废土' },
+  { value: 'fantasy',    label: '西方奇幻' },
+];
+const DIFF_OPTIONS = [
+  { value: 0, label: '轻松', desc: '几乎不会失败，重在享受故事' },
+  { value: 1, label: '普通', desc: '合理风险与奖惩，保持挑战性' },
+  { value: 2, label: '硬核', desc: '高风险高回报，失败后果严重' },
+];
 
 // ── 提取进度 ──
 const extractedEntries = ref([]);
@@ -367,8 +381,8 @@ function finish() {
     title: bookTitle.value.trim() || fileName.value,
     coverEmoji: coverEmoji.value,
     createdAt: Date.now(),
-    style: 'xianxia',
-    difficulty: 1,
+    style: selectedStyle.value,
+    difficulty: selectedDifficulty.value,
     worldEntries: extractedEntries.value,
     saves: [null, null, null, null],
     novelModel: null,
@@ -505,6 +519,31 @@ function finish() {
       <div v-if="failedChunks.length" class="failed-banner">
         <span>⚠️ {{ failedChunks.length }} 个分块提取失败，可能丢失部分设定</span>
         <button class="retry-btn" @click="retryFailed">重试失败块</button>
+      </div>
+
+      <!-- 风格 & 难度 -->
+      <div class="import-settings">
+        <div class="import-setting-row">
+          <span class="setting-label">叙事风格</span>
+          <div class="setting-chips">
+            <button
+              v-for="opt in STYLE_OPTIONS" :key="opt.value"
+              :class="['chip', selectedStyle === opt.value && 'chip-active']"
+              @click="selectedStyle = opt.value"
+            >{{ opt.label }}</button>
+          </div>
+        </div>
+        <div class="import-setting-row">
+          <span class="setting-label">游玩难度</span>
+          <div class="setting-chips">
+            <button
+              v-for="opt in DIFF_OPTIONS" :key="opt.value"
+              :class="['chip', selectedDifficulty === opt.value && 'chip-active']"
+              @click="selectedDifficulty = opt.value"
+              :title="opt.desc"
+            >{{ opt.label }}</button>
+          </div>
+        </div>
       </div>
 
       <div class="entry-list">
@@ -677,6 +716,48 @@ function finish() {
 
 .preview-summary { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
 .preview-summary strong { color: rgba(192,132,252,0.9); }
+.import-settings {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.import-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.setting-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  width: 52px;
+  flex-shrink: 0;
+}
+.setting-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: transparent;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover { border-color: rgba(192,132,252,0.4); color: rgba(255,255,255,0.8); }
+.chip-active {
+  background: rgba(192,132,252,0.2);
+  border-color: rgba(192,132,252,0.7);
+  color: rgba(192,132,252,1);
+}
 .failed-banner {
   display: flex;
   align-items: center;

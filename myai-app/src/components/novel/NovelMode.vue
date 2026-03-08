@@ -478,10 +478,21 @@ onUnmounted(() => {
 });
 
 // ── STATE 侧边栏：通用渲染 ──
-function renderStatValue(stat) {
-  // { value, max } → "value / max"
-  if (stat.max !== undefined && stat.max !== null) return `${stat.value} / ${stat.max}`;
-  return stat.value ?? '';
+function renderStatField(key, val) {
+  // 裸字符串或裸数字属事降级
+  if (typeof val === 'string' || typeof val === 'number') {
+    return { type: 'text', value: String(val) };
+  }
+  // 有 progress → 卡片（境界/修为等）
+  if (val.progress !== undefined) {
+    return { type: 'card', value: val.value ?? '', progress: Math.max(0, Math.min(100, Number(val.progress) || 0)) };
+  }
+  // 有 max → 数値条
+  if (val.max !== undefined) {
+    return { type: 'bar', value: val.value ?? 0, max: val.max };
+  }
+  // 其他对象属事降级
+  return { type: 'text', value: val.value != null ? String(val.value) : JSON.stringify(val) };
 }
 
 // 流式渲染时安全过滤：遇到 <!--STATE: 就截断（closing --> 可能还没到达）
@@ -523,22 +534,22 @@ function npcDots(npc) {
           <div class="s-title">状态</div>
           <template v-for="(stat, key) in stateStats" :key="key">
             <!-- has progress bar -->
-            <div v-if="stat.progress !== undefined" class="realm-card">
-              <div class="realm-name">{{ renderStatValue(stat) }}</div>
+            <div v-if="renderStatField(key, stat).type === 'card'" class="realm-card">
+              <div class="realm-name">{{ renderStatField(key, stat).value }}</div>
               <div class="realm-sub">{{ key }}</div>
               <div class="exp-bar">
-                <div class="exp-fill" :style="{ width: stat.progress + '%' }"></div>
+                <div class="exp-fill" :style="{ width: renderStatField(key, stat).progress + '%' }"></div>
               </div>
             </div>
             <!-- has max (fraction) -->
-            <div v-else-if="stat.max !== undefined" class="stat-row">
+            <div v-else-if="renderStatField(key, stat).type === 'bar'" class="stat-row">
               <span class="sl">{{ key }}</span>
-              <span class="sv">{{ stat.value }} / {{ stat.max }}</span>
+              <span class="sv">{{ renderStatField(key, stat).value }} / {{ renderStatField(key, stat).max }}</span>
             </div>
             <!-- plain value -->
             <div v-else class="stat-row">
               <span class="sl">{{ key }}</span>
-              <span class="sv">{{ stat.value }}</span>
+              <span class="sv">{{ renderStatField(key, stat).value }}</span>
             </div>
           </template>
         </div>
