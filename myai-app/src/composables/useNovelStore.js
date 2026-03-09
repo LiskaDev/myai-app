@@ -19,7 +19,7 @@ export function useNovelStore() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(bookList.value));
   }
 
-  function createBook({ title, coverEmoji = '📖', worldEntries = [], novelModel = null, style = 'xianxia', difficulty = 1 }) {
+  function createBook({ title, coverEmoji = '📖', worldEntries = [], novelModel = null, style = 'xianxia', difficulty = 1, pace = 'auto' }) {
     const book = {
       id: crypto.randomUUID(),
       title,
@@ -27,6 +27,7 @@ export function useNovelStore() {
       createdAt: Date.now(),
       style,
       difficulty,
+      pace,
       worldEntries,
       saves: [null, null, null, null],
       novelModel: novelModel && novelModel.apiKey ? novelModel : null,
@@ -54,6 +55,7 @@ export function useNovelStore() {
       coverEmoji:  bookMeta.coverEmoji || '📖',
       style:       bookMeta.style || 'xianxia',
       difficulty:  bookMeta.difficulty ?? 1,
+      pace:        bookMeta.pace || 'auto',
       worldEntries: worldEntries || [],
       saves: [null, null, null, null],
     };
@@ -86,6 +88,7 @@ export function useNovelStore() {
       worldEntries: worldEntries || [],
       style:        bookMeta.style || 'xianxia',
       difficulty:   bookMeta.difficulty ?? 1,
+      pace:         bookMeta.pace || 'auto',
     });
     // 写入存档元数据
     for (const s of (saves || [])) {

@@ -42,7 +42,7 @@ function maskKey(key) {
   return key.slice(0, 6) + '…' + key.slice(-4);
 }
 
-// ── 风格/难度 ──
+// ── 风格/难度/节奏 ──
 const STYLES = [
   { value: 'xianxia',    label: '仙侠修真' },
   { value: 'wuxia',      label: '武侠江湖' },
@@ -50,11 +50,18 @@ const STYLES = [
   { value: 'apocalypse', label: '末日废土' },
   { value: 'fantasy',    label: '西方奇幻' },
 ];
+const PACES = [
+  { value: 'compact',   label: '简洁',  desc: '每轮约100字' },
+  { value: 'auto',      label: 'Auto',  desc: '场景感知' },
+  { value: 'standard',  label: '标准',  desc: '200-400字' },
+  { value: 'immersive', label: '沉浸',  desc: '400-600字' },
+];
 const localStyle      = ref(props.book.style || 'xianxia');
 const localDifficulty = ref(props.book.difficulty ?? 1);
+const localPace       = ref(props.book.pace || 'auto');
 
 function saveStyleSettings() {
-  emit('book-updated', { style: localStyle.value, difficulty: localDifficulty.value });
+  emit('book-updated', { style: localStyle.value, difficulty: localDifficulty.value, pace: localPace.value });
 }
 
 // ── 世界书操作 ──
@@ -251,6 +258,21 @@ function formatDate(ts) {
             </div>
           </div>
 
+          <div class="form-section">
+            <label class="form-label">叙事节奏</label>
+            <div class="pace-grid">
+              <button
+                v-for="p in PACES"
+                :key="p.value"
+                :class="['pace-btn', localPace === p.value && 'active']"
+                @click="localPace = p.value"
+              >
+                <span class="pace-name">{{ p.label }}</span>
+                <span class="pace-desc">{{ p.desc }}</span>
+              </button>
+            </div>
+          </div>
+
           <button class="save-style-btn" @click="saveStyleSettings">保存设置</button>
         </div>
 
@@ -426,6 +448,11 @@ function formatDate(ts) {
 .diff-btn { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.5); font-size: 13px; cursor: pointer; transition: all 0.2s; }
 .diff-btn.active { background: rgba(200,168,74,0.12); border-color: rgba(200,168,74,0.35); color: #c8a84a; }
 .diff-desc { margin-top: 8px; font-size: 11px; color: rgba(255,255,255,0.3); line-height: 1.6; min-height: 18px; }
+.pace-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.pace-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 4px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.5); cursor: pointer; transition: all 0.2s; }
+.pace-btn.active { background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.4); color: #a78bfa; }
+.pace-name { font-size: 13px; font-weight: 600; }
+.pace-desc { font-size: 10px; color: inherit; opacity: 0.65; }
 .save-style-btn { padding: 10px 24px; background: rgba(200,168,74,0.15); border: 1px solid rgba(200,168,74,0.3); border-radius: 20px; color: #c8a84a; font-size: 13px; cursor: pointer; transition: all 0.2s; }
 .save-style-btn:hover { background: rgba(200,168,74,0.25); }
 

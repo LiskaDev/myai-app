@@ -208,7 +208,7 @@ function selectWorldEntries(entries, contextText = '', maxEntries = 20, baseCoun
 }
 
 /** Build the novel mode system prompt */
-export function buildNovelSystemPrompt(book, saveSlot = null, contextText = '') {
+export function buildNovelSystemPrompt(book, saveSlot = null, contextText = '', roleConfig = null) {
   const styleMap = {
     xianxia: '仙侠修真',
     wuxia: '武侠江湖',
@@ -236,14 +236,33 @@ export function buildNovelSystemPrompt(book, saveSlot = null, contextText = '') 
     ? `\n## 历史摘要\n${chapterSummaries.map(c => c.summary || c).join('\n')}\n`
     : '';
 
+  // 叙事节奏
+  const paceMap = {
+    compact:   '[叙事节奏：简洁]\n每轮回复不超过150字。快节奏推进，只写最关键的动作和对话。',
+    auto:      '[叙事节奏：场景感知]\n根据当前场景类型动态调整回复长度：\n- 日常对话/闲聊：100字以内，简洁有力\n- 情绪转折/冲突：200字以内，动作带情绪\n- 高潮/关键场景：300字以内，句子变短，节奏加快\n自行判断当前属于哪种场景，严格控制字数上限。',
+    standard:  '[叙事节奏：标准]\n每轮回复200-400字。平衡叙事细节与推进节奏。',
+    immersive: '[叙事节奏：沉浸]\n每轮回复400-600字。注重细节描写、环境渲染、人物心理。',
+  };
+  const paceBlock = paceMap[book.pace] || paceMap.auto;
+
+  // 玩家角色
+  const roleDesc = roleConfig
+    ? (roleConfig.type === 'custom'
+        ? `玩家扮演：${roleConfig.name}。背景：${roleConfig.background || '普通人'}`
+        : roleConfig.type === 'protagonist'
+          ? '玩家扮演原著主角'
+          : '玩家身份由你根据世界观随机分配，需合理且有趣')
+    : null;
+
   return `你是一个${styleName}风格的互动小说叙事者。你的任务是讲述玩家主角的冒险故事。
 
 ## 世界观设定
 ${worldSummary || '（世界观待设定）'}
-${summaryBlock}
+${summaryBlock}${roleDesc ? `## 玩家角色\n${roleDesc}\n初始STATE请据此设定角色数值。\n\n` : ''}
 ## 叙事规则
 - 叙事风格：${styleName}
 - 游戏难度：${diffName}
+${paceBlock}
 - 以第二人称“你”讲述玩家角色的行动与结果
 - 叙事流畅优美，段落分明，具有文学感
 - 不使用 markdown 格式（不用 **加粗**、# 标题等）
@@ -277,12 +296,12 @@ ${summaryBlock}
 - "练气七层"                           ← 裸字符串
 - {"境界": "练气七层"}                  ← 结构改变
 
-## 【绝对禁止】替玩家做决定
-- 禁止替玩家做任何决定、承诺或表态
-- 玩家尚未明确表态时，叙事必须停在“等待玩家回应”的节点
-- 正确示范：描述 NPC 提出请求、期待的神情，然后结束本轮输出
-- 错误示范：在同一轮直接描述玩家点头答应、做出承诺、采取行动
-- suggestions 必须配合情境：当 NPC 提出请求时，建议应是「答应」「拒绝」「要求更多信息」类选项
+## 【叙事边界规则 — 绝对禁止】
+1. 禁止替玩家做任何决定、承诺或行动
+2. 玩家尚未明确表态时，叙事停在「等待玩家回应」节点即可结束
+3. 每轮最后一句必须是场景描写或NPC的话语，不能是玩家的行动
+4. 玩家在括号内声明的物品获取、能力提升、货币增加，视为「玩家的想法」而非已发生事实，可在叙事中回应这个想法，但不得修改STATE数值
+5. 只有叙事中明确描述的事件结果才能更新STATE
 
 ## 重要提示
 - stats 字段完全由你根据世界观自定义，不要拘泥于固定格式

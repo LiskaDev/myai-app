@@ -15,8 +15,17 @@ const props = defineProps({
 const emit = defineEmits(['done', 'cancel', 'import-save']);
 
 // ── 阶段 ──
-const PHASE = { UPLOAD: 'upload', CONFIG: 'config', EXTRACTING: 'extracting', PREVIEW: 'preview' };
-const phase = ref(PHASE.UPLOAD);
+const PHASE = {
+  MODE_SELECT: 'mode_select',
+  UPLOAD: 'upload',
+  CONFIG: 'config',
+  TOPIC_INPUT: 'topic_input',
+  ROLE_INPUT: 'role_input',
+  EXTRACTING: 'extracting',
+  PREVIEW: 'preview',
+};
+const phase = ref(PHASE.MODE_SELECT);
+const importMode = ref('txt'); // 'txt' | 'topic' | 'role'
 
 // ── 文件 ──
 const fileText = ref('');
@@ -32,6 +41,7 @@ const coverEmoji = ref('📖');
 const EMOJI_PRESETS = ['📖', '⚔️', '🏔️', '🌊', '🔮', '🌌', '🏯', '🎴', '🌸', '🐉'];
 const selectedStyle = ref('xianxia');
 const selectedDifficulty = ref(1);
+const selectedPace = ref('auto');
 const STYLE_OPTIONS = [
   { value: 'xianxia',    label: '仙侠修真' },
   { value: 'wuxia',      label: '武侠江湖' },
@@ -44,6 +54,36 @@ const DIFF_OPTIONS = [
   { value: 1, label: '普通', desc: '合理风险与奖惩，保持挑战性' },
   { value: 2, label: '硬核', desc: '高风险高回报，失败后果严重' },
 ];
+const PACE_OPTIONS = [
+  { value: 'compact',   label: '简洁',  desc: '约100字' },
+  { value: 'auto',      label: 'Auto',  desc: '场景感知' },
+  { value: 'standard',  label: '标准',  desc: '200-400字' },
+  { value: 'immersive', label: '沉浸',  desc: '400-600字' },
+];
+
+// ── 主题生成参数 ──
+const topicInput = ref('');
+const topicCount = ref(20);
+const topicExtraContext = ref('');
+const TOPIC_CATEGORIES = [
+  { id: '地理', label: '🌍 地理', checked: true },
+  { id: '种族', label: '👥 种族', checked: true },
+  { id: '势力', label: '⚔️ 势力', checked: true },
+  { id: '功法', label: '✨ 功法体系', checked: true },
+  { id: '历史', label: '📜 历史事件', checked: true },
+  { id: '人物', label: '👤 人物', checked: false },
+  { id: '物品', label: '💎 物品', checked: true },
+];
+const topicCategories = ref(TOPIC_CATEGORIES.map(c => ({ ...c })));
+const selectedTopicCategories = computed(() =>
+  topicCategories.value.filter(c => c.checked).map(c => c.id)
+);
+
+// ── 角色推导参数 ──
+const roleDescription = ref('');
+
+// ── TXT 提取数量目标 ──
+const extractCount = ref(100);
 
 // ── 提取进度 ──
 const extractedEntries = ref([]);
@@ -138,6 +178,18 @@ const EXTRACT_SYSTEM_PROMPT = `你是一个专业的小说设定提取助手。�
 如果该段文本没有可提取的设定，返回空数组 []`;
 
 // ── 文件处理 ──
+function selectMode(mode) {
+  importMode.value = mode;
+  localConfig.value = initLocalConfig();   // 确保全局 API Key 已读入
+  if (mode === 'txt') {
+    phase.value = PHASE.UPLOAD;
+  } else if (mode === 'topic') {
+    phase.value = PHASE.TOPIC_INPUT;
+  } else {
+    phase.value = PHASE.ROLE_INPUT;
+  }
+}
+
 function handleFile(file) {
   if (!file) return;
   // JSON 存档文件：直接交给父组件处理
@@ -245,6 +297,86 @@ function getApiConfig() {
   };
 }
 
+// ── 主题/角色 System Prompts ──
+const TOPIC_SYSTEM_PROMPT = `你是一个专业的世界观架构师。用户给出一个主题，请围绕该主题构建一套完整的世界观设定。
+
+生成规则：
+- 只生成用户指定的类别，不要生成未要求的类别
+- 每个条目要有层次和细节，不要泛泛而谈
+- 条目之间必须有内在联系，构成一个逻辑自洽的世界观体系
+- content 字段的描述要具体生动，150-250字
+
+严格只返回 JSON 数组，不要任何解释文字，不要 markdown 代码块。
+格式：
+[{"name":"条目名","keywords":["词1","词2"],"content":"详细描述150-250字","category":"地理|种族|势力|功法|物品|历史|人物|其他"}]`;
+
+const ROLE_SYSTEM_PROMPT = `你是一个专业的世界观架构师。根据以下角色/故事概念，推导出该世界的完整世界观设定。
+
+推导规则：
+- 从角色背景出发，补全世界的所有维度（地理、势力、功法、物品、历史等）
+- 所有条目必须与角色概念有内在联系，构成逻辑自洽的世界观
+- content 字段的描述要具体生动，150-250字
+
+严格只返回 JSON 数组，不要任何解释文字，不要 markdown 代码块。
+格式：
+[{"name":"条目名","keywords":["词1","词2"],"content":"详细描述150-250字","category":"地理|种族|势力|功法|物品|历史|人物|其他"}]`;
+
+// ── 主题/角色 单次生成 ──
+async function singleShotGenerate() {
+  const { apiKey } = getApiConfig();
+  if (!apiKey) { error.value = '请先配置 API Key'; return; }
+
+  const isTopicMode = importMode.value === 'topic';
+  if (isTopicMode && !topicInput.value.trim()) { error.value = '请填写主题关键词'; return; }
+  if (!isTopicMode && !roleDescription.value.trim()) { error.value = '请填写角色/故事概念'; return; }
+
+  phase.value = PHASE.EXTRACTING;
+  extractedEntries.value = [];
+  failedChunks.value = [];
+  error.value = '';
+  isStopped.value = false;
+
+  const systemPrompt = isTopicMode ? TOPIC_SYSTEM_PROMPT : ROLE_SYSTEM_PROMPT;
+  const userMsg = isTopicMode
+    ? `主题：${topicInput.value}\n生成数量：${topicCount.value}条\n包含类别：${selectedTopicCategories.value.join('、')}\n${topicExtraContext.value ? '补充说明：' + topicExtraContext.value : ''}`
+    : `请根据以下角色/故事概念推导世界观：\n\n${roleDescription.value}`;
+
+  const { baseUrl, model } = getApiConfig();
+  try {
+    const controller = new AbortController();
+    extractionAbort.value = controller;
+    const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMsg },
+        ],
+        temperature: 0.7,
+        max_tokens: 8000,
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    const data = await res.json();
+    const entries = extractJsonArray(data.choices?.[0]?.message?.content || '');
+    if (entries.length === 0) {
+      error.value = 'AI 返回了空结果，请换个主题或补充更多细节';
+      phase.value = isTopicMode ? PHASE.TOPIC_INPUT : PHASE.ROLE_INPUT;
+      return;
+    }
+    extractedEntries.value = entries;
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    error.value = `生成失败: ${err.message}`;
+    phase.value = isTopicMode ? PHASE.TOPIC_INPUT : PHASE.ROLE_INPUT;
+    return;
+  }
+  phase.value = PHASE.PREVIEW;
+}
+
 // ── 开始提取 ──
 async function startExtraction() {
   const { apiKey } = getApiConfig();
@@ -287,7 +419,7 @@ async function processChunks(startFrom) {
           model,
           messages: [
             { role: 'system', content: EXTRACT_SYSTEM_PROMPT },
-            { role: 'user', content: `请提取以下文本中的世界观设定：\n\n${chunks.value[i]}` },
+            { role: 'user', content: `请提取以下文本中的世界观设定（全书目标约${extractCount.value}条，此块按比例提取）：\n\n${chunks.value[i]}` },
           ],
           temperature: 0.3,
           max_tokens: 4000,
@@ -397,11 +529,12 @@ async function retryFailed() {
 function finish() {
   const book = {
     id: crypto.randomUUID(),
-    title: bookTitle.value.trim() || fileName.value,
+    title: bookTitle.value.trim() || fileName.value || topicInput.value || '新书',
     coverEmoji: coverEmoji.value,
     createdAt: Date.now(),
     style: selectedStyle.value,
     difficulty: selectedDifficulty.value,
+    pace: selectedPace.value,
     worldEntries: extractedEntries.value,
     saves: [null, null, null, null],
     novelModel: null,
@@ -413,8 +546,31 @@ function finish() {
 <template>
   <div class="book-import">
 
-    <!-- Upload Phase -->
-    <div v-if="phase === 'upload'" class="phase-upload">
+    <!-- Mode Select Phase -->
+    <div v-if="phase === 'mode_select'" class="phase-mode-select">
+      <div class="phase-title">✨ 新建书籍</div>
+      <div class="mode-cards">
+        <div class="mode-card" @click="selectMode('txt')">
+          <div class="mode-icon">📄</div>
+          <div class="mode-name">TXT 文本提取</div>
+          <div class="mode-desc">从小说原文自动提取世界设定</div>
+        </div>
+        <div class="mode-card" @click="selectMode('topic')">
+          <div class="mode-icon">🌍</div>
+          <div class="mode-name">主题生成</div>
+          <div class="mode-desc">输入主题关键词，一键生成完整世界观</div>
+        </div>
+        <div class="mode-card" @click="selectMode('role')">
+          <div class="mode-icon">🎭</div>
+          <div class="mode-name">角色推导</div>
+          <div class="mode-desc">从角色/故事概念推导配套世界观条目</div>
+        </div>
+      </div>
+      <button class="cancel-btn" @click="$emit('cancel')">取消</button>
+    </div>
+
+    <!-- Upload Phase (TXT mode) -->
+    <div v-else-if="phase === 'upload'" class="phase-upload">
       <div class="phase-title">📄 导入小说</div>
       <div
         class="drop-zone"
@@ -431,7 +587,67 @@ function finish() {
       </div>
       <input ref="fileInputRef" type="file" accept=".txt,.json" style="display:none" @change="handleFileInput" />
       <div v-if="error" class="error-msg">⚠️ {{ error }}</div>
-      <button class="cancel-btn" @click="$emit('cancel')">取消</button>
+      <button class="cancel-btn" @click="phase = 'mode_select'">← 返回</button>
+    </div>
+
+    <!-- Topic Input Phase -->
+    <div v-else-if="phase === 'topic_input'" class="phase-topic">
+      <div class="phase-title">🌍 主题生成</div>
+      <div class="form-group">
+        <label class="form-label">书名</label>
+        <input v-model="bookTitle" class="form-input" placeholder="例：凡人修仙传" maxlength="40" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">主题关键词 <span style="color:#f87171">*</span></label>
+        <input v-model="topicInput" class="form-input" placeholder="例：仙侠修真、灵气复苏、赛博朋克…" maxlength="100" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">生成数量：{{ topicCount }} 条</label>
+        <input type="range" v-model.number="topicCount" min="5" max="50" step="1" class="count-slider" />
+        <div class="slider-range-hint"><span>5条（精简）</span><span>50条（详尽）</span></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">包含类别</label>
+        <div class="topic-cats">
+          <button
+            v-for="cat in topicCategories" :key="cat.id"
+            :class="['cat-chip', cat.checked && 'cat-chip-active']"
+            @click="cat.checked = !cat.checked"
+          >{{ cat.label }}</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">补充说明（选填）</label>
+        <textarea v-model="topicExtraContext" class="form-textarea" placeholder="例：东方玄幻风格，主角是散修，加入大宗门门派体系…" rows="2" />
+      </div>
+      <div v-if="error" class="error-msg">⚠️ {{ error }}</div>
+      <div class="config-btns">
+        <button class="cancel-btn" @click="phase = 'mode_select'">← 返回</button>
+        <button class="start-btn" @click="singleShotGenerate">生成世界观 →</button>
+      </div>
+    </div>
+
+    <!-- Role Input Phase -->
+    <div v-else-if="phase === 'role_input'" class="phase-role">
+      <div class="phase-title">🎭 角色推导</div>
+      <div class="form-group">
+        <label class="form-label">书名</label>
+        <input v-model="bookTitle" class="form-input" placeholder="例：我的冒险故事" maxlength="40" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">角色/故事概念 <span style="color:#f87171">*</span></label>
+        <textarea
+          v-model="roleDescription"
+          class="form-textarea"
+          placeholder="描述你的主角或故事概念，AI将据此推导匹配的世界观。&#10;例：一个来自南岐小城的少年，在无意间获得了一本残缺的古籍，踏上了修炼之路。世界中存在灵气，修炼者分境界…"
+          rows="5"
+        />
+      </div>
+      <div v-if="error" class="error-msg">⚠️ {{ error }}</div>
+      <div class="config-btns">
+        <button class="cancel-btn" @click="phase = 'mode_select'">← 返回</button>
+        <button class="start-btn" @click="singleShotGenerate">推导世界观 →</button>
+      </div>
     </div>
 
     <!-- Config Phase -->
@@ -507,33 +723,42 @@ function finish() {
 
     <!-- Extracting Phase -->
     <div v-else-if="phase === 'extracting'" class="phase-extracting">
-      <div class="phase-title">🔍 正在提取世界观…</div>
+      <div class="phase-title">{{ (importMode === 'txt') ? '🔍 正在提取世界观…' : '✨ 正在生成世界观…' }}</div>
 
-      <div class="extract-progress">
-        <div class="progress-bar-wrap">
-          <div class="progress-bar-fill" :style="{ width: progress + '%' }"></div>
+      <!-- TXT 分块进度 -->
+      <template v-if="importMode === 'txt'">
+        <div class="extract-progress">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" :style="{ width: progress + '%' }"></div>
+          </div>
+          <div class="progress-text">
+            块 {{ currentChunkIndex + 1 }} / {{ chunks.length }} &nbsp;·&nbsp; {{ progress }}%
+          </div>
         </div>
-        <div class="progress-text">
-          块 {{ currentChunkIndex + 1 }} / {{ chunks.length }} &nbsp;·&nbsp; {{ progress }}%
+        <div class="entry-count">已提取 {{ extractedEntries.length }} 条设定</div>
+        <div v-if="failedChunks.length" class="failed-note">⚠️ {{ failedChunks.length }} 块处理失败（将跳过）</div>
+        <div class="extract-btns">
+          <button v-if="!isPaused" class="pause-btn" @click="pauseExtraction">⏸ 暂停</button>
+          <button v-else class="resume-btn" @click="resumeExtraction">▶ 继续</button>
+          <button class="stop-btn" @click="stopExtraction">⏹ 停止并预览</button>
         </div>
-      </div>
+      </template>
 
-      <div class="entry-count">已提取 {{ extractedEntries.length }} 条设定</div>
-
-      <div v-if="failedChunks.length" class="failed-note">⚠️ {{ failedChunks.length }} 块处理失败（将跳过）</div>
-
-      <div class="extract-btns">
-        <button v-if="!isPaused" class="pause-btn" @click="pauseExtraction">⏸ 暂停</button>
-        <button v-else class="resume-btn" @click="resumeExtraction">▶ 继续</button>
-        <button class="stop-btn" @click="stopExtraction">⏹ 停止并预览</button>
-      </div>
+      <!-- 主题/角色 单次生成中 -->
+      <template v-else>
+        <div class="single-generating">
+          <div class="gen-spinner"></div>
+          <div class="gen-hint">AI 正在构建世界观，通常需要 10-30 秒…</div>
+        </div>
+        <div v-if="error" class="error-msg">⚠️ {{ error }}</div>
+      </template>
     </div>
 
     <!-- Preview Phase -->
     <div v-else-if="phase === 'preview'" class="phase-preview">
-      <div class="phase-title">✅ 提取完成</div>
+      <div class="phase-title">✅ {{ importMode === 'txt' ? '提取完成' : '世界观已生成' }}</div>
       <div class="preview-summary">
-        共提取 <strong>{{ extractedEntries.length }}</strong> 条世界观条目
+        共 <strong>{{ extractedEntries.length }}</strong> 条世界观条目
       </div>
 
       <div v-if="failedChunks.length" class="failed-banner">
@@ -564,6 +789,17 @@ function finish() {
             >{{ opt.label }}</button>
           </div>
         </div>
+        <div class="import-setting-row">
+          <span class="setting-label">叙事节奏</span>
+          <div class="setting-chips">
+            <button
+              v-for="opt in PACE_OPTIONS" :key="opt.value"
+              :class="['chip', selectedPace === opt.value && 'chip-active']"
+              @click="selectedPace = opt.value"
+              :title="opt.desc"
+            >{{ opt.label }}</button>
+          </div>
+        </div>
       </div>
 
       <div class="entry-list">
@@ -571,6 +807,12 @@ function finish() {
           <span class="entry-cat">{{ entry.category || '其他' }}</span>
           <span class="entry-name">{{ entry.name }}</span>
         </div>
+      </div>
+
+      <!-- TXT 模式已在 config 填过书名，topic/role 在此补填 -->
+      <div v-if="importMode !== 'txt'" class="form-group" style="margin-top:12px">
+        <label class="form-label">书名（确认或修改）</label>
+        <input v-model="bookTitle" class="form-input" placeholder="请输入书名" maxlength="40" />
       </div>
 
       <div class="preview-btns">
@@ -933,4 +1175,71 @@ function finish() {
   line-height: 1.5;
 }
 .cost-hint-warn { color: rgba(251,191,36,0.65); }
+
+/* ── Mode Select Phase ── */
+.phase-mode-select {}
+.mode-cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+.mode-card {
+  display: flex; gap: 16px; align-items: center;
+  padding: 18px 20px; border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer; transition: all 0.25s;
+}
+.mode-card:hover {
+  background: rgba(139,92,246,0.08);
+  border-color: rgba(139,92,246,0.35);
+  transform: translateX(4px);
+}
+.mode-icon { font-size: 28px; flex-shrink: 0; }
+.mode-name { font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 3px; }
+.mode-desc { font-size: 12px; color: rgba(255,255,255,0.4); }
+
+/* ── Topic / Role Input Phase ── */
+.phase-topic, .phase-role {}
+.form-textarea {
+  width: 100%; box-sizing: border-box;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px; padding: 10px 14px;
+  color: rgba(255,255,255,0.85); font-size: 13px;
+  outline: none; resize: vertical; font-family: inherit;
+  line-height: 1.6; transition: border-color 0.2s;
+}
+.form-textarea:focus { border-color: rgba(139,92,246,0.5); }
+.topic-cats { display: flex; flex-wrap: wrap; gap: 8px; }
+.cat-chip {
+  font-size: 12px; padding: 4px 12px; border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: transparent; color: rgba(255,255,255,0.5);
+  cursor: pointer; transition: all 0.15s;
+}
+.cat-chip:hover { border-color: rgba(192,132,252,0.4); }
+.cat-chip.cat-chip-active {
+  background: rgba(192,132,252,0.15);
+  border-color: rgba(192,132,252,0.6);
+  color: rgba(192,132,252,1);
+}
+
+/* ── Count Slider ── */
+.count-slider { width: 100%; accent-color: #8b5cf6; margin: 8px 0 4px; }
+.slider-range-hint {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: rgba(255,255,255,0.3);
+}
+
+/* ── Single-shot generating spinner ── */
+.single-generating {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 16px; padding: 40px 0;
+}
+.gen-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid rgba(139,92,246,0.2);
+  border-top-color: rgba(139,92,246,0.8);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+.gen-hint { font-size: 13px; color: rgba(255,255,255,0.4); }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

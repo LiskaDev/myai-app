@@ -71,6 +71,7 @@ const showNovelMode  = ref(false);
 const novelBook      = ref(null);
 const novelSave      = ref(null);
 const novelSlotIndex = ref(0);
+const novelRoleConfig = ref(null);
 const NOVEL_SESSION_KEY = 'myai_active_novel_session';
 
 function handleNovelExit() {
@@ -79,10 +80,11 @@ function handleNovelExit() {
   sessionStorage.removeItem(NOVEL_SESSION_KEY);
 }
 
-function handleStartNovel({ book, slotIndex, save }) {
+function handleStartNovel({ book, slotIndex, save, roleConfig = null }) {
   novelBook.value      = book;
   novelSave.value      = save || null;
   novelSlotIndex.value = slotIndex ?? 0;
+  novelRoleConfig.value = roleConfig;
   showNovelMode.value  = true;
   showHomePage.value   = false;
   // 刷新页面恢复所需的最小信息（messages 在 IndexedDB，此处只存定位标识）
@@ -1057,6 +1059,7 @@ function handleAvatarError(type, roleId) {
     :book="novelBook"
     :save="novelSave"
     :slot-index="novelSlotIndex"
+    :role-config="novelRoleConfig"
     :global-settings="globalSettings"
     @exit="handleNovelExit"
     @save-book="handleNovelSaveBook"

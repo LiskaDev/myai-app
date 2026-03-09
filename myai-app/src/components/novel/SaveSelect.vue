@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
   book:           { type: Object, required: true },
@@ -28,6 +28,39 @@ const hasApiKey = computed(() => {
 });
 
 const isAllEmpty = computed(() => slots.value.every(s => !s.save));
+
+// ── Task 3: 角色配置面板 ──
+const selectedSlotIndex = ref(null);
+const showRoleConfig = ref(false);
+const roleType = ref('protagonist'); // 'protagonist' | 'custom' | 'random'
+const customName = ref('');
+const customBackground = ref('');
+
+function onSlotClick(slot) {
+  if (slot.save) {
+    emit('select-save', { slotIndex: slot.index, save: slot.save });
+  } else {
+    selectedSlotIndex.value = slot.index;
+    roleType.value = 'protagonist';
+    customName.value = '';
+    customBackground.value = '';
+    showRoleConfig.value = true;
+  }
+}
+
+function confirmRoleConfig() {
+  if (roleType.value === 'custom' && !customName.value.trim()) return;
+  emit('select-save', {
+    slotIndex: selectedSlotIndex.value,
+    save: null,
+    roleConfig: {
+      type: roleType.value,
+      name: customName.value.trim(),
+      background: customBackground.value.trim(),
+    },
+  });
+  showRoleConfig.value = false;
+}
 </script>
 
 <template>
@@ -60,7 +93,7 @@ const isAllEmpty = computed(() => slots.value.every(s => !s.save));
         v-for="slot in slots"
         :key="slot.index"
         :class="['slot-card', slot.save ? 'occupied' : 'empty']"
-        @click="$emit('select-save', { slotIndex: slot.index, save: slot.save })"
+        @click="onSlotClick(slot)"
       >
         <!-- Occupied Save -->
         <template v-if="slot.save">
@@ -80,6 +113,51 @@ const isAllEmpty = computed(() => slots.value.every(s => !s.save));
 
     <button class="back-btn" @click="$emit('back')">← 返回书库</button>
   </div>
+
+  <!-- 角色配置面板 Overlay -->
+  <Teleport to="body">
+    <div v-if="showRoleConfig" class="role-overlay" @click.self="showRoleConfig = false">
+      <div class="role-panel">
+        <div class="role-panel-title">⚔️ 设定你的角色</div>
+        <div class="role-panel-sub">选择你在故事中的身份方式</div>
+
+        <div class="role-type-btns">
+          <button
+            v-for="opt in [{value:'protagonist',label:'🎭 主角 (AI代入)',desc:'由AI根据故事背景生成主角设定'},{value:'custom',label:'✍️ 自定义角色',desc:'填写角色名与背景，AI会严格代入'},{value:'random',label:'🎲 随机角色',desc:'AI随机生成一名与世界观契合的角色'}]"
+            :key="opt.value"
+            :class="['role-type-btn', roleType === opt.value && 'active']"
+            @click="roleType = opt.value"
+          >
+            <span class="rtb-label">{{ opt.label }}</span>
+            <span class="rtb-desc">{{ opt.desc }}</span>
+          </button>
+        </div>
+
+        <!-- 自定义角色补充字段 -->
+        <template v-if="roleType === 'custom'">
+          <div class="role-field">
+            <label class="role-label">角色名 <span style="color:rgba(239,68,68,0.8)">*</span></label>
+            <input v-model="customName" class="role-input" placeholder="如：李明、Aria、无名浪人" maxlength="30" />
+          </div>
+          <div class="role-field">
+            <label class="role-label">背景简述（可选）</label>
+            <textarea v-model="customBackground" class="role-textarea" rows="3"
+              placeholder="简单描述角色的职业、性格或特殊能力，AI会将其融入叙事中…" maxlength="200"
+            ></textarea>
+          </div>
+        </template>
+
+        <div class="role-actions">
+          <button class="role-cancel-btn" @click="showRoleConfig = false">取消</button>
+          <button
+            class="role-confirm-btn"
+            :disabled="roleType === 'custom' && !customName.trim()"
+            @click="confirmRoleConfig"
+          >开始冒险 →</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -275,4 +353,81 @@ const isAllEmpty = computed(() => slots.value.every(s => !s.save));
   white-space: nowrap;
 }
 .no-key-btn:hover { background: rgba(251,146,60,0.25); }
+
+/* ── Role Config Overlay ── */
+.role-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.role-panel {
+  width: 100%; max-width: 440px;
+  background: #1a1a2e;
+  border: 1px solid rgba(139,92,246,0.3);
+  border-radius: 20px;
+  padding: 28px 24px 22px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.role-panel-title {
+  font-size: 18px; font-weight: 700;
+  color: rgba(255,255,255,0.9); letter-spacing: 0.5px;
+}
+.role-panel-sub {
+  font-size: 12px; color: rgba(255,255,255,0.35); margin-top: -8px;
+}
+.role-type-btns { display: flex; flex-direction: column; gap: 8px; }
+.role-type-btn {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  padding: 14px 16px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer; transition: all 0.2s; text-align: left;
+}
+.role-type-btn:hover { background: rgba(139,92,246,0.08); border-color: rgba(139,92,246,0.3); }
+.role-type-btn.active {
+  background: rgba(139,92,246,0.15);
+  border-color: rgba(139,92,246,0.6);
+}
+.rtb-label { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.85); }
+.rtb-desc  { font-size: 11px; color: rgba(255,255,255,0.38); }
+
+.role-field { display: flex; flex-direction: column; gap: 6px; }
+.role-label { font-size: 12px; color: rgba(255,255,255,0.5); }
+.role-input {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 8px 12px;
+  color: rgba(255,255,255,0.85); font-size: 13px; outline: none;
+  transition: border-color 0.2s;
+}
+.role-input:focus { border-color: rgba(139,92,246,0.5); }
+.role-textarea {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 8px 12px;
+  color: rgba(255,255,255,0.85); font-size: 13px;
+  outline: none; resize: vertical; font-family: inherit; line-height: 1.6;
+  transition: border-color 0.2s;
+}
+.role-textarea:focus { border-color: rgba(139,92,246,0.5); }
+
+.role-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+.role-cancel-btn {
+  padding: 8px 18px; border-radius: 20px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.4); font-size: 13px; cursor: pointer;
+  transition: all 0.2s;
+}
+.role-cancel-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.6); }
+.role-confirm-btn {
+  padding: 8px 22px; border-radius: 20px;
+  background: rgba(139,92,246,0.25);
+  border: 1px solid rgba(139,92,246,0.5);
+  color: rgba(255,255,255,0.85); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.role-confirm-btn:hover:not(:disabled) { background: rgba(139,92,246,0.4); }
+.role-confirm-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 </style>

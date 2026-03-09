@@ -13,6 +13,7 @@ const props = defineProps({
   save:           { type: Object, default: null },  // null = new game
   slotIndex:      { type: Number, default: 0 },
   globalSettings: { type: Object, required: true },
+  roleConfig:     { type: Object, default: null },
 });
 
 const emit = defineEmits(['exit', 'save-book', 'delete-save', 'load-save']);
@@ -110,7 +111,7 @@ function getSystemPrompt() {
     .slice(-2000);
   return buildNovelSystemPrompt(props.book, {
     chapterSummaries: chapterSummaries.value,
-  }, recentCtx);
+  }, recentCtx, props.roleConfig);
 }
 
 // ── 滑动窗口：按字符数截取最近的消息（避免超上下文窗口）──

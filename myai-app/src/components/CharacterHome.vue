@@ -350,7 +350,7 @@ async function onImportSaveFile(raw) {
 }
 
 // ── 存档选择 ──
-function onSelectSave({ slotIndex, save }) {
+function onSelectSave({ slotIndex, save, roleConfig = null }) {
   const book = selectedBook.value;
   const hasBookKey = book?.novelModel?.apiKey;
   const hasGlobalKey = props.globalSettings?.apiKey;
@@ -358,7 +358,7 @@ function onSelectSave({ slotIndex, save }) {
     // Banner 已经提前告知用户，这里仅用 toast 轻提示，不应用 alert 阻塞会话
     return;
   }
-  emit('start-novel', { book, slotIndex, save });
+  emit('start-novel', { book, slotIndex, save, roleConfig });
 }
 
 function getWorldTag(worldLogic) {
