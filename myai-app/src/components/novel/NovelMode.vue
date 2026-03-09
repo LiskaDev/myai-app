@@ -48,6 +48,15 @@ let toastTimer       = null;
 // 最近一次存档时的消息数，用于判断是否有未存就离开
 const savedMessageCount = ref(0);
 
+// ── v2 改进：STATE 警告、回合计数、动画状态、侧边栏折叠 ──
+const stateUpdateFailed  = ref(false);
+const roundCount         = computed(() => messages.value.filter(m => m.role === 'assistant').length);
+const suggestionKey      = ref(0);        // 带动建议按鈕入场动画重划
+const changedStatKeys    = ref(new Set());// 本轮数值变动闪烁
+const changedItemKeys    = ref(new Set());// 新获得物品 glow
+const realmGlow          = ref(false);    // 境界卡片升级光效
+const collapsedSections  = ref({});       // 侧边栏分区折叠状态
+
 function handleExit() {
   if (isStreaming.value) { showToast('请等待回复完成后再退出'); return; }
   if (messages.value.length > savedMessageCount.value) {
@@ -65,19 +74,23 @@ const stateLocation = computed(() => currentState.value?.location || null);
 const stateQuests   = computed(() => currentState.value?.quests || []);
 
 // ── API 设置（优先读书籍专用模型，未配置则回落全局）──
+const PACE_MAX_TOKENS = { compact: 1200, auto: 2000, standard: 3000, immersive: 5000 };
 const apiSettings = computed(() => {
   const nm = props.book.novelModel;
+  const maxTokens = PACE_MAX_TOKENS[props.book.pace || 'auto'] ?? 2000;
   if (nm?.apiKey) {
     return {
       baseUrl: (nm.baseUrl || 'https://api.deepseek.com').replace(/\/+$/, ''),
       apiKey:  nm.apiKey,
       model:   nm.model || 'deepseek-chat',
+      maxTokens,
     };
   }
   return {
     baseUrl: props.globalSettings.baseUrl || 'https://api.deepseek.com',
     apiKey:  props.globalSettings.apiKey || '',
     model:   props.globalSettings.model  || 'deepseek-chat',
+    maxTokens,
   };
 });
 
@@ -275,10 +288,40 @@ async function finalizeResponse(fullText, _userText) {
 
   // Update STATE
   if (newState) {
+    stateUpdateFailed.value = false;
+
+    // 检测数值变化（闪烁动画）
+    const oldStats = currentState.value?.stats || {};
+    const newStats = newState.stats || {};
+    const changedKeys = new Set();
+    for (const key of Object.keys(newStats)) {
+      if (JSON.stringify(oldStats[key]) !== JSON.stringify(newStats[key])) changedKeys.add(key);
+    }
+    if (changedKeys.size > 0) {
+      changedStatKeys.value = changedKeys;
+      setTimeout(() => { changedStatKeys.value = new Set(); }, 900);
+      if ([...changedKeys].some(k => renderStatField(k, newStats[k]).type === 'card')) {
+        realmGlow.value = true;
+        setTimeout(() => { realmGlow.value = false; }, 2000);
+      }
+    }
+
+    // 检测新获得物品（glow）
+    const oldItemNames = new Set((currentState.value?.items || []).map(i => i.name));
+    const addedItems = new Set((newState.items || []).filter(i => !oldItemNames.has(i.name)).map(i => i.name));
+    if (addedItems.size > 0) {
+      changedItemKeys.value = addedItems;
+      setTimeout(() => { changedItemKeys.value = new Set(); }, 2200);
+    }
+
     currentState.value = newState;
-    if (newState.suggestions?.length) suggestions.value = newState.suggestions;
+    if (newState.suggestions?.length) {
+      suggestions.value = newState.suggestions;
+      suggestionKey.value++;
+    }
     if (newState.chapterTitle) chapterTitle.value = newState.chapterTitle;
   } else {
+    stateUpdateFailed.value = true;
     showToast('⚠️ 本轮状态未更新（AI 未返回 STATE 块）');
   }
 
@@ -288,6 +331,9 @@ async function finalizeResponse(fullText, _userText) {
   if (assistantCount > 0 && assistantCount % SUMMARY_INTERVAL === 0) {
     triggerChapterSummary();
   }
+
+  // 自动存档
+  await autoSave();
 }
 
 // ── 手动存档面板 ──
@@ -369,6 +415,18 @@ async function triggerChapterSummary() {
 function useSuggestion(text) {
   userInput.value = text;
   nextTick(() => inputRef.value?.focus());
+}
+
+const RANDOM_ACTIONS = [
+  '我突发奇想，尝试做一件完全出乎意料的事……',
+  '我决定冒险一试，走一条没人走过的路。',
+  '我灵机一动，想到了一个离经叛道的办法。',
+  '我决定完全跟随直觉，不管结果如何。',
+  '我忽然心血来潮，做了一个连自己都没想到的决定。',
+];
+function randomAction() {
+  const text = RANDOM_ACTIONS[Math.floor(Math.random() * RANDOM_ACTIONS.length)];
+  useSuggestion(text);
 }
 
 // ── 滚动 ──
@@ -527,11 +585,61 @@ function streamingNarrative(text) {
   return idx !== -1 ? text.slice(0, idx).trimEnd() : text;
 }
 
+// 流式输出实时分段：按 \n\n 拆分，过滤空段，返回段落数组
+const streamingParagraphs = computed(() => {
+  const clean = streamingNarrative(streamingText.value);
+  if (!clean) return [];
+  // 流式时末尾可能是不完整段落（没有第二个 \n\n），直接返回所有切片
+  return clean.split('\n\n').filter(s => s.trim());
+});
+
 function npcDots(npc) {
   const rel = Math.max(-5, Math.min(5, npc.relation || 0));
   const abs = Math.abs(rel);
   const type = rel > 0 ? 'ally' : rel < 0 ? 'enemy' : 'neutral';
   return Array(5).fill(null).map((_, i) => ({ filled: i < abs, type }));
+}
+
+// ── 段落类型识别（小说模式段落色调分层）──
+function classifyParagraph(text) {
+  const t = text.trim();
+  // 场景转换分隔线：只含符号/空白且不超过 15 字符
+  if (t.length <= 15 && /^[\s*＊·•\-～—=~]+$/.test(t)) return 'scene-break';
+  // 内心独白
+  if (/心想|心道|暗想|暗道|心中想|心中暗|只觉得?|脑海中|不禁想|忽然想|意识到/.test(t)) return 'thought';
+  // 对话段（以引号开头或以引号结尾）→ 保持正常色
+  if (/^[""\u201c「『【]/.test(t) || /[""」』】\u201d]$/.test(t)) return '';
+  // 其余：场景/环境描写 → 偏暗金色
+  return 'scene';
+}
+
+// ── 侧边栏分区折叠 ──
+function toggleSection(key) {
+  collapsedSections.value = { ...collapsedSections.value, [key]: !collapsedSections.value[key] };
+}
+
+// ── 自动存档（每轮 AI 回复后静默触发）──
+async function autoSave() {
+  if (!messages.value.length) return;
+  try {
+    await saveNovelMessages(props.book.id, props.slotIndex, messages.value);
+    const count = messages.value.filter(m => m.role === 'assistant').length;
+    const title = chapterTitle.value || `第 ${count} 轮 · 冒险进行中`;
+    emit('save-book', {
+      slotIndex: props.slotIndex,
+      saveData: {
+        slotIndex: props.slotIndex,
+        label: `存档${props.slotIndex + 1}`,
+        updatedAt: Date.now(),
+        chapterTitle: title,
+        state: currentState.value,
+        chapterSummaries: chapterSummaries.value,
+      },
+    });
+    savedMessageCount.value = messages.value.length;
+  } catch (err) {
+    console.warn('[NovelMode] autoSave failed:', err.message);
+  }
 }
 </script>
 
@@ -544,11 +652,18 @@ function npcDots(npc) {
         <span class="topbar-name">{{ book.title }}</span>
         <span class="topbar-chapter">{{ chapterTitle }}</span>
       </div>
+      <span v-if="roundCount" class="round-badge">第 {{ roundCount }} 轮</span>
       <div class="topbar-actions">
         <button class="top-btn" @click="openSaveModal" title="存档">🔖</button>
         <button class="top-btn" @click="showSettings = true" title="书籍设置">⚙</button>
       </div>
     </nav>
+
+    <!-- ── STATE 失败警告条 ── -->
+    <div v-if="stateUpdateFailed" class="state-warning">
+      <span>⚠️ 本轮状态未更新（AI 未返回有效 STATE）</span>
+      <button @click="stateUpdateFailed = false">知道了</button>
+    </div>
 
     <!-- ── 主体布局 ── -->
     <div class="layout">
@@ -556,55 +671,61 @@ function npcDots(npc) {
       <aside class="sidebar" :class="{ open: showSidebar }">
         <!-- 修为/通用 stats -->
         <div class="s-section" v-if="Object.keys(stateStats).length">
-          <div class="s-title">状态</div>
-          <template v-for="(stat, key) in stateStats" :key="key">
-            <!-- has progress bar -->
-            <div v-if="renderStatField(key, stat).type === 'card'" class="realm-card">
-              <div class="realm-name">{{ renderStatField(key, stat).value }}</div>
-              <div class="realm-sub">{{ key }}</div>
-              <div class="exp-bar">
-                <div class="exp-fill" :style="{ width: renderStatField(key, stat).progress + '%' }"></div>
+          <div class="s-title">状态 <span :class="['fold-btn', !collapsedSections['stats'] && 'open']" @click="toggleSection('stats')">&#9654;</span></div>
+          <div :class="['s-content', collapsedSections['stats'] && 'collapsed']">
+            <template v-for="(stat, key) in stateStats" :key="key">
+              <!-- has progress bar -->
+              <div v-if="renderStatField(key, stat).type === 'card'" :class="['realm-card', realmGlow && 'glow']">
+                <div class="realm-name">{{ renderStatField(key, stat).value }}</div>
+                <div class="realm-sub">{{ key }}</div>
+                <div class="exp-bar">
+                  <div class="exp-fill" :style="{ width: renderStatField(key, stat).progress + '%' }"></div>
+                </div>
               </div>
-            </div>
-            <!-- has max (fraction) -->
-            <div v-else-if="renderStatField(key, stat).type === 'bar'" class="stat-row">
-              <span class="sl">{{ key }}</span>
-              <span class="sv">{{ renderStatField(key, stat).value }} / {{ renderStatField(key, stat).max }}</span>
-            </div>
-            <!-- plain value -->
-            <div v-else class="stat-row">
-              <span class="sl">{{ key }}</span>
-              <span class="sv">{{ renderStatField(key, stat).value }}</span>
-            </div>
-          </template>
+              <!-- has max (fraction) -->
+              <div v-else-if="renderStatField(key, stat).type === 'bar'" class="stat-row">
+                <span class="sl">{{ key }}</span>
+                <span :class="['sv', changedStatKeys.has(key) && 'changed']">{{ renderStatField(key, stat).value }} / {{ renderStatField(key, stat).max }}</span>
+              </div>
+              <!-- plain value -->
+              <div v-else class="stat-row">
+                <span class="sl">{{ key }}</span>
+                <span :class="['sv', changedStatKeys.has(key) && 'changed']">{{ renderStatField(key, stat).value }}</span>
+              </div>
+            </template>
+          </div>
         </div>
 
         <!-- 持有物品 -->
         <div class="s-section" v-if="stateItems.length">
-          <div class="s-title">持有</div>
-          <div class="items-wrap">
-            <span
-              v-for="item in stateItems"
-              :key="item.name"
-              :class="['item-chip', item.rarity]"
-            >{{ item.name }}{{ item.count && item.count > 1 ? ` ×${item.count}` : '' }}</span>
+          <div class="s-title">持有 <span :class="['fold-btn', !collapsedSections['items'] && 'open']" @click="toggleSection('items')">&#9654;</span></div>
+          <div :class="['s-content', collapsedSections['items'] && 'collapsed']">
+            <div class="items-wrap">
+              <span
+                v-for="item in stateItems"
+                :key="item.name"
+                :class="['item-chip', item.rarity, changedItemKeys.has(item.name) && 'new']"
+              >{{ item.name }}{{ item.count && item.count > 1 ? ` ×${item.count}` : '' }}</span>
+            </div>
           </div>
         </div>
 
         <!-- NPC 关系 -->
         <div class="s-section" v-if="stateNpcs.length">
-          <div class="s-title">关系</div>
-          <div v-for="npc in stateNpcs" :key="npc.name" class="npc-item">
-            <div class="npc-info">
-              <span class="npc-name">{{ npc.name }}</span>
-              <span class="npc-role">{{ npc.role }}</span>
-            </div>
-            <div class="rel-dots">
-              <div
-                v-for="(dot, di) in npcDots(npc)"
-                :key="di"
-                :class="['rdot', dot.filled && dot.type]"
-              ></div>
+          <div class="s-title">关系 <span :class="['fold-btn', !collapsedSections['npcs'] && 'open']" @click="toggleSection('npcs')">&#9654;</span></div>
+          <div :class="['s-content', collapsedSections['npcs'] && 'collapsed']">
+            <div v-for="npc in stateNpcs" :key="npc.name" class="npc-item">
+              <div class="npc-info">
+                <span class="npc-name">{{ npc.name }}</span>
+                <span class="npc-role">{{ npc.role }}</span>
+              </div>
+              <div class="rel-dots">
+                <div
+                  v-for="(dot, di) in npcDots(npc)"
+                  :key="di"
+                  :class="['rdot', dot.filled && dot.type]"
+                ></div>
+              </div>
             </div>
           </div>
         </div>
@@ -634,14 +755,16 @@ function npcDots(npc) {
 
         <!-- 任务 -->
         <div class="s-section" v-if="stateQuests.length">
-          <div class="s-title">任务</div>
-          <div
-            v-for="quest in stateQuests"
-            :key="quest.text"
-            :class="['quest-item', quest.active && 'active']"
-          >
-            <div class="quest-dot"></div>
-            <span>{{ quest.text }}</span>
+          <div class="s-title">任务 <span :class="['fold-btn', !collapsedSections['quests'] && 'open']" @click="toggleSection('quests')">&#9654;</span></div>
+          <div :class="['s-content', collapsedSections['quests'] && 'collapsed']">
+            <div
+              v-for="quest in stateQuests"
+              :key="quest.text"
+              :class="['quest-item', quest.active && 'active', quest.completed && 'completed']"
+            >
+              <div class="quest-dot"></div>
+              <span>{{ quest.text }}</span>
+            </div>
           </div>
         </div>
 
@@ -671,7 +794,8 @@ function npcDots(npc) {
               <!-- Narrative block -->
               <div v-if="block.type === 'narr'" class="narr-block">
                 <template v-for="(para, pi) in block.text.split('\n\n').filter(Boolean)" :key="pi">
-                  <p>{{ para }}</p>
+                  <div v-if="classifyParagraph(para) === 'scene-break'" class="scene-break" aria-hidden="true"></div>
+                  <p v-else :class="classifyParagraph(para) || undefined">{{ para }}</p>
                 </template>
                 <!-- Event tags -->
                 <div v-if="block.events?.length" class="ev-tags">
@@ -690,13 +814,18 @@ function npcDots(npc) {
               </div>
             </template>
 
-            <!-- Streaming block -->
-            <div v-if="isStreaming" class="narr-block streaming-block">
-              <p>{{ streamingNarrative(streamingText) }}<span class="cursor"></span></p>
+            <!-- Streaming block：实时分段渲染，光标只跟在最后一段末尾 -->
+            <div v-if="isStreaming && streamingParagraphs.length" class="narr-block streaming-block">
+              <template v-for="(para, pi) in streamingParagraphs" :key="pi">
+                <div v-if="classifyParagraph(para) === 'scene-break'" class="scene-break" aria-hidden="true"></div>
+                <p v-else :class="classifyParagraph(para) || undefined">
+                  {{ para }}<span v-if="pi === streamingParagraphs.length - 1" class="cursor"></span>
+                </p>
+              </template>
             </div>
 
             <!-- Generating indicator (before any text arrives) -->
-            <div v-if="isStreaming && !streamingText" class="generating">
+            <div v-if="isStreaming && !streamingParagraphs.length" class="generating">
               <div class="gen-dots">
                 <div class="gen-dot"></div>
                 <div class="gen-dot"></div>
@@ -714,13 +843,14 @@ function npcDots(npc) {
         <div class="input-zone">
           <div class="input-inner">
             <!-- Action suggestions -->
-            <div v-if="suggestions.length && !isStreaming" class="action-sugg">
+            <div v-if="suggestions.length && !isStreaming" class="action-sugg" :key="suggestionKey">
               <button
                 v-for="sugg in suggestions"
                 :key="sugg"
                 class="sugg-btn"
                 @click="useSuggestion(sugg)"
               >{{ sugg }}</button>
+              <button class="sugg-btn random" @click="randomAction()">🎲 意外</button>
             </div>
 
             <!-- Input row -->
@@ -1001,6 +1131,8 @@ function npcDots(npc) {
 .action-sugg { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
 .sugg-btn { font-size: 11px; padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(200,168,74,0.2); background: rgba(200,168,74,0.04); color: var(--ink-dim); cursor: pointer; font-family: inherit; letter-spacing: 0.5px; transition: all 0.2s; white-space: nowrap; }
 .sugg-btn:hover { border-color: var(--gold-dim); color: var(--ink-mid); background: rgba(200,168,74,0.08); }
+.sugg-btn.random { border-color: rgba(112,96,160,0.3); color: #a090d0; background: rgba(112,96,160,0.04); }
+.sugg-btn.random:hover { border-color: rgba(112,96,160,0.6); background: rgba(112,96,160,0.1); color: #c0b0e8; }
 
 .input-row { display: flex; align-items: flex-end; gap: 8px; }
 .novel-input { flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(200,168,74,0.15); border-radius: 10px; padding: 9px 14px; color: var(--ink); font-family: inherit; font-size: 14px; resize: none; outline: none; line-height: 1.7; transition: border-color 0.2s; max-height: 120px; overflow-y: auto; }
@@ -1083,6 +1215,112 @@ function npcDots(npc) {
 /* ── Animations ── */
 @keyframes blink        { 0%,100%{opacity:0.3} 50%{opacity:1} }
 @keyframes blink-cursor { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── v2 改进：新增样式 ── */
+
+/* STATE 失败警告条 */
+.state-warning {
+  position: relative; z-index: 10;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 6px 16px;
+  background: rgba(251,146,60,0.10);
+  border-bottom: 1px solid rgba(251,146,60,0.28);
+  font-size: 12px; color: rgba(251,146,60,0.9);
+  animation: warn-slide 0.3s ease;
+  flex-shrink: 0;
+}
+.state-warning button {
+  padding: 2px 10px; border-radius: 8px; font-size: 11px;
+  background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.35);
+  color: rgba(251,146,60,0.9); cursor: pointer; transition: all 0.2s;
+}
+.state-warning button:hover { background: rgba(251,146,60,0.28); }
+@keyframes warn-slide { 0%{transform:translateY(-100%)} 100%{transform:translateY(0)} }
+
+/* 回合徽章 */
+.round-badge {
+  font-size: 10px; color: var(--gold-dim); letter-spacing: 1px;
+  background: rgba(200,168,74,0.06); border: 1px solid rgba(200,168,74,0.15);
+  border-radius: 10px; padding: 2px 10px; white-space: nowrap; flex-shrink: 0;
+}
+
+/* 叙事块入场动画 */
+.narr-block {
+  padding: 8px 0;
+  opacity: 0;
+  animation: fade-up 0.55s ease forwards;
+}
+@keyframes fade-up { 0%{opacity:0;transform:translateY(10px)} 100%{opacity:1;transform:translateY(0)} }
+
+/* 玩家行动块入场 */
+.player-act { animation: fade-up 0.35s ease forwards; opacity: 0; }
+
+/* 段落类型分层 */
+/* 场景/环境描写 → 偏暗金色，与对话白色形成层次 */
+.narr-block p.scene {
+  color: rgba(196, 158, 72, 0.68);
+}
+/* 内心独白 → 斜体 + 左侧竖线 */
+.narr-block p.thought {
+  color: rgba(200,170,136,0.72);
+  font-style: italic;
+  border-left: 2px solid rgba(200,168,74,0.22);
+  padding-left: 12px;
+  text-indent: 0;
+}
+/* 场景转换分隔线 → 三个小圆点居中 */
+.narr-block .scene-break {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 10px 0; margin: 4px 0;
+  color: rgba(200,168,74,0.28);
+  font-size: 20px; letter-spacing: 6px;
+}
+.narr-block .scene-break::before { content: '· · ·'; }
+
+/* 事件标签弹出动画（依次延迟） */
+.ev-tag { opacity: 0; animation: tag-pop 0.4s ease forwards; }
+.ev-tag:nth-child(1) { animation-delay: 0.05s; }
+.ev-tag:nth-child(2) { animation-delay: 0.15s; }
+.ev-tag:nth-child(3) { animation-delay: 0.25s; }
+.ev-tag:nth-child(4) { animation-delay: 0.35s; }
+@keyframes tag-pop { 0%{opacity:0;transform:scale(0.75)} 100%{opacity:1;transform:scale(1)} }
+
+/* 行动建议依次淡入 */
+.sugg-btn { opacity: 0; animation: sugg-fade 0.5s ease forwards; }
+.sugg-btn:nth-child(1) { animation-delay: 0.08s; }
+.sugg-btn:nth-child(2) { animation-delay: 0.20s; }
+.sugg-btn:nth-child(3) { animation-delay: 0.32s; }
+.sugg-btn:nth-child(4) { animation-delay: 0.44s; }
+@keyframes sugg-fade { 0%{opacity:0;transform:translateY(5px)} 100%{opacity:1;transform:translateY(0)} }
+
+/* 停止按钮脉冲 */
+.stop-btn-inline { animation: pulse-stop 2s ease infinite; }
+@keyframes pulse-stop { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 10px rgba(176,56,40,0.35)} }
+
+/* 数值变化闪烁 */
+@keyframes val-flash {
+  0%  { color: #5eead4; text-shadow: 0 0 8px rgba(94,234,212,0.5); }
+  100%{ color: var(--ink); text-shadow: none; }
+}
+.sv.changed { animation: val-flash 0.9s ease forwards; }
+
+/* 境界卡片升级发光 */
+@keyframes realm-glow-kf { 0%,100%{box-shadow:none;border-color:rgba(200,168,74,0.15)} 50%{box-shadow:0 0 20px rgba(200,168,74,0.28);border-color:rgba(200,168,74,0.45)} }
+.realm-card.glow { animation: realm-glow-kf 2s ease; }
+
+/* 新获得物品高亮 */
+@keyframes item-glow { 0%{box-shadow:0 0 10px rgba(58,138,104,0.45);transform:scale(1.08)} 100%{box-shadow:none;transform:scale(1)} }
+.item-chip.new { animation: item-glow 2.2s ease; background: rgba(58,138,104,0.1); }
+
+/* 任务已完成状态 */
+.quest-item.completed { text-decoration: line-through; opacity: 0.38; }
+
+/* 侧边栏折叠 */
+.s-title { justify-content: space-between; display: flex; align-items: center; }
+.fold-btn { font-size: 8px; color: var(--ink-faint); cursor: pointer; transition: transform 0.3s; flex-shrink: 0; }
+.fold-btn.open { transform: rotate(90deg); }
+.s-content { overflow: hidden; transition: max-height 0.4s ease, opacity 0.3s; max-height: 600px; opacity: 1; display: flex; flex-direction: column; gap: 7px; }
+.s-content.collapsed { max-height: 0; opacity: 0; }
 
 /* ── Mobile ── */
 @media (max-width: 700px) {

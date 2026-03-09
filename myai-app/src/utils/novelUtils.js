@@ -97,7 +97,7 @@ export async function streamChat(messages, settings, onChunk, signal) {
         messages,
         stream: true,
         temperature: 0.9,
-        max_tokens: 2000,
+        max_tokens: settings.maxTokens || 2000,
       }),
       signal: timeoutCtrl.signal,
     });
@@ -111,13 +111,15 @@ export async function streamChat(messages, settings, onChunk, signal) {
     const decoder = new TextDecoder();
     let fullText = '';
     let isDone = false;
+    let sseBuffer = '';   // 跨 chunk 的不完整 SSE 行缓冲
 
     while (!isDone) {
       const { done, value } = await reader.read();
       if (done) break;
       lastActivity = Date.now();
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n');
+      sseBuffer += decoder.decode(value, { stream: true });
+      const lines = sseBuffer.split('\n');
+      sseBuffer = lines.pop() ?? '';   // 最后一行可能还不完整，留到下轮
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const data = line.slice(6).trim();
@@ -158,8 +160,7 @@ export async function callChat(messages, settings, signal) {
     body: JSON.stringify({
       model: model || 'deepseek-chat',
       messages,
-      temperature: 0.8,
-      max_tokens: 2000,
+      max_tokens: settings.maxTokens || 2000,
     }),
     signal,
   });
