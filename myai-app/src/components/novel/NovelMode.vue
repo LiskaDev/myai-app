@@ -74,7 +74,7 @@ const stateLocation = computed(() => currentState.value?.location || null);
 const stateQuests   = computed(() => currentState.value?.quests || []);
 
 // ── API 设置（优先读书籍专用模型，未配置则回落全局）──
-const PACE_MAX_TOKENS = { compact: 1200, auto: 2000, standard: 3000, immersive: 5000 };
+const PACE_MAX_TOKENS = { compact: 1600, auto: 2000, standard: 3000, immersive: 5000 };
 const apiSettings = computed(() => {
   const nm = props.book.novelModel;
   const maxTokens = PACE_MAX_TOKENS[props.book.pace || 'auto'] ?? 2000;
