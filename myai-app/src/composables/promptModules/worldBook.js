@@ -225,13 +225,27 @@ export function importWorldBook(jsonString) {
 // ─────────────────────────────────────────────
 
 /**
- * 对 CJK 字符间插入空格，让 Orama 的默认 tokenizer 能正确处理中文
- * 例："蒙德城" → "蒙 德 城"
+ * CJK bigram 分词：将汉字序列拆成相邻2字的 bigram，让 Orama BM25 能正确索引/检索中文。
+ * Orama 默认会过滤掉长度 < 2 的 token，因此单字拆分会导致 0 结果。
+ * bigram 示例："蒙德城" → "蒙德 德城"  "修仙" → "修仙"
  */
 function tokenizeCJK(text) {
-    return (text || '')
-        .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uff00-\uffef]/g, c => c + ' ')
-        .trim();
+    if (!text) return '';
+    const CJK = /[\u4e00-\u9fff\u3400-\u4dbf]/;
+    const tokens = [];
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (CJK.test(c)) {
+            const next = text[i + 1];
+            if (next && CJK.test(next)) {
+                tokens.push(c + next); // bigram（滑动窗口，i+1 下一轮仍会处理）
+            }
+            // 孤立汉字（前后非CJK）忽略，信号极低不影响召回率
+        } else {
+            tokens.push(c);
+        }
+    }
+    return tokens.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 /**

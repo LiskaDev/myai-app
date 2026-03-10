@@ -3,8 +3,10 @@ import { deleteNovelMessages, deleteAllBookMessages, saveNovelMessages } from '.
 
 const STORAGE_KEY = 'myai_bookList_v1';
 
+// 模块级单例状态——所有调用 useNovelStore() 的组件共享同一份 bookList
+const bookList = ref([]);
+
 export function useNovelStore() {
-  const bookList = ref([]);
 
   function loadBooks() {
     try {

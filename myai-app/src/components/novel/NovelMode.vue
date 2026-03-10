@@ -45,6 +45,12 @@ const abortCtrl      = ref(null);
 const toast          = ref({ show: false, msg: '' });
 let toastTimer       = null;
 
+// 内联确认弹窗（替代 Chrome 可能静默屏蔽的 native confirm()）
+const pendingConfirm = ref(null); // { message, onConfirm }
+function showInlineConfirm(message, onConfirm) { pendingConfirm.value = { message, onConfirm }; }
+function confirmYes() { const cb = pendingConfirm.value?.onConfirm; pendingConfirm.value = null; cb?.(); }
+function confirmNo()  { pendingConfirm.value = null; }
+
 // 最近一次存档时的消息数，用于判断是否有未存就离开
 const savedMessageCount = ref(0);
 
@@ -60,7 +66,8 @@ const collapsedSections  = ref({});       // 侧边栏分区折叠状态
 function handleExit() {
   if (isStreaming.value) { showToast('请等待回复完成后再退出'); return; }
   if (messages.value.length > savedMessageCount.value) {
-    if (!confirm('还有未存档的内容，确定要离开吗？')) return;
+    showInlineConfirm('还有未存档的内容，确定要离开吗？', () => emit('exit'));
+    return;
   }
   emit('exit');
 }
@@ -347,9 +354,13 @@ const saveSlots = computed(() => props.book.saves || [null, null, null, null]);
 async function saveToSlot(slotIndex) {
   // 如果该存档位已有数据，确认覆盖
   if (saveSlots.value[slotIndex]) {
-    if (!confirm(`存档位 ${slotIndex + 1} 已有数据，确定覆盖？`)) return;
+    showInlineConfirm(`存档位 ${slotIndex + 1} 已有数据，确定覆盖？`, () => doSaveToSlot(slotIndex));
+    return;
   }
+  await doSaveToSlot(slotIndex);
+}
 
+async function doSaveToSlot(slotIndex) {
   try {
     // 1. 写 messages 到 IndexedDB
     await saveNovelMessages(props.book.id, slotIndex, messages.value);
@@ -488,15 +499,18 @@ function handleBookUpdated(updates) {
 }
 
 function handleDeleteBook() {
-  if (confirm('确定删除整本书？此操作无法撤销！')) {
+  showInlineConfirm('确定删除整本书？此操作无法撤销！', () => {
     emit('save-book', { deleteBook: true });
     emit('exit');
-  }
+  });
 }
 
 // ── 游戏内读取存档（从 BookSettings 触发）──
 async function handleLoadSave(slotIndex) {
-  if (!confirm('读取此存档将丢失当前未保存的进度，确认继续？')) return;
+  showInlineConfirm('读取此存档将丢失当前未保存的进度，确认继续？', () => doLoadSave(slotIndex));
+}
+
+async function doLoadSave(slotIndex) {
   const save = props.book.saves?.[slotIndex];
   if (!save) {
     showToast('存档位为空');
@@ -949,6 +963,19 @@ async function autoSave() {
       @delete-save="payload => $emit('delete-save', payload)"
       @load-save="handleLoadSave"
     />
+
+    <!-- 内联确认弹窗（替代 Chrome 可能拦截的 native confirm()）-->
+    <Teleport to="body">
+      <div v-if="pendingConfirm" class="novel-confirm-overlay" @click.self="confirmNo">
+        <div class="novel-confirm-box">
+          <p class="novel-confirm-msg">{{ pendingConfirm.message }}</p>
+          <div class="novel-confirm-btns">
+            <button class="novel-confirm-cancel" @click="confirmNo">取消</button>
+            <button class="novel-confirm-ok" @click="confirmYes">确定</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -1340,5 +1367,34 @@ async function autoSave() {
   .input-zone { padding-bottom: 64px; }
   .novel-inner { padding: 0 16px; }
   .input-inner { padding: 0 12px; }
+}
+
+/* ── 内联确认弹窗 ── */
+.novel-confirm-overlay {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(0,0,0,0.65);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.novel-confirm-box {
+  background: #1a1510;
+  border: 1px solid rgba(200,168,74,0.25);
+  border-radius: 12px; padding: 24px;
+  max-width: 320px; width: 100%;
+}
+.novel-confirm-msg {
+  color: var(--ink); font-size: 15px; line-height: 1.6; margin-bottom: 20px;
+}
+.novel-confirm-btns {
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+.novel-confirm-cancel {
+  padding: 8px 20px; border-radius: 8px;
+  background: rgba(255,255,255,0.08); color: var(--ink-mid);
+  border: none; cursor: pointer; font-size: 14px;
+}
+.novel-confirm-ok {
+  padding: 8px 20px; border-radius: 8px;
+  background: rgba(200,168,74,0.2); color: var(--gold);
+  border: 1px solid rgba(200,168,74,0.3); cursor: pointer; font-size: 14px;
 }
 </style>
