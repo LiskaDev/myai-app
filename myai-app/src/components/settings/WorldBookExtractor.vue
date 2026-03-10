@@ -109,6 +109,9 @@ const isPaused = ref(false);
 const isStopped = ref(false);
 const failedChunks = ref([]);
 const extractionAbort = ref(null);
+const CONCURRENCY = 6;
+const CHUNK_TIMEOUT_MS = 15000;
+const activeControllers = ref([]);
 const generatingError = ref('');
 const expandedEntry = ref(null);   // 预览中展开查看全文的条目 name
 
@@ -432,30 +435,20 @@ async function singleShotGenerate() {
     }
 }
 
-// ── TXT 分块提取（模式A）──
+// ── TXT 分块提取（模式A）── 并发批处理
 async function processChunks(startFrom) {
     const { baseUrl, apiKey, model } = getApiConfig();
+    currentChunkIndex.value = startFrom;
 
-    for (let i = startFrom; i < chunks.value.length; i++) {
-        if (isStopped.value) break;
-
-        while (isPaused.value && !isStopped.value) {
-            await new Promise(r => setTimeout(r, 200));
-        }
-        if (isStopped.value) break;
-
-        currentChunkIndex.value = i;
-
+    async function fetchChunk(i) {
+        if (isStopped.value) return;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), CHUNK_TIMEOUT_MS);
+        activeControllers.value.push(controller);
         try {
-            const controller = new AbortController();
-            extractionAbort.value = controller;
-
             const res = await fetch(`${baseUrl}/v1/chat/completions`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`,
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify({
                     model,
                     messages: [
@@ -467,28 +460,44 @@ async function processChunks(startFrom) {
                 }),
                 signal: controller.signal,
             });
-
+            clearTimeout(timeoutId);
+            if (isStopped.value) return;
             if (!res.ok) throw new Error(`API ${res.status}`);
-
             const data = await res.json();
-            let content = data.choices?.[0]?.message?.content || '';
-
+            const content = data.choices?.[0]?.message?.content || '';
             const entries = extractJsonArray(content);
-            if (entries.length > 0) {
-                for (const e of entries) {
-                    e._chunkIndex = i;
-                    extractedEntries.value.push(e);
-                }
+            if (!isStopped.value && entries.length > 0) {
+                for (const e of entries) { e._chunkIndex = i; extractedEntries.value.push(e); }
             }
         } catch (err) {
-            if (err.name === 'AbortError') break;
-            console.warn(`[Extractor] 块 ${i} 失败:`, err.message);
-            failedChunks.value.push(i);
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError') {
+                if (!isStopped.value) {
+                    console.warn(`[Extractor] 块 ${i} 超时，跳过`);
+                    failedChunks.value.push(i);
+                }
+            } else {
+                console.warn(`[Extractor] 块 ${i} 失败:`, err.message);
+                failedChunks.value.push(i);
+            }
+        } finally {
+            const idx = activeControllers.value.indexOf(controller);
+            if (idx !== -1) activeControllers.value.splice(idx, 1);
+            currentChunkIndex.value++;
         }
+    }
 
-        if (i < chunks.value.length - 1 && !isStopped.value) {
-            await new Promise(r => setTimeout(r, 500));
+    for (let i = startFrom; i < chunks.value.length; i += CONCURRENCY) {
+        if (isStopped.value) break;
+        while (isPaused.value && !isStopped.value) {
+            await new Promise(r => setTimeout(r, 200));
         }
+        if (isStopped.value) break;
+        const batch = [];
+        for (let j = i; j < Math.min(i + CONCURRENCY, chunks.value.length); j++) {
+            batch.push(fetchChunk(j));
+        }
+        await Promise.all(batch);
     }
 
     deduplicateEntries();
@@ -502,6 +511,8 @@ function pauseExtraction() { isPaused.value = true; }
 function resumeExtraction() { isPaused.value = false; }
 function stopExtraction() {
     isStopped.value = true;
+    activeControllers.value.forEach(c => c.abort());
+    activeControllers.value = [];
     extractionAbort.value?.abort();
 }
 
@@ -512,13 +523,15 @@ async function retryFailed() {
     phase.value = PHASE.GENERATING;
     isPaused.value = false;
     isStopped.value = false;
+    currentChunkIndex.value = 0;
 
     const { baseUrl, apiKey, model } = getApiConfig();
 
-    for (const i of retryIndices) {
-        if (isStopped.value) break;
-        currentChunkIndex.value = i;
-
+    async function fetchRetryChunk(i) {
+        if (isStopped.value) return;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), CHUNK_TIMEOUT_MS);
+        activeControllers.value.push(controller);
         try {
             const res = await fetch(`${baseUrl}/v1/chat/completions`, {
                 method: 'POST',
@@ -531,18 +544,33 @@ async function retryFailed() {
                     ],
                     temperature: 0.3, max_tokens: 4000,
                 }),
+                signal: controller.signal,
             });
+            clearTimeout(timeoutId);
+            if (isStopped.value) return;
             if (!res.ok) throw new Error(`API ${res.status}`);
             const data = await res.json();
-            let content = data.choices?.[0]?.message?.content || '';
+            const content = data.choices?.[0]?.message?.content || '';
             const entries = extractJsonArray(content);
-            if (entries.length > 0) {
+            if (!isStopped.value && entries.length > 0) {
                 for (const e of entries) { e._chunkIndex = i; extractedEntries.value.push(e); }
             }
         } catch (err) {
-            failedChunks.value.push(i);
+            clearTimeout(timeoutId);
+            if (err.name !== 'AbortError' || !isStopped.value) {
+                failedChunks.value.push(i);
+            }
+        } finally {
+            const idx = activeControllers.value.indexOf(controller);
+            if (idx !== -1) activeControllers.value.splice(idx, 1);
+            currentChunkIndex.value++;
         }
-        await new Promise(r => setTimeout(r, 500));
+    }
+
+    for (let i = 0; i < retryIndices.length; i += CONCURRENCY) {
+        if (isStopped.value) break;
+        const batch = retryIndices.slice(i, i + CONCURRENCY);
+        await Promise.all(batch.map(fetchRetryChunk));
     }
 
     deduplicateEntries();
@@ -645,12 +673,14 @@ function closeModal() {
     failedChunks.value = [];
     generatingError.value = '';
     isStopped.value = true;
+    activeControllers.value.forEach(c => c.abort());
+    activeControllers.value = [];
     extractionAbort.value?.abort();
     emit('close');
 }
 
 function formatTime(chunks) {
-    const minutes = Math.ceil(chunks * 3.5 / 60);
+    const minutes = Math.ceil(chunks * 3.5 / CONCURRENCY / 60);
     return minutes < 1 ? '不到 1 分钟' : `约 ${minutes} 分钟`;
 }
 
@@ -658,13 +688,15 @@ function formatTime(chunks) {
 watch(() => props.show, (v) => {
     if (!v) {
         isStopped.value = true;
+        activeControllers.value.forEach(c => c.abort());
+        activeControllers.value = [];
         extractionAbort.value?.abort();
     }
 });
 
 const progressPercent = computed(() => {
     if (chunks.value.length === 0) return 0;
-    return Math.round((currentChunkIndex.value + 1) / chunks.value.length * 100);
+    return Math.round(currentChunkIndex.value / chunks.value.length * 100);
 });
 </script>
 
@@ -861,7 +893,7 @@ const progressPercent = computed(() => {
                 <div class="wbe-progress-fill" :style="{ width: progressPercent + '%' }"></div>
               </div>
               <div class="wbe-progress-stats">
-                <span>⏳ 处理第 {{ currentChunkIndex + 1 }}/{{ chunks.length }} 块</span>
+                <span>⏳ 已完成 {{ currentChunkIndex }}/{{ chunks.length }} 块</span>
                 <span>已提取 {{ extractedEntries.length }} 条设定</span>
               </div>
               <div v-if="failedChunks.length" class="wbe-fail-note">
