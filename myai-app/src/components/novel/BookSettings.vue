@@ -9,6 +9,12 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'book-updated', 'delete-book', 'delete-save', 'load-save']);
 
+// 内联确认弹窗（替代可能被 Chrome 拦截的 native confirm()）
+const pendingConfirm = ref(null);
+function showInlineConfirm(message, onConfirm) { pendingConfirm.value = { message, onConfirm }; }
+function confirmYes() { const cb = pendingConfirm.value?.onConfirm; pendingConfirm.value = null; cb?.(); }
+function confirmNo()  { pendingConfirm.value = null; }
+
 const activeTab = ref('world'); // 'world' | 'style' | 'saves' | 'danger'
 
 // ── 编辑状态 ──
@@ -90,10 +96,11 @@ function saveEntry() {
 }
 
 function deleteEntry(index) {
-  if (!confirm('删除这条世界书条目？')) return;
-  const updated = [...props.book.worldEntries];
-  updated.splice(index, 1);
-  emit('book-updated', { worldEntries: updated });
+  showInlineConfirm('删除这条世界书条目？', () => {
+    const updated = [...props.book.worldEntries];
+    updated.splice(index, 1);
+    emit('book-updated', { worldEntries: updated });
+  });
 }
 
 function addEntry() {
@@ -134,9 +141,9 @@ function toggleGroup(cat) {
 
 // ── 存档管理 ──
 function deleteSaveSlot(slotIndex) {
-  if (!confirm(`确定删除存档${slotIndex + 1}？此操作无法撤销。`)) return;
-  // 单独 emit delete-save，由 App.vue 处理 IndexedDB 清理 + localStorage 更新
-  emit('delete-save', { deleteSaveSlot: slotIndex });
+  showInlineConfirm(`确定删除存档${slotIndex + 1}？此操作无法撤销。`, () => {
+    emit('delete-save', { deleteSaveSlot: slotIndex });
+  });
 }
 
 function formatDate(ts) {
@@ -357,6 +364,19 @@ function formatDate(ts) {
       </div>
     </div>
   </div>
+
+  <!-- 内联确认弹窗 -->
+  <Teleport to="body">
+    <div v-if="pendingConfirm" class="bs-confirm-overlay" @click.self="confirmNo">
+      <div class="bs-confirm-box">
+        <p class="bs-confirm-msg">{{ pendingConfirm.message }}</p>
+        <div class="bs-confirm-btns">
+          <button class="bs-confirm-cancel" @click="confirmNo">取消</button>
+          <button class="bs-confirm-ok" @click="confirmYes">确定</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -518,4 +538,12 @@ function formatDate(ts) {
 .danger-warning { font-size: 13px; color: rgba(239,68,68,0.7); background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); border-radius: 8px; padding: 12px; margin-bottom: 16px; }
 .delete-book-btn { padding: 12px 24px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; color: #f87171; font-size: 14px; cursor: pointer; width: 100%; transition: all 0.2s; letter-spacing: 0.5px; }
 .delete-book-btn:hover { background: rgba(239,68,68,0.2); }
+
+/* ── 内联确认弹窗 ── */
+.bs-confirm-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.bs-confirm-box { background: #1a1510; border: 1px solid rgba(200,168,74,0.25); border-radius: 12px; padding: 24px; max-width: 300px; width: 100%; }
+.bs-confirm-msg { color: #ede0c8; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+.bs-confirm-btns { display: flex; gap: 10px; justify-content: flex-end; }
+.bs-confirm-cancel { padding: 7px 18px; border-radius: 8px; background: rgba(255,255,255,0.08); color: rgba(237,224,200,0.6); border: none; cursor: pointer; font-size: 13px; }
+.bs-confirm-ok { padding: 7px 18px; border-radius: 8px; background: rgba(200,168,74,0.2); color: #c8a84a; border: 1px solid rgba(200,168,74,0.3); cursor: pointer; font-size: 13px; }
 </style>

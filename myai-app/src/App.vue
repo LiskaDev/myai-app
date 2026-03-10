@@ -826,10 +826,19 @@ function cancelEditMessage() {
   editModal.originalContent = '';
 }
 
-// 导出数据（完整备份：角色 + 群聊 + 日记 + 画像）
+// 导出数据（完整备份：角色 + 群聊 + 日记 + 画像 + 世界书 + 小说书库）
 function exportData() {
+  // v6.0: 收集每个角色的世界书数据
+  const worldbooks = {};
+  for (const role of roleList.value) {
+    try {
+      const raw = localStorage.getItem('myai_worldbook_' + role.id);
+      if (raw) worldbooks[role.id] = JSON.parse(raw);
+    } catch { /* ignore */ }
+  }
+
   const data = {
-    version: '5.9',
+    version: '6.0',
     exportTime: new Date().toISOString(),
     globalSettings: globalSettings,
     roleList: roleList.value,
@@ -838,6 +847,9 @@ function exportData() {
     groups: JSON.parse(localStorage.getItem('myai_groups_v1') || '[]'),
     diaries: JSON.parse(localStorage.getItem('myai_diaries_v1') || '[]'),
     persona: JSON.parse(localStorage.getItem('myai_user_persona_v1') || 'null'),
+    // v6.0: 世界书 + 小说书库元数据
+    worldbooks,
+    novelBooks: JSON.parse(localStorage.getItem('myai_bookList_v1') || '[]'),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -847,7 +859,7 @@ function exportData() {
   a.download = `myai_backup_${dateStr}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('✅ 完整备份已生成（含群聊、日记、画像）');
+  showToast('✅ 完整备份已生成（含群聊、日记、画像、世界书、小说书库）');
 }
 
 // Lifecycle
@@ -932,6 +944,9 @@ function handleImport() {
     if (data.groups?.length) stats.push(`${data.groups.length} 个群聊`);
     if (data.diaries?.length) stats.push(`${data.diaries.length} 篇日记`);
     if (data.persona?.traits?.length) stats.push(`${data.persona.traits.length} 条画像`);
+    const wbCount = Object.keys(data.worldbooks || {}).length;
+    if (wbCount) stats.push(`${wbCount} 个角色世界书`);
+    if (data.novelBooks?.length) stats.push(`${data.novelBooks.length} 本小说`);
 
     // ⚠️ 二次确认：明确告知会覆盖现有数据
     showConfirmModal(
@@ -974,6 +989,18 @@ function executeImport(data, stats) {
     // v5.9: 恢复用户画像
     if (data.persona) {
       localStorage.setItem('myai_user_persona_v1', JSON.stringify(data.persona));
+    }
+
+    // v6.0: 恢复世界书
+    if (data.worldbooks && typeof data.worldbooks === 'object') {
+      for (const [roleId, entries] of Object.entries(data.worldbooks)) {
+        localStorage.setItem('myai_worldbook_' + roleId, JSON.stringify(entries));
+      }
+    }
+
+    // v6.0: 恢复小说书库元数据（IndexedDB 消息数据无法通过 JSON 备份）
+    if (Array.isArray(data.novelBooks) && data.novelBooks.length > 0) {
+      localStorage.setItem('myai_bookList_v1', JSON.stringify(data.novelBooks));
     }
 
     showImportModal.value = false;
