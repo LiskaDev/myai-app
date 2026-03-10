@@ -22,6 +22,12 @@ const inputRef           = ref(null);
 const messagesRef        = ref(null);
 const hasIntroSeen      = ref(!!localStorage.getItem('assistantIntroSeen'));
 
+// ── 安全常量 ──
+// updateSetting 只允许修改这些无害字段，apiKey / baseUrl 单独走 updateApiKey
+const ALLOWED_KEYS = ['model', 'temperature', 'streamOutput', 'maxTokens', 'contextSize', 'theme'];
+// BaseURL 安全校验：必须 http/https，禁止局域网地址
+const SAFE_URL_RE  = /^https?:\/\/(?!localhost[:/]|127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/i;
+
 // 打开时聚焦输入框
 watch(() => props.show, (v) => {
   if (v) {
@@ -70,6 +76,9 @@ API配置：${cfg?.baseUrl || '未配置'} / ${cfg?.model || '未配置'}
 <!--ACTION:{"type":"navigate","target":"settings","tab":"preference"}-->
 <!--ACTION:{"type":"navigate","target":"characterHome"}-->
 <!--ACTION:{"type":"updateSetting","key":"xxx","value":"xxx"}-->
+（updateSetting 可用字段：model、temperature、streamOutput、maxTokens、contextSize、theme；不可修改 apiKey / baseUrl）
+<!--ACTION:{"type":"updateApiKey","apiKey":"sk-xxx","baseUrl":"https://..."}-->
+（updateApiKey 专门更新 API Key 或 BaseURL，两个字段可单独省略；BaseURL 必须是正规公网 https 地址）
 
 【回复风格】
 简洁友好，操作类步骤不超过4步，用中文回复，能直接帮用户做的就做。`.trim();
@@ -118,8 +127,8 @@ async function sendMessage(textOverride) {
   let fullText = '';
 
   try {
-    // 只把历史消息（不含当前追加的 assistant 占位）传给 API
-    const history = messages.value.slice(0, -1).map(({ role, content }) => ({ role, content }));
+    // 只把历史消息（不含当前追加的 assistant 占位）传给 API，最多保留最近 10 条
+    const history = messages.value.slice(0, -1).slice(-10).map(({ role, content }) => ({ role, content }));
 
     const res = await fetch(`${baseUrl}/v1/chat/completions`, {
       method:  'POST',
@@ -174,13 +183,27 @@ async function sendMessage(textOverride) {
     // 执行 ACTION 指令
     const actions = parseActions(fullText);
     for (const action of actions) {
-      if (action.type === 'updateSetting' && action.key) {
-        // 直接写入响应式 globalSettings（被 useAppState 的 deep watcher 自动保存）
+      if (action.type === 'updateSetting') {
+        // 白名单：只允许修改无害字段，apiKey / baseUrl 不在名单内
+        if (!ALLOWED_KEYS.includes(action.key)) continue;
         props.globalSettings[action.key] = action.value;
         messages.value.push({
           role:    'assistant',
           content: `✅ 已帮你设置：${action.key} → ${action.value}`,
         });
+      } else if (action.type === 'updateApiKey') {
+        // API Key / BaseURL 专用 ACTION，BaseURL 需通过 SSRF 校验
+        if (action.baseUrl !== undefined) {
+          if (!SAFE_URL_RE.test(action.baseUrl)) {
+            messages.value.push({ role: 'assistant', content: '⚠️ BaseURL 格式不合法或指向局域网，已拒绝修改。' });
+            continue;
+          }
+          props.globalSettings.baseUrl = action.baseUrl;
+        }
+        if (action.apiKey !== undefined) {
+          props.globalSettings.apiKey = action.apiKey;
+        }
+        messages.value.push({ role: 'assistant', content: '✅ 已更新 API 配置。' });
       } else {
         emit('action', action);
       }
