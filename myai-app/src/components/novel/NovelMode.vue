@@ -653,6 +653,7 @@ async function autoSave() {
     savedMessageCount.value = messages.value.length;
   } catch (err) {
     console.warn('[NovelMode] autoSave failed:', err.message);
+    showToast('自动存档失败，请手动存档');
   }
 }
 </script>

@@ -417,6 +417,7 @@ export function useAppState() {
                     role.autoSummary = '';
                     role.summarizedUpTo = 0;
                     role._lastCardMessageCount = 0;
+                    role.vectorMemories = []; // v6.1: 清空聊天时同步清除向量记忆
                 }
                 showToast('聊天记录已清空');
             }
@@ -453,8 +454,8 @@ export function useAppState() {
         storageListener = (event) => {
             if (event.key === 'myai_roles_v1' || event.key === 'myai_global_v1') {
                 // 🛡️ 冲突保护：流式输出或正在编辑时不同步，避免覆盖
-                if (isStreaming.value || isThinking.value) {
-                    console.warn('[Sync] 检测到其他标签页修改，但当前正在流式输出，跳过同步');
+                if (isStreaming.value || isThinking.value || showSettings.value) {
+                    console.warn('[Sync] 检测到其他标签页修改，但当前正在流式输出或编辑设置，跳过同步');
                     return;
                 }
                 console.log('[Sync] 检测到其他标签页修改，重新加载数据');
