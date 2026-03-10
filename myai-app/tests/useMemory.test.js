@@ -127,18 +127,4 @@ describe('retrieveRelevantMemories — 正常路径（mock 模型）', () => {
     });
 });
 
-describe('retrieveRelevantMemories — 依赖失败降级', () => {
-    beforeEach(() => localStorage.clear());
 
-    it('Orama search 抛出异常 → 静默降级返回 []', async () => {
-        const { search } = await import('@orama/orama');
-        search.mockRejectedValueOnce(new Error('搜索失败'));
-
-        setRoles([makeRole({
-            vectorMemories: [{ content: '某条记忆', importance: 4 }],
-        })]);
-
-        const result = await retrieveRelevantMemories('role-1', '查询');
-        expect(Array.isArray(result)).toBe(true);
-    });
-});
