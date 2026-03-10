@@ -221,110 +221,127 @@ export function importWorldBook(jsonString) {
 
 
 // ─────────────────────────────────────────────
-// 5. 语义搜索（Phase 2 — Supabase pgvector）
+// 5. 本地 BM25 搜索（@orama/orama，完全在浏览器内运行）
 // ─────────────────────────────────────────────
 
 /**
- * 同步条目到 Supabase（生成 embedding 并存储）
- * @param {string} characterId
- * @param {Object} entry - { id, name, content }
- * @returns {Promise<{success: boolean, error?: string}>}
+ * 对 CJK 字符间插入空格，让 Orama 的默认 tokenizer 能正确处理中文
+ * 例："蒙德城" → "蒙 德 城"
  */
-export async function syncEntryToSupabase(characterId, entry) {
-    try {
-        const res = await fetch('/api/worldbook-embed', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'upsert', characterId, entry }),
-        });
-        const data = await res.json();
-        if (!res.ok) return { success: false, error: data.error || 'Sync failed' };
-        return { success: true };
-    } catch (e) {
-        console.warn('[WorldBook] Supabase sync failed:', e.message);
-        return { success: false, error: e.message };
-    }
+function tokenizeCJK(text) {
+    return (text || '')
+        .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uff00-\uffef]/g, c => c + ' ')
+        .trim();
 }
 
 /**
- * 从 Supabase 删除条目
- * @param {string} characterId
- * @param {string} entryId
- * @returns {Promise<{success: boolean}>}
- */
-export async function deleteEntryFromSupabase(characterId, entryId) {
-    try {
-        const res = await fetch('/api/worldbook-embed', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'delete', characterId, entry: { id: entryId } }),
-        });
-        return { success: res.ok };
-    } catch {
-        return { success: false };
-    }
-}
-
-/**
- * 语义搜索 — 通过 Vercel Serverless Function 查询 Supabase
- * @param {string} query - 搜索文本
- * @param {string} characterId
+ * 本地 BM25 搜索 — 对当前角色的世界书做全文检索
+ * 不依赖任何后端，不需要 Supabase / SiliconFlow
+ * @param {string} query - 搜索文本（通常是最近几轮对话）
+ * @param {Array}  lorebook - 世界书条目数组
  * @param {number} topK - 返回最相关的条目数
  * @returns {Promise<Array<{content: string, similarity: number}>>}
  */
-export async function semanticSearch(query, characterId, topK = 3) {
+async function localBM25Search(query, lorebook, topK = 3) {
+    if (!query || !lorebook?.length) return [];
     try {
-        const res = await fetch('/api/worldbook-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, characterId, topK }),
+        const { create, insert, search } = await import('@orama/orama');
+
+        const db = await create({
+            schema: {
+                _id:      'string',
+                name:     'string',
+                content:  'string',
+                keywords: 'string',
+            },
         });
-        if (!res.ok) return [];
-        const data = await res.json();
-        return data.results || [];
-    } catch {
+
+        // 只索引已启用、有内容的条目
+        const enabled = lorebook.filter(e => e.enabled && e.content?.trim());
+        for (const entry of enabled) {
+            await insert(db, {
+                _id:      entry.id || entry.name || '',
+                name:     tokenizeCJK(entry.name || ''),
+                content:  tokenizeCJK(entry.content || ''),
+                keywords: tokenizeCJK((entry.keywords || []).join(' ')),
+            });
+        }
+
+        const results = await search(db, {
+            term:       tokenizeCJK(query),
+            properties: ['name', 'content', 'keywords'],
+            limit:      topK,
+        });
+
+        // 根据 _id 反查原始 entry，保留原始 content（未 tokenize 版）
+        const idToEntry = new Map(enabled.map(e => [e.id || e.name || '', e]));
+        return (results.hits || [])
+            .map(hit => {
+                const original = idToEntry.get(hit.document._id);
+                return original ? { content: original.content, similarity: hit.score } : null;
+            })
+            .filter(Boolean);
+    } catch (e) {
+        console.warn('[WorldBook] localBM25Search 失败:', e.message);
         return [];
     }
 }
 
 /**
- * 混合匹配 — 关键词匹配 + 语义搜索去重合并
- * 关键词结果优先（快、确定性高），语义结果补充（慢、覆盖面广）
- * @param {Array} messages - 对话消息
- * @param {Array} lorebook - 本地世界书条目
- * @param {string} characterId - 角色 ID
+ * @deprecated Supabase 语义搜索已替换为本地 BM25，此函数保留签名以免编译报错，
+ *             但实际不再调用远程 API。
+ */
+export async function semanticSearch(query, characterId, topK = 3) {
+    console.warn('[WorldBook] semanticSearch() 已废弃，请使用 getActiveLoreEntriesHybrid()');
+    return [];
+}
+
+/**
+ * @deprecated 世界书不再同步到 Supabase，此函数保留为 no-op 以免调用方报错。
+ */
+export async function syncEntryToSupabase(_characterId, _entry) {
+    return { success: true };
+}
+
+/**
+ * @deprecated 同上
+ */
+export async function deleteEntryFromSupabase(_characterId, _entryId) {
+    return { success: true };
+}
+
+/**
+ * 混合匹配 — 关键词匹配 + 本地 BM25 搜索去重合并
+ * （原来调用 Supabase，现在完全在浏览器内运行）
+ * @param {Array}  messages    - 对话消息
+ * @param {Array}  lorebook    - 本地世界书条目
+ * @param {string} characterId - 角色 ID（保留参数，不再使用）
  * @param {Object} options
  * @returns {Promise<{before: string[], after: string[]}>}
  */
 export async function getActiveLoreEntriesHybrid(messages, lorebook, characterId, options = {}) {
-    // 1. 同步：关键词匹配（始终执行，作为 baseline）
+    // 1. 关键词匹配（同步 baseline）
     const keywordResults = getActiveLoreEntries(messages, lorebook, options);
 
-    // 2. 异步：语义搜索（拼最近消息作为 query）
+    // 2. 本地 BM25（拼最近几轮对话作为 query）
     const scanDepth = options.scanDepth || 5;
     const recentText = messages
         .slice(-scanDepth)
         .map(m => m.rawContent || m.content || '')
         .join('\n')
-        .slice(0, 500); // 限制 query 长度，避免 embedding 浪费
+        .slice(0, 500);
 
     if (!recentText.trim()) return keywordResults;
 
-    let semanticResults = [];
-    try {
-        semanticResults = await semanticSearch(recentText, characterId, 3);
-    } catch {
-        // 语义搜索失败 → 静默降级到纯关键词
-        return keywordResults;
-    }
+    const bm25Results = await localBM25Search(recentText, lorebook, 3);
 
-    // 3. 去重合并：用 content 内容判断是否重复
+    // 3. 去重合并：关键词结果优先，BM25 只补充未命中的条目
     const existingContents = new Set([
         ...keywordResults.before,
         ...keywordResults.after,
     ]);
 
-    for (const sr of semanticResults) {
+    for (const sr of bm25Results) {
         if (sr.content && !existingContents.has(sr.content)) {
             keywordResults.before.push(sr.content);
             existingContents.add(sr.content);

@@ -265,9 +265,16 @@ export function parseDualLayerResponse(rawText) {
         }
     } else if (thinkEnd !== -1) {
         // 🛡️ v6.1 FIX: 没有 <think> 但有 </think> — R1 模型有时省略开头标签
-        // 将 </think> 之前的所有内容视为 reasoning，之后的才是正文
-        reasoning = content.substring(0, thinkEnd).trim();
-        content = content.substring(thinkEnd + 8).trim();
+        // ⚠️ v6.2 FIX: 只有在 </think> 之后确实有内容时才认为前面是推理
+        // 否则是 AI 意外在回复末尾追加了 </think>（非 R1 模型常见），直接清理标签
+        const afterClose = content.substring(thinkEnd + 8).trim();
+        if (afterClose.length > 0) {
+            reasoning = content.substring(0, thinkEnd).trim();
+            content = afterClose;
+        } else {
+            // </think> 后面没有内容：孤立关闭标签，清理掉，保留前面的内容作为正文
+            content = content.substring(0, thinkEnd).trim();
+        }
     }
 
     // 🛡️ 清理可能残留的孤立 </think> 标签
@@ -292,6 +299,32 @@ export function parseDualLayerResponse(rawText) {
             content: "", // 静默
             expression,
         };
+    }
+
+    // 🔧 v6.2 选项B：inner 过长且正文为空时，降级把 inner 移到正文
+    // 触发条件：正文空 + inner 字符数 > 60（超过1-2句内心独白的合理长度）
+    // 原因：AI 误将动作/对话全塞进 <inner>，正文会是空白气泡
+    if (!content && inner && inner.length > 60) {
+        content = inner;
+        inner = null;
+    }
+
+    // 🔧 v6.2 空载救援：AI 误将完整回复塞入 <think> 块时的 fallback
+    // 触发条件：正文为空 + inner 未提取到 + reasoning 里含有 <inner> 标签
+    // (<inner> 只出现在实际回复里，不会在真正的推理文字中)
+    if (!content && !inner && reasoning && reasoning.indexOf('<inner>') !== -1) {
+        const rescueResult = extractAllInnerTags(reasoning);
+        if (rescueResult.inner) {
+            inner = rescueResult.inner;
+            const lastInnerClose = reasoning.lastIndexOf('</inner>');
+            const afterLastInner = lastInnerClose >= 0
+                ? reasoning.substring(lastInnerClose + 8).trim()
+                : '';
+            content = afterLastInner || '';
+            // 截断 reasoning 到第一个 <inner> 之前，保留真正的推理文字
+            const firstInnerStart = reasoning.indexOf('<inner>');
+            reasoning = reasoning.substring(0, firstInnerStart).trim() || null;
+        }
     }
 
     // === 通关：剩余的才是正文 ===

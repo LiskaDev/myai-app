@@ -123,8 +123,9 @@
 - **样式：** Tailwind CSS 4 + 原生 CSS (Glassmorphism)
 - **图表：** Chart.js + vue-chartjs (关系雷达图)
 - **Markdown：** marked + DOMPurify
-- **测试：** Vitest + jsdom (206 个测试用例，11 个测试文件)
-- **部署：** Vercel (Git 推送自动部署)
+- **本地搜索：** @orama/orama BM25 全文搜索（记忆检索 + 世界书，`useMemory.js`）
+- **测试：** Vitest + jsdom (268 个测试用例，14 个测试文件)
+- **部署：** Cloudflare Pages (Git 推送自动部署)
 - **AI 模型：** DeepSeek V3 / R1（兼容 OpenAI 格式 API）
 
 ## 🚀 快速开始

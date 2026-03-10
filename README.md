@@ -44,7 +44,7 @@
 - **AI 记忆精简** — 一键用 AI 压缩冗长记忆，节省 Token
 - **自动摘要** — 对话过长时自动生成剧情摘要（单聊 & 群聊均支持）
 - **认知画像卡** — 自动跟踪用户特征、关键事件和关系阶段
-- **🧠 向量记忆 (v7.0)** — 重要记忆自动向量化存储（Supabase pgvector + SiliconFlow Embedding），对话时语义搜索召回相关记忆注入上下文
+- **🧠 向量记忆 (v7.0)** — 重要记忆存储为关键事件条目，对话时 Orama BM25 全文搜索召回相关记忆注入上下文（纯本地，无需外部服务）
 
 ### 👥 多角色群聊
 - **群聊创建** — 选择 2-8 个角色组建群聊，设置群名和主题描述
@@ -82,8 +82,8 @@
 ### 📖 世界书 / Lorebook (v8.0)
 - **世界观注入** — 定义地点、物品、历史等设定，对话中提到关键词时自动注入到 AI 上下文
 - **关键词匹配** — 扫描最近对话，精确匹配触发词，按优先级排序注入
-- **🧠 语义搜索** — 通过 AI 向量搜索自动发现语义相关的世界书条目（需配置 Supabase + SiliconFlow）
-- **混合匹配** — 关键词匹配作为 baseline，语义搜索补充覆盖面，可开关切换
+- **🔍 BM25 语义搜索** — Orama 本地全文搜索自动发现相关世界书条目，无需外部服务
+- **混合匹配** — 关键词精确匹配 + BM25 全文搜索双引擎，可开关切换
 - **✨ AI 世界书生成器** — 三种生成模式，共用预览审核界面
   - **📄 TXT 提取** — 上传小说/设定文档，自动分块提取（UTF-8/GBK 自动检测，暂停/继续/停止）
   - **🌍 主题生成** — 输入主题关键词（如"东方修仙世界"），一键生成完整世界观，支持类别勾选和条目数滑块
@@ -168,12 +168,9 @@ npm run preview   # 本地预览生产构建
 
 | 平台 | 链接 | 适用 |
 |------|------|------|
-| **Cloudflare Pages** | [myai-app.pages.dev](https://myai-app.pages.dev) | 🇨🇳 国内访问（纯前端功能） |
-| **Vercel** | [myai-app-eight.vercel.app](https://myai-app-eight.vercel.app) | 🌍 完整功能（含语义搜索 API） |
+| **Cloudflare Pages** | [myai-app.pages.dev](https://myai-app.pages.dev) | 🇨🇳 国内可访问，功能完整 |
 
-> **平台差异**：Cloudflare Pages 仅部署静态前端，**语义搜索**需要通过 Vercel 的 Serverless Function 运行。关键词匹配在两个平台上都正常工作。
-> 
-> **无需梯子**：SiliconFlow 是国内服务，Supabase API 由 Vercel Serverless 中转调用（服务端到服务端），用户浏览器不直接请求海外服务。
+> 本项目已完成去后端化迁移，所有功能（含记忆检索、世界书搜索）均在浏览器本地运行，无需 Serverless 函数，单平台部署即可获得完整体验。
 
 ---
 
@@ -291,11 +288,6 @@ myai-app/
 │       ├── uuid.js                    # UUID 生成
 │       ├── validation.js              # 输入验证
 │       └── novelUtils.js              # 🌏 小说模式工具（STATE 解析/流式 API/系统提示词）
-├── api/                               # Vercel Serverless Functions
-│   ├── worldbook-embed.js             # 📖 世界书 embedding 存储
-│   ├── worldbook-search.js            # 🧠 世界书向量语义搜索
-│   ├── memory-save.js                 # 🧠 向量记忆存储
-│   └── memory-search.js               # 🧠 向量记忆检索
 ├── tests/                             # Vitest 单元测试
 └── index.html
 ```
@@ -322,9 +314,8 @@ npm run test:coverage     # 生成覆盖率报告
 | 测试 | Vitest + Vue Test Utils |
 | 安全 | DOMPurify (XSS 防护) |
 | AI API | DeepSeek / Qwen / Kimi / GLM（兼容 OpenAI 格式） |
-| 向量搜索 | Supabase pgvector + SiliconFlow Embedding |
-| Serverless | Vercel Serverless Functions |
-| 部署 | Vercel（完整功能） + Cloudflare Pages（纯前端） |
+| 本地搜索 | @orama/orama BM25 全文搜索（记忆检索 + 世界书） |
+| 部署 | Cloudflare Pages（纯静态，功能完整） |
 | PWA | Service Worker + Manifest |
 
 ---

@@ -2,27 +2,62 @@ import { acquireBackgroundLock, releaseBackgroundLock, isBackgroundLocked } from
 import { useBackgroundTasks } from './useBackgroundTasks';
 
 /**
- * 🧠 向量记忆检索（独立导出，供 usePromptBuilder 直接调用）
+ * 从文本中提取 n-gram 子串集合（用于中文模糊匹配）
+ * @param {string} text
+ * @param {number[]} sizes - n-gram 尺寸（默认 2-4 字）
+ * @returns {Set<string>}
+ */
+function _extractNgrams(text, sizes = [2, 3, 4]) {
+    const ngrams = new Set();
+    const clean = (text || '').replace(/\s+/g, '');
+    for (const n of sizes) {
+        for (let i = 0; i <= clean.length - n; i++) {
+            ngrams.add(clean.slice(i, i + n));
+        }
+    }
+    return ngrams;
+}
+
+/**
+ * 🧠 记忆检索（n-gram 子串匹配评分）
+ * 从角色的 vectorMemories[] 中检索与当前消息最相关的记忆
+ * 原理：提取查询的 2-4 字 n-gram，统计每条记忆命中了多少个，按命中率排序
  * @param {string} characterId
- * @param {string} currentMessage - 当前用户消息，用作语义查询
- * @returns {Promise<string[]>} 相关记忆文本数组（最多5条）
+ * @param {string} currentMessage
+ * @returns {Promise<string[]>}
  */
 export async function retrieveRelevantMemories(characterId, currentMessage) {
     if (!characterId || !currentMessage) return [];
     try {
-        const res = await fetch('/api/memory-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                characterId,
-                query: currentMessage.slice(0, 500),
-                limit: 5,
-            }),
+        const rolesJson = localStorage.getItem('myai_roles_v1');
+        if (!rolesJson) return [];
+        const roles = JSON.parse(rolesJson);
+        const role = roles.find(r => r.id === characterId);
+        const memories = role?.vectorMemories || [];
+        if (memories.length === 0) return [];
+
+        // 从用户消息中提取 n-gram 特征
+        const queryNgrams = _extractNgrams(currentMessage.slice(0, 500));
+        if (queryNgrams.size === 0) return [];
+
+        // 对每条记忆计算匹配分数
+        const scored = memories.map((m, i) => {
+            const content = m.content || '';
+            let hits = 0;
+            for (const ng of queryNgrams) {
+                if (content.includes(ng)) hits++;
+            }
+            return { index: i, score: hits, content };
         });
-        if (!res.ok) return [];
-        const data = await res.json();
-        return data.results || [];
-    } catch {
+
+        // 过滤掉零分，按分数降序，取前 5
+        return scored
+            .filter(s => s.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5)
+            .map(s => s.content);
+    } catch (err) {
+        console.error('[Memory] retrieveRelevantMemories 失败:', err);
         return [];
     }
 }
@@ -675,23 +710,22 @@ ${latestChapter.summary}`,
                 .map(m => ({ content: m.content, importance: m.importance, memory_type: m.memory_type || m.type || 'event' }));
             if (filtered.length === 0) return;
 
-            const saveRes = await fetch('/api/memory-save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    characterId: role.id,
-                    sessionId: sessionId || role.id,
-                    memories: filtered,
-                }),
-            });
-
-            if (saveRes.ok) {
-                const saved = await saveRes.json();
-                console.log(`[VectorMemory] ✅ 已保存 ${saved.saved} 条向量记忆`);
-                // 记录已同步的章节编号，防止重复写入
-                role._lastVectorSyncedChapter = latestChapter.chapterIndex;
-                saveData();
+            // 本地存储：写入 role.vectorMemories[]，去重，上限 200 条
+            if (!role.vectorMemories) role.vectorMemories = [];
+            for (const m of filtered) {
+                const isDuplicate = role.vectorMemories.some(vm => vm.content === m.content);
+                if (!isDuplicate) {
+                    role.vectorMemories.push({ ...m, createdAt: Date.now() });
+                }
             }
+            if (role.vectorMemories.length > 200) {
+                role.vectorMemories = role.vectorMemories
+                    .sort((a, b) => (b.importance || 0) - (a.importance || 0))
+                    .slice(0, 200);
+            }
+            console.log(`[VectorMemory] ✅ 本地已保存 ${filtered.length} 条记忆，共 ${role.vectorMemories.length} 条`);
+            role._lastVectorSyncedChapter = latestChapter.chapterIndex;
+            saveData();
         } catch (err) {
             console.warn('[VectorMemory] syncMemoriesToVector 失败:', err.message);
         } finally {

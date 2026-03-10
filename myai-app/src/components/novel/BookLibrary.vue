@@ -8,14 +8,27 @@ const props = defineProps({
 const emit = defineEmits(['select-book', 'import', 'delete-book', 'export-book', 'import-book']);
 
 const openMenuId = ref(null);
+const confirmDeleteId = ref(null);
 
 function toggleMenu(e, bookId) {
   e.stopPropagation();
-  openMenuId.value = openMenuId.value === bookId ? null : bookId;
+  const next = openMenuId.value === bookId ? null : bookId;
+  openMenuId.value = next;
+  if (!next) confirmDeleteId.value = null;
 }
 
 function closeMenu() {
   openMenuId.value = null;
+  confirmDeleteId.value = null;
+}
+
+function onDelete(bookId) {
+  confirmDeleteId.value = bookId;
+}
+
+function confirmDelete(bookId) {
+  closeMenu();
+  emit('delete-book', bookId);
 }
 
 function formatDate(ts) {
@@ -88,16 +101,25 @@ function bookTags(book) {
 
           <!-- 下拉菜单 -->
           <div v-if="openMenuId === book.id" class="book-menu-dropdown" @click.stop>
-            <button class="menu-item" @click.stop="$emit('export-book', book.id); closeMenu()">
-              <span>📥</span> 导出存档
-            </button>
-            <button class="menu-item" @click.stop="$emit('import-book', book.id); closeMenu()">
-              <span>📤</span> 导入存档
-            </button>
-            <div class="menu-divider"></div>
-            <button class="menu-item danger" @click.stop="$emit('delete-book', book.id); closeMenu()">
-              <span>🗑️</span> 删除这本书
-            </button>
+            <template v-if="confirmDeleteId !== book.id">
+              <button class="menu-item" @click.stop="$emit('export-book', book.id); closeMenu()">
+                <span>📥</span> 导出存档
+              </button>
+              <button class="menu-item" @click.stop="$emit('import-book', book.id); closeMenu()">
+                <span>📤</span> 导入存档
+              </button>
+              <div class="menu-divider"></div>
+              <button class="menu-item danger" @click.stop="onDelete(book.id)">
+                <span>🗑️</span> 删除这本书
+              </button>
+            </template>
+            <template v-else>
+              <div class="menu-confirm-text">确定要删除吗？</div>
+              <div class="menu-confirm-actions">
+                <button class="menu-confirm-yes" @click.stop="confirmDelete(book.id)">删除</button>
+                <button class="menu-confirm-no" @click.stop="confirmDeleteId = null">取消</button>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -376,6 +398,45 @@ function bookTags(book) {
   background: rgba(255, 255, 255, 0.06);
   margin: 4px 0;
 }
+
+.menu-confirm-text {
+  padding: 8px 14px 4px;
+  font-size: 12px;
+  color: rgba(248, 113, 113, 0.85);
+  text-align: center;
+}
+
+.menu-confirm-actions {
+  display: flex;
+  gap: 6px;
+  padding: 4px 10px 8px;
+}
+
+.menu-confirm-yes {
+  flex: 1;
+  padding: 5px 0;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  color: #f87171;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.menu-confirm-yes:hover { background: rgba(239, 68, 68, 0.35); }
+
+.menu-confirm-no {
+  flex: 1;
+  padding: 5px 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.menu-confirm-no:hover { background: rgba(255, 255, 255, 0.1); }
 
 @media (max-width: 640px) {
   .book-grid {

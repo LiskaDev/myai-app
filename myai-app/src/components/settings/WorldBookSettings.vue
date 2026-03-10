@@ -11,8 +11,6 @@ import {
     saveWorldBook,
     exportWorldBook,
     importWorldBook,
-    syncEntryToSupabase,
-    deleteEntryFromSupabase,
 } from '../../composables/promptModules/worldBook.js';
 
 const props = defineProps({
@@ -69,11 +67,7 @@ function saveEntry() {
     editingEntry.value = null;
     save();
 
-    // 🔄 异步同步到 Supabase（fire-and-forget，不阻塞 UI）
-    if (e.content && props.currentRole?.id) {
-        syncEntryToSupabase(props.currentRole.id, e)
-            .then(r => { if (!r.success) console.warn('[WorldBook] Supabase sync failed:', r.error); });
-    }
+    // 本地 BM25 — 不需要远程同步
 }
 
 function cancelEdit() {
@@ -85,10 +79,7 @@ function deleteEntry(id) {
     save();
     emit('show-toast', '条目已删除', 'info');
 
-    // 🔄 异步从 Supabase 删除（fire-and-forget）
-    if (props.currentRole?.id) {
-        deleteEntryFromSupabase(props.currentRole.id, id);
-    }
+
 }
 
 function toggleEntry(entry) {
@@ -167,9 +158,8 @@ function toggleSemantic() {
 
 // ── 向量记忆开关 ──
 function toggleVectorMemory() {
-    if (props.globalSettings) {
-        props.globalSettings.enableVectorMemory = !props.globalSettings.enableVectorMemory;
-    }
+    if (!props.globalSettings) return;
+    props.globalSettings.enableVectorMemory = !props.globalSettings.enableVectorMemory;
 }
 </script>
 
@@ -196,18 +186,18 @@ function toggleVectorMemory() {
     <div class="wb-semantic-toggle">
       <div class="wb-semantic-info">
         <span class="wb-semantic-label">🧠 语义搜索</span>
-        <span class="wb-semantic-desc">除关键词匹配外，还通过 AI 向量搜索自动发现语义相关的世界书条目</span>
+        <span class="wb-semantic-desc">除关键词匹配外，还通过本地 BM25 全文搜索自动发现相关的世界书条目（无需网络）</span>
       </div>
       <button @click="toggleSemantic" class="wb-toggle-switch" :class="{ on: globalSettings?.semanticSearchEnabled }">
         {{ globalSettings?.semanticSearchEnabled ? 'ON' : 'OFF' }}
       </button>
     </div>
 
-    <!-- 向量记忆开关（仅 Vercel 部署有效） -->
+    <!-- 向量记忆开关 -->
     <div class="wb-semantic-toggle">
       <div class="wb-semantic-info">
         <span class="wb-semantic-label">💾 向量记忆</span>
-        <span class="wb-semantic-desc">章节归档后自动提取关键记忆写入数据库，每次对话语义检索相关历史。仅 Vercel 部署有效</span>
+        <span class="wb-semantic-desc">章节归档后自动提取关键记忆，每次对话语义检索相关历史（需配置后端服务）</span>
       </div>
       <button @click="toggleVectorMemory" class="wb-toggle-switch" :class="{ on: globalSettings?.enableVectorMemory }">
         {{ globalSettings?.enableVectorMemory ? 'ON' : 'OFF' }}

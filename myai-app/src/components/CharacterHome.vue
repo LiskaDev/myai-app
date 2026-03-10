@@ -181,7 +181,6 @@ function onSelectBook(book) {
 }
 
 async function onDeleteBook(bookId) {
-  if (!confirm('确定要删除这本书吗？所有存档将一并删除，此操作无法撤销。')) return;
   await novelStore.deleteBook(bookId);
 }
 

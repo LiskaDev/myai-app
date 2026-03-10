@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Novel Mode v2 — 改进演示</title>
+    <style>
+        /* ── Reset & Variables ── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --ink: #ede0c8;
+            --ink-mid: #c4aa88;
+            --ink-dim: #7a6850;
+            --ink-faint: #3a3028;
+            --paper: #080604;
+            --paper-1: #100c08;
+            --paper-2: #18120c;
+            --paper-3: #221a12;
+            --gold: #c8a84a;
+            --gold-dim: #7a6230;
+            --gold-glow: rgba(200, 168, 74, 0.15);
+            --red: #b03828;
+            --jade: #3a8a68;
+            --purple: #7060a0;
+        }
+
+        body {
+            font-family: 'Noto Serif SC', 'Source Han Serif CN', 'SimSun', serif;
+            background: var(--paper);
+            color: var(--ink);
+            overflow: hidden;
+            height: 100vh
+        }
+
+        /* ── Layout ── */
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: relative
+        }
+
+        .app::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: radial-gradient(ellipse 70% 60% at 15% 90%, rgba(140, 70, 20, 0.07) 0%, transparent 55%),
+                radial-gradient(ellipse 50% 40% at 85% 10%, rgba(80, 50, 120, 0.05) 0%, transparent 50%);
+            pointer-events: none
+        }
+
+        /* ── Topbar ── */
+        .topbar {
+            position: relative;
+            z-index: 10;
+            height: 52px;
+            background: rgba(8, 6, 4, 0.97);
+            border-bottom: 1px solid rgba(200, 168, 74, 0.12);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 10px;
+            flex-shrink: 0
+        }
+
+        .topbar-back {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--ink-faint);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--ink-dim);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all .2s;
+            flex-shrink: 0
+        }
+
+        .topbar-back:hover {
+            border-color: var(--gold-dim);
+            color: var(--gold)
+        }
+
+        .topbar-center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 0
+        }
+
+        .topbar-book {
+            font-size: 12px;
+            color: var(--ink-dim);
+            letter-spacing: 1px
+        }
+
+        .topbar-chapter {
+            font-size: 15px;
+            color: var(--gold);
+            letter-spacing: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 320px
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0
+        }
+
+        .top-btn {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--ink-faint);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--ink-dim);
+            cursor: pointer;
+            font-size: 13px;
+            transition: all .2s
+        }
+
+        .top-btn:hover {
+            border-color: var(--gold-dim);
+            color: var(--gold)
+        }
+
+        /* ── 改进1: 回合计数器 ── */
+        .round-badge {
+            font-size: 10px;
+            color: var(--gold-dim);
+            letter-spacing: 1px;
+            background: rgba(200, 168, 74, 0.06);
+            border: 1px solid rgba(200, 168, 74, 0.15);
+            border-radius: 10px;
+            padding: 2px 10px;
+            white-space: nowrap;
+            flex-shrink: 0
+        }
+
+        /* ── Main Layout ── */
+        .layout {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            z-index: 1
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 220px;
+            flex-shrink: 0;
+            background: rgba(16, 12, 8, 0.95);
+            border-right: 1px solid rgba(200, 168, 74, 0.08);
+            overflow-y: auto;
+            padding: 14px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 2px
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--ink-faint);
+            border-radius: 1px
+        }
+
+        .s-section {
+            display: flex;
+            flex-direction: column;
+            gap: 7px
+        }
+
+        .s-title {
+            font-size: 9px;
+            letter-spacing: 3px;
+            color: var(--gold-dim);
+            text-transform: uppercase;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(200, 168, 74, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between
+        }
+
+        /* 改进2: 折叠侧边栏分区 */
+        .s-title .fold-btn {
+            font-size: 8px;
+            color: var(--ink-faint);
+            cursor: pointer;
+            transition: transform .3s
+        }
+
+        .s-title .fold-btn.open {
+            transform: rotate(90deg)
+        }
+
+        .s-content {
+            overflow: hidden;
+            transition: max-height .4s ease, opacity .3s;
+            max-height: 500px;
+            opacity: 1
+        }
+
+        .s-content.collapsed {
+            max-height: 0;
+            opacity: 0
+        }
+
+        /* 改进3: 状态变化动画 */
+        .realm-card {
+            background: linear-gradient(135deg, rgba(200, 168, 74, 0.06), rgba(200, 168, 74, 0.02));
+            border: 1px solid rgba(200, 168, 74, 0.15);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            transition: all .6s
+        }
+
+        .realm-card.glow {
+            box-shadow: 0 0 20px rgba(200, 168, 74, 0.25);
+            border-color: rgba(200, 168, 74, 0.4)
+        }
+
+        .realm-name {
+            font-size: 16px;
+            color: var(--gold);
+            letter-spacing: 2px;
+            transition: all .5s
+        }
+
+        .realm-sub {
+            font-size: 10px;
+            color: var(--ink-dim);
+            margin-top: 2px;
+            letter-spacing: 1px
+        }
+
+        .exp-bar {
+            margin-top: 8px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 2px;
+            overflow: hidden
+        }
+
+        .exp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+            transition: width 1.5s cubic-bezier(.4, 0, .2, 1)
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            padding: 2px 0
+        }
+
+        .sl {
+            color: var(--ink-dim)
+        }
+
+        .sv {
+            color: var(--ink);
+            transition: color .5s
+        }
+
+        /* 改进4: 数值变化闪烁 */
+        .sv.changed {
+            color: #5eead4;
+            animation: val-flash .8s ease
+        }
+
+        @keyframes val-flash {
+            0% {
+                color: #5eead4;
+                text-shadow: 0 0 8px rgba(94, 234, 212, .5)
+            }
+
+            100% {
+                color: var(--ink);
+                text-shadow: none
+            }
+        }
+
+        .items-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px
+        }
+
+        .item-chip {
+            font-size: 9px;
+            padding: 2px 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(200, 168, 74, 0.2);
+            color: var(--ink-dim);
+            transition: all .3s
+        }
+
+        .item-chip.rare {
+            border-color: rgba(58, 138, 104, 0.4);
+            color: var(--jade)
+        }
+
+        .item-chip.epic {
+            border-color: rgba(112, 96, 160, 0.5);
+            color: #a090d0
+        }
+
+        /* 改进5: 新获得物品高亮 */
+        .item-chip.new {
+            animation: item-glow 2s ease;
+            background: rgba(58, 138, 104, 0.12)
+        }
+
+        @keyframes item-glow {
+            0% {
+                box-shadow: 0 0 12px rgba(58, 138, 104, .4);
+                transform: scale(1.1)
+            }
+
+            100% {
+                box-shadow: none;
+                transform: scale(1)
+            }
+        }
+
+        .npc-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03)
+        }
+
+        .npc-item:last-child {
+            border-bottom: none
+        }
+
+        .npc-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1px
+        }
+
+        .npc-name {
+            font-size: 11px;
+            color: var(--ink)
+        }
+
+        .npc-role {
+            font-size: 9px;
+            color: var(--ink-dim)
+        }
+
+        .rel-dots {
+            display: flex;
+            gap: 2px;
+            align-items: center
+        }
+
+        .rdot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.07);
+            transition: background .5s
+        }
+
+        .rdot.ally {
+            background: var(--jade)
+        }
+
+        .rdot.enemy {
+            background: var(--red)
+        }
+
+        .location-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(200, 168, 74, 0.1);
+            border-radius: 8px;
+            padding: 8px 10px
+        }
+
+        .loc-icon {
+            font-size: 16px
+        }
+
+        .loc-text {
+            display: flex;
+            flex-direction: column;
+            gap: 1px
+        }
+
+        .loc-main {
+            font-size: 12px;
+            color: var(--ink)
+        }
+
+        .loc-sub {
+            font-size: 9px;
+            color: var(--ink-dim)
+        }
+
+        .quest-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 5px;
+            font-size: 10px;
+            color: var(--ink-dim);
+            line-height: 1.5
+        }
+
+        .quest-dot {
+            margin-top: 5px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--gold-dim);
+            flex-shrink: 0
+        }
+
+        .quest-item.active .quest-dot {
+            background: var(--gold)
+        }
+
+        .quest-item.active {
+            color: var(--ink-mid)
+        }
+
+        .quest-item.completed {
+            text-decoration: line-through;
+            opacity: .4
+        }
+
+        /* ── Center ── */
+        .center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0
+        }
+
+        .novel-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 0 8px;
+            scroll-behavior: smooth
+        }
+
+        .novel-area::-webkit-scrollbar {
+            width: 3px
+        }
+
+        .novel-area::-webkit-scrollbar-thumb {
+            background: var(--ink-faint);
+            border-radius: 2px
+        }
+
+        .novel-inner {
+            max-width: 660px;
+            margin: 0 auto;
+            padding: 0 28px;
+            display: flex;
+            flex-direction: column
+        }
+
+        /* Chapter header with decoration */
+        .ch-header {
+            text-align: center;
+            padding: 12px 0 24px
+        }
+
+        .ch-deco {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 10px
+        }
+
+        .ch-line {
+            flex: 1;
+            max-width: 70px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold-dim))
+        }
+
+        .ch-line.r {
+            background: linear-gradient(90deg, var(--gold-dim), transparent)
+        }
+
+        .ch-diamond {
+            width: 6px;
+            height: 6px;
+            border: 1px solid var(--gold-dim);
+            transform: rotate(45deg)
+        }
+
+        .ch-title {
+            font-size: 19px;
+            color: var(--gold);
+            letter-spacing: 5px
+        }
+
+        /* Narrative block */
+        .narr-block {
+            padding: 8px 0;
+            opacity: 0;
+            animation: fade-up .6s ease forwards
+        }
+
+        .narr-block p {
+            font-size: 15px;
+            line-height: 2.2;
+            text-indent: 2em;
+            letter-spacing: .3px;
+            color: var(--ink)
+        }
+
+        .narr-block p+p {
+            margin-top: 6px
+        }
+
+        /* 改进6: 段落类型视觉区分 */
+        .narr-block p.scene {
+            color: rgba(200, 168, 74, 0.55);
+            font-style: normal
+        }
+
+        .narr-block p.thought {
+            color: rgba(200, 170, 136, 0.75);
+            font-style: italic;
+            border-left: 2px solid rgba(200, 168, 74, 0.15);
+            padding-left: 12px;
+            text-indent: 0
+        }
+
+        .narr-block p.dialogue {
+            color: var(--ink)
+        }
+
+        @keyframes fade-up {
+            0% {
+                opacity: 0;
+                transform: translateY(12px)
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        /* Player action */
+        .player-act {
+            margin: 14px 0;
+            padding: 12px 16px;
+            background: rgba(200, 168, 74, 0.04);
+            border-left: 3px solid var(--gold-dim);
+            border-radius: 0 8px 8px 0;
+            opacity: 0;
+            animation: fade-up .4s ease forwards
+        }
+
+        .pa-label {
+            font-size: 9px;
+            letter-spacing: 3px;
+            color: var(--gold-dim);
+            margin-bottom: 4px;
+            text-transform: uppercase
+        }
+
+        .pa-text {
+            font-size: 14px;
+            color: var(--ink-mid);
+            line-height: 1.7
+        }
+
+        /* Event tags */
+        .ev-tags {
+            padding: 8px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px
+        }
+
+        .ev-tag {
+            font-size: 10px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            letter-spacing: .5px;
+            opacity: 0;
+            animation: tag-pop .4s ease forwards
+        }
+
+        .ev-tag.info {
+            background: rgba(200, 168, 74, 0.1);
+            border: 1px solid rgba(200, 168, 74, 0.25);
+            color: var(--gold)
+        }
+
+        .ev-tag.danger {
+            background: rgba(176, 56, 40, 0.1);
+            border: 1px solid rgba(176, 56, 40, 0.3);
+            color: #d06050
+        }
+
+        .ev-tag.obtain {
+            background: rgba(58, 138, 104, 0.1);
+            border: 1px solid rgba(58, 138, 104, 0.3);
+            color: var(--jade)
+        }
+
+        .ev-tag.mystery {
+            background: rgba(112, 96, 160, 0.1);
+            border: 1px solid rgba(112, 96, 160, 0.3);
+            color: #a090d0
+        }
+
+        @keyframes tag-pop {
+            0% {
+                opacity: 0;
+                transform: scale(.8)
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+        }
+
+        /* 改进7: 场景分隔线 */
+        .scene-break {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 18px 0;
+            opacity: .3
+        }
+
+        .scene-break .sb-dot {
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: var(--gold-dim)
+        }
+
+        /* Streaming cursor */
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: var(--gold);
+            margin-left: 1px;
+            vertical-align: text-bottom;
+            animation: blink-cursor .8s step-end infinite
+        }
+
+        /* Generating */
+        .generating {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 0;
+            color: var(--ink-dim);
+            font-size: 13px;
+            letter-spacing: 1px
+        }
+
+        .gen-dots {
+            display: flex;
+            gap: 4px
+        }
+
+        .gen-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--gold-dim);
+            animation: pulse-dot 1.4s ease infinite
+        }
+
+        .gen-dot:nth-child(2) {
+            animation-delay: .2s
+        }
+
+        .gen-dot:nth-child(3) {
+            animation-delay: .4s
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: .3;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.3)
+            }
+        }
+
+        /* ── Input Zone ── */
+        .input-zone {
+            border-top: 1px solid rgba(200, 168, 74, 0.08);
+            background: rgba(8, 6, 4, 0.97);
+            padding: 10px 0 14px;
+            flex-shrink: 0
+        }
+
+        .input-inner {
+            max-width: 660px;
+            margin: 0 auto;
+            padding: 0 28px
+        }
+
+        /* 改进8: 行动建议分组 + 淡入动画 */
+        .action-sugg {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px
+        }
+
+        .sugg-btn {
+            font-size: 11px;
+            padding: 5px 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(200, 168, 74, 0.2);
+            background: rgba(200, 168, 74, 0.04);
+            color: var(--ink-dim);
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: .5px;
+            transition: all .25s;
+            white-space: nowrap;
+            opacity: 0;
+            animation: sugg-fade .5s ease forwards
+        }
+
+        .sugg-btn:nth-child(1) {
+            animation-delay: .1s
+        }
+
+        .sugg-btn:nth-child(2) {
+            animation-delay: .25s
+        }
+
+        .sugg-btn:nth-child(3) {
+            animation-delay: .4s
+        }
+
+        .sugg-btn:nth-child(4) {
+            animation-delay: .55s
+        }
+
+        .sugg-btn:hover {
+            border-color: var(--gold);
+            color: var(--ink-mid);
+            background: rgba(200, 168, 74, 0.1);
+            transform: translateY(-1px)
+        }
+
+        .sugg-btn.random {
+            border-color: rgba(112, 96, 160, 0.3);
+            color: var(--purple)
+        }
+
+        .sugg-btn.random:hover {
+            border-color: rgba(112, 96, 160, 0.6);
+            background: rgba(112, 96, 160, 0.08)
+        }
+
+        @keyframes sugg-fade {
+            0% {
+                opacity: 0;
+                transform: translateY(6px)
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px
+        }
+
+        .novel-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(200, 168, 74, 0.15);
+            border-radius: 12px;
+            padding: 10px 16px;
+            color: var(--ink);
+            font-family: inherit;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            line-height: 1.7;
+            transition: border-color .2s;
+            max-height: 120px;
+            overflow-y: auto
+        }
+
+        .novel-input:focus {
+            border-color: rgba(200, 168, 74, 0.4);
+            box-shadow: 0 0 20px rgba(200, 168, 74, 0.06)
+        }
+
+        .novel-input::placeholder {
+            color: var(--ink-faint);
+            font-size: 13px
+        }
+
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+            border: none;
+            color: var(--paper);
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .2s;
+            flex-shrink: 0
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(200, 168, 74, 0.3)
+        }
+
+        .send-btn:disabled {
+            opacity: .3;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none
+        }
+
+        /* 改进9: 停止按钮更明显 */
+        .stop-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: rgba(176, 56, 40, 0.25);
+            border: 1px solid rgba(176, 56, 40, 0.5);
+            color: #e05040;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .2s;
+            flex-shrink: 0;
+            animation: pulse-stop 2s ease infinite
+        }
+
+        .stop-btn:hover {
+            background: rgba(176, 56, 40, 0.4)
+        }
+
+        @keyframes pulse-stop {
+
+            0%,
+            100% {
+                box-shadow: none
+            }
+
+            50% {
+                box-shadow: 0 0 12px rgba(176, 56, 40, .3)
+            }
+        }
+
+        /* ── Toast ── */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(12px);
+            background: rgba(32, 24, 16, 0.96);
+            border: 1px solid rgba(200, 168, 74, 0.35);
+            color: var(--ink-mid);
+            font-size: 12px;
+            letter-spacing: 1px;
+            padding: 8px 20px;
+            border-radius: 20px;
+            z-index: 300;
+            opacity: 0;
+            transition: all .35s;
+            pointer-events: none;
+            white-space: nowrap;
+            backdrop-filter: blur(8px)
+        }
+
+        .toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0)
+        }
+
+        /* 改进10: STATE 失败时的顶部警告条 */
+        .state-warning {
+            position: fixed;
+            top: 52px;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: rgba(251, 146, 60, 0.12);
+            border-bottom: 1px solid rgba(251, 146, 60, 0.3);
+            padding: 6px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 12px;
+            color: rgba(251, 146, 60, 0.9);
+            backdrop-filter: blur(4px);
+            animation: warn-slide .3s ease
+        }
+
+        .state-warning button {
+            padding: 2px 10px;
+            border-radius: 8px;
+            background: rgba(251, 146, 60, 0.2);
+            border: 1px solid rgba(251, 146, 60, 0.4);
+            color: inherit;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all .2s
+        }
+
+        .state-warning button:hover {
+            background: rgba(251, 146, 60, 0.3)
+        }
+
+        @keyframes warn-slide {
+            0% {
+                transform: translateY(-100%)
+            }
+
+            100% {
+                transform: translateY(0)
+            }
+        }
+
+        /* 改进11: 回顾模式的半透明遮罩 */
+        .history-hint {
+            position: absolute;
+            top: 52px;
+            left: 0;
+            right: 0;
+            z-index: 5;
+            text-align: center;
+            padding: 6px;
+            background: linear-gradient(to bottom, rgba(8, 6, 4, 0.9), transparent);
+            font-size: 11px;
+            color: var(--ink-faint);
+            letter-spacing: 1px;
+            pointer-events: none
+        }
+
+        /* ── Mobile ── */
+        .mob-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: rgba(8, 6, 4, 0.97);
+            border-top: 1px solid rgba(200, 168, 74, 0.1);
+            z-index: 20
+        }
+
+        .mob-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            background: transparent;
+            border: none;
+            color: var(--ink-dim);
+            cursor: pointer;
+            font-size: 11px;
+            font-family: inherit;
+            transition: color .2s
+        }
+
+        .mob-btn.active {
+            color: var(--gold)
+        }
+
+        .mob-icon {
+            font-size: 18px;
+            line-height: 1
+        }
+
+        @keyframes blink-cursor {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0
+            }
+        }
+
+        @media(max-width:700px) {
+            .sidebar {
+                display: none
+            }
+
+            .sidebar.open {
+                display: flex;
+                position: fixed;
+                top: 52px;
+                left: 0;
+                bottom: 56px;
+                z-index: 50;
+                width: 200px;
+                box-shadow: 4px 0 24px rgba(0, 0, 0, .6)
+            }
+
+            .mob-bar {
+                display: flex
+            }
+
+            .input-zone {
+                padding-bottom: 68px
+            }
+
+            .novel-inner {
+                padding: 0 16px
+            }
+
+            .input-inner {
+                padding: 0 14px
+            }
+
+            .round-badge {
+                display: none
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <!-- Topbar -->
+        <nav class="topbar">
+            <button class="topbar-back" title="返回书库">←</button>
+            <div class="topbar-center">
+                <span class="topbar-book">凡人修仙传</span>
+                <span class="topbar-chapter">第十二章 · 坊市奇遇</span>
+            </div>
+            <span class="round-badge">第 12 轮</span>
+            <div class="topbar-actions">
+                <button class="top-btn" title="存档" onclick="showToast('📖 已保存到存档位 1')">🔖</button>
+                <button class="top-btn" title="设置">⚙</button>
+            </div>
+        </nav>
+
+        <!-- STATE Warning (normally hidden, shown when STATE parse fails) -->
+        <div class="state-warning" id="stateWarn" style="display:none">
+            ⚠️ 本轮状态未更新（AI 未返回有效 STATE）
+            <button onclick="document.getElementById('stateWarn').style.display='none'">知道了</button>
+            <button onclick="showToast('正在重新生成…')">重试</button>
+        </div>
+
+        <!-- Main Layout -->
+        <div class="layout">
+            <!-- Sidebar -->
+            <aside class="sidebar open" id="sidebar">
+                <!-- 状态 -->
+                <div class="s-section">
+                    <div class="s-title">状态 <span class="fold-btn open" onclick="toggleSection(this)">▶</span></div>
+                    <div class="s-content">
+                        <div class="realm-card" id="realmCard">
+                            <div class="realm-name" id="realmName">练气七层</div>
+                            <div class="realm-sub">境界</div>
+                            <div class="exp-bar">
+                                <div class="exp-fill" id="expFill" style="width:68%"></div>
+                            </div>
+                        </div>
+                        <div class="stat-row"><span class="sl">灵力</span><span class="sv" id="mana">78 / 120</span></div>
+                        <div class="stat-row"><span class="sl">寿元</span><span class="sv" id="lifespan">124 / 200</span>
+                        </div>
+                        <div class="stat-row"><span class="sl">灵石</span><span class="sv" id="stones">247</span></div>
+                    </div>
+                </div>
+
+                <!-- 持有 -->
+                <div class="s-section">
+                    <div class="s-title">持有 <span class="fold-btn open" onclick="toggleSection(this)">▶</span></div>
+                    <div class="s-content">
+                        <div class="items-wrap" id="items">
+                            <span class="item-chip epic">青元剑诀残页</span>
+                            <span class="item-chip rare">寒铁飞剑</span>
+                            <span class="item-chip">聚气丹 ×3</span>
+                            <span class="item-chip">储物袋</span>
+                            <span class="item-chip">符箓 ×12</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NPC 关系 -->
+                <div class="s-section">
+                    <div class="s-title">关系 <span class="fold-btn open" onclick="toggleSection(this)">▶</span></div>
+                    <div class="s-content">
+                        <div class="npc-item">
+                            <div class="npc-info"><span class="npc-name">墨老</span><span class="npc-role">引路人</span>
+                            </div>
+                            <div class="rel-dots">
+                                <div class="rdot ally"></div>
+                                <div class="rdot ally"></div>
+                                <div class="rdot ally"></div>
+                                <div class="rdot"></div>
+                                <div class="rdot"></div>
+                            </div>
+                        </div>
+                        <div class="npc-item">
+                            <div class="npc-info"><span class="npc-name">苏茵</span><span class="npc-role">同道</span></div>
+                            <div class="rel-dots">
+                                <div class="rdot ally"></div>
+                                <div class="rdot ally"></div>
+                                <div class="rdot"></div>
+                                <div class="rdot"></div>
+                                <div class="rdot"></div>
+                            </div>
+                        </div>
+                        <div class="npc-item">
+                            <div class="npc-info"><span class="npc-name">张铁手</span><span class="npc-role">丹药商</span>
+                            </div>
+                            <div class="rel-dots">
+                                <div class="rdot enemy"></div>
+                                <div class="rdot enemy"></div>
+                                <div class="rdot"></div>
+                                <div class="rdot"></div>
+                                <div class="rdot"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 当前位置 -->
+                <div class="s-section">
+                    <div class="s-title">当前</div>
+                    <div class="location-badge">
+                        <span class="loc-icon">🏮</span>
+                        <div class="loc-text">
+                            <span class="loc-main">天南坊市</span>
+                            <span class="loc-sub">东区丹药街</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 任务 -->
+                <div class="s-section">
+                    <div class="s-title">任务 <span class="fold-btn open" onclick="toggleSection(this)">▶</span></div>
+                    <div class="s-content">
+                        <div class="quest-item active">
+                            <div class="quest-dot"></div><span>寻找入门宗门，收集推荐书信</span>
+                        </div>
+                        <div class="quest-item">
+                            <div class="quest-dot"></div><span>查明坊市假药来源</span>
+                        </div>
+                        <div class="quest-item completed">
+                            <div class="quest-dot"></div><span>前往天南坊市</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center -->
+            <main class="center">
+                <div class="novel-area" id="novelArea">
+                    <div class="novel-inner" id="novelInner">
+                        <!-- Chapter header -->
+                        <div class="ch-header">
+                            <div class="ch-deco">
+                                <div class="ch-line"></div>
+                                <div class="ch-diamond"></div>
+                                <div class="ch-line r"></div>
+                            </div>
+                            <div class="ch-title">第十二章 · 坊市奇遇</div>
+                        </div>
+
+                        <!-- Demo blocks -->
+                        <div class="narr-block" style="animation-delay:.1s">
+                            <p class="scene">
+                                天南坊市的东街上，空气里弥漫着丹药炉鼎特有的焦苦香气，混在檀香与汗味之中。街道两侧悬挂的灵石灯在薄雾中透出昏黄的光圈，映着石板路上来去匆匆的修士们的身影。</p>
+                            <p>你信步走在人流中，储物袋里的灵石比来时少了大半——三枚聚气丹花掉了你一百二十块灵石，价格比墨老说的足足贵了三成。</p>
+                            <p class="thought">这坊市的物价，和墨老描述的完全不一样。要么是行情变了，要么……是有人在背后操控丹药价格。</p>
+                        </div>
+
+                        <!-- Scene break (improvement) -->
+                        <div class="scene-break">
+                            <div class="sb-dot"></div>
+                            <div class="sb-dot"></div>
+                            <div class="sb-dot"></div>
+                        </div>
+
+                        <div class="narr-block" style="animation-delay:.3s">
+                            <p>就在你准备转身离开丹药街时，一个佝偻的身影从巷口闪出，差点撞到你肩头。那是个五十多岁的老者，灰色的长袍上沾满了泥渍，一双浑浊的眼睛在看到你腰间的储物袋时，突然亮了一下。</p>
+                            <p>「小友，且慢。」老者压低了声音，眼神不断扫向身后的暗巷，「你可是在找入门宗门的推荐信？老朽手中恰好有一封……」</p>
+                        </div>
+
+                        <div class="ev-tags">
+                            <span class="ev-tag info" style="animation-delay:.1s">可疑的推荐信来源</span>
+                            <span class="ev-tag danger" style="animation-delay:.2s">暗巷潜在危险</span>
+                            <span class="ev-tag mystery" style="animation-delay:.3s">丹药价格异常</span>
+                        </div>
+
+                        <!-- Player action -->
+                        <div class="player-act" style="animation-delay:.1s">
+                            <div class="pa-label">▸ 你的行动</div>
+                            <div class="pa-text">用灵力感知周围是否有别人跟踪这个老者，同时不动声色地后退半步，保持警戒距离。</div>
+                        </div>
+
+                        <!-- Streaming response demo -->
+                        <div class="narr-block" style="animation-delay:.2s">
+                            <p id="streamText"></p>
+                        </div>
+
+                        <div style="height:24px"></div>
+                    </div>
+                </div>
+
+                <!-- Input Zone -->
+                <div class="input-zone">
+                    <div class="input-inner">
+                        <div class="action-sugg" id="suggestions">
+                            <button class="sugg-btn" onclick="useSugg(this)">回头查看来者</button>
+                            <button class="sugg-btn" onclick="useSugg(this)">悄悄听掌柜动静</button>
+                            <button class="sugg-btn" onclick="useSugg(this)">运转灵力戒备</button>
+                            <button class="sugg-btn random" onclick="showToast('🎲 已生成随机行动')">🎲 意外</button>
+                        </div>
+                        <div class="input-row">
+                            <textarea class="novel-input" id="novelInput" placeholder="你打算做什么……" rows="1"
+                                oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+                            <button class="send-btn" id="sendBtn" onclick="demoSend()">➤</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Mobile bar -->
+        <div class="mob-bar">
+            <button class="mob-btn" onclick="toggleMobileSidebar()"><span
+                    class="mob-icon">📊</span><span>状态</span></button>
+            <button class="mob-btn active"><span class="mob-icon">📖</span><span>小说</span></button>
+            <button class="mob-btn" onclick="showToast('🗺️ 地图功能开发中')"><span
+                    class="mob-icon">🗺️</span><span>地图</span></button>
+            <button class="mob-btn" onclick="showToast('📖 已保存')"><span
+                    class="mob-icon">🔖</span><span>存档</span></button>
+        </div>
+
+        <div class="toast" id="toast"></div>
+    </div>
+
+    <script>
+        // ── Toast ──
+        let toastTimer;
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('visible');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.remove('visible'), 2500);
+        }
+
+        // ── Sidebar fold ──
+        function toggleSection(btn) {
+            const content = btn.closest('.s-title').nextElementSibling;
+            if (!content) return;
+            content.classList.toggle('collapsed');
+            btn.classList.toggle('open');
+        }
+
+        // ── Mobile sidebar ──
+        function toggleMobileSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        // ── Textarea auto resize ──
+        function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }
+
+        // ── Enter to send ──
+        function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); demoSend() } }
+
+        // ── Use suggestion ──
+        function useSugg(btn) { document.getElementById('novelInput').value = btn.textContent; document.getElementById('novelInput').focus() }
+
+        // ── Demo: typewriter streaming ──
+        const DEMO_TEXT = "你微微放开灵识，一道无形的感知波纹从眉心处向四周扩散。三丈之内，一切如同白昼般清晰——老者的心跳异常平稳，不像是在紧张；身后暗巷中，两个模糊的灵压正贴在墙壁阴影里，修为在练气四五层之间。";
+
+        let charIdx = 0, streamTimer;
+        function startTypewriter() {
+            const el = document.getElementById('streamText');
+            charIdx = 0;
+            clearInterval(streamTimer);
+            streamTimer = setInterval(() => {
+                if (charIdx >= DEMO_TEXT.length) { clearInterval(streamTimer); return }
+                const ch = DEMO_TEXT[charIdx];
+                el.textContent = DEMO_TEXT.slice(0, charIdx + 1);
+                charIdx++;
+                // Scroll
+                if (charIdx % 5 === 0) {
+                    const area = document.getElementById('novelArea');
+                    area.scrollTop = area.scrollHeight;
+                }
+            }, ['。', '？', '！', '，'].includes(DEMO_TEXT[charIdx]) ? 80 : 28);
+        }
+
+        // Auto-start typewriter on load
+        window.addEventListener('load', () => {
+            setTimeout(startTypewriter, 1500);
+
+            // Demo: state change glow after 5s
+            setTimeout(() => {
+                document.getElementById('realmCard').classList.add('glow');
+                document.getElementById('stones').textContent = '227';
+                document.getElementById('stones').classList.add('changed');
+                setTimeout(() => {
+                    document.getElementById('realmCard').classList.remove('glow');
+                }, 2000);
+            }, 5000);
+        });
+
+        // ── Demo send ──
+        function demoSend() {
+            const input = document.getElementById('novelInput');
+            if (!input.value.trim()) return;
+
+            const inner = document.getElementById('novelInner');
+
+            // Add player action block
+            const pa = document.createElement('div');
+            pa.className = 'player-act';
+            pa.innerHTML = `<div class="pa-label">▸ 你的行动</div><div class="pa-text">${input.value}</div>`;
+            inner.insertBefore(pa, inner.lastElementChild);
+
+            input.value = '';
+            autoResize(input);
+
+            // Fake generating
+            const gen = document.createElement('div');
+            gen.className = 'generating';
+            gen.innerHTML = '<div class="gen-dots"><div class="gen-dot"></div><div class="gen-dot"></div><div class="gen-dot"></div></div><span>正在生成…</span>';
+            inner.insertBefore(gen, inner.lastElementChild);
+
+            const area = document.getElementById('novelArea');
+            area.scrollTop = area.scrollHeight;
+
+            // After 2s, replace with narrative
+            setTimeout(() => {
+                gen.remove();
+                const narr = document.createElement('div');
+                narr.className = 'narr-block';
+                narr.innerHTML = '<p>老者微微一怔，随即露出赞赏的笑意——你的警觉显然超出了他的预料。他缓缓张开双手，表示自己并无恶意。</p><p>「小友好生谨慎。」他压低声音，「老朽名唤陈渡，原是……青云门外门弟子。」</p>';
+                inner.insertBefore(narr, inner.lastElementChild);
+
+                const evs = document.createElement('div');
+                evs.className = 'ev-tags';
+                evs.innerHTML = '<span class="ev-tag obtain" style="animation-delay:.1s">+1 线索：陈渡身份</span>';
+                inner.insertBefore(evs, inner.lastElementChild);
+
+                area.scrollTop = area.scrollHeight;
+
+                // Refresh suggestions (with animation reset)
+                const suggs = document.getElementById('suggestions');
+                suggs.innerHTML = `
+      <button class="sugg-btn" onclick="useSugg(this)">询问推荐信的代价</button>
+      <button class="sugg-btn" onclick="useSugg(this)">要求他证明身份</button>
+      <button class="sugg-btn" onclick="useSugg(this)">提议换个安全地点谈</button>
+      <button class="sugg-btn random" onclick="showToast('🎲 已生成随机行动')">🎲 意外</button>
+    `;
+
+                showToast('✅ 状态已更新');
+            }, 2500);
+        }
+    </script>
+</body>
+
+</html>

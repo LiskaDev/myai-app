@@ -5,7 +5,7 @@
  * 共用预览审核 → 批量保存
  */
 import { ref, computed, watch } from 'vue';
-import { createEntry, saveWorldBook, loadWorldBook, syncEntryToSupabase } from '../../composables/promptModules/worldBook.js';
+import { createEntry, saveWorldBook, loadWorldBook } from '../../composables/promptModules/worldBook.js';
 
 const props = defineProps({
     characterId: String,
@@ -623,14 +623,7 @@ async function saveSelected() {
     const merged = [...existing, ...newEntries];
     saveWorldBook(props.characterId, merged);
 
-    if (props.globalSettings?.semanticSearchEnabled && props.characterId) {
-        for (const entry of newEntries) {
-            try {
-                await syncEntryToSupabase(props.characterId, entry);
-            } catch { /* 静默 */ }
-            await new Promise(r => setTimeout(r, 300));
-        }
-    }
+    // 本地 BM25 搜索不需要同步索引，Orama 索引在搜索时实时构建
 
     isSaving.value = false;
     emit('show-toast', `已保存 ${newEntries.length} 条世界书条目 ✓`, 'success');

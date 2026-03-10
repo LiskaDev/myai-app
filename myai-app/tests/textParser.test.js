@@ -272,3 +272,77 @@ describe('parseDualLayerResponse - 标签容错 (v5.3.1)', () => {
         expect(result.content).not.toContain('inner');
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🐛 历史 Bug 回归测试（v6.2 修复）
+// ─────────────────────────────────────────────────────────────────────────────
+describe('parseDualLayerResponse - 回复塞入💡 bug 修复 (v6.2)', () => {
+
+    it('[Bug A] 非R1模型在回复末尾意外加 </think> → 正文不能丢失', () => {
+        // 模型输出整条回复 + 末尾意外追加 </think>，没有 <think> 开标签
+        const input = '<inner>内心独白</inner>*指尖轻触剑柄*「难？」*翠绿眸子微眯*「精灵用三百年磨出这套剑术。」</think>';
+        const result = parseDualLayerResponse(input);
+        // reasoning 不应该拿走正文
+        expect(result.reasoning).toBeFalsy();
+        // 正文应该存在
+        expect(result.content).toContain('指尖』'.replace('』', ''));
+        expect(result.content).not.toContain('</think>');
+        // inner 应该正常提取
+        expect(result.inner).toBe('内心独白');
+    });
+
+    it('[Bug A] 无开标签 + </think> 后确实有内容 → 继续按 R1 省略开标签处理', () => {
+        // R1 省略开标签的合法情况：</think> 后面有实际内容
+        const input = '推理过程...\n分析完毕</think>\n*指尖轻触剑柄*「难吗？」';
+        const result = parseDualLayerResponse(input);
+        expect(result.reasoning).toContain('推理过程');
+        expect(result.content).toContain('指尖');
+    });
+
+    it('[Bug B] AI把 <inner>+对话 全写进 <think> 块，content不应为空', () => {
+        // AI 输出：<think>推理...<inner>内心独白</inner>*动作* 「对话」</think>
+        const input = '<think>用户问剑术难不难，我应该展现骄傲和严肃。<inner>他眼神认真。</inner>*指尖掠过剑刃*「精灵三百年的功底，不是儿戏。」</think>';
+        const result = parseDualLayerResponse(input);
+        // inner 应该从 reasoning 中被救援出来
+        expect(result.inner).toBe('他眼神认真。');
+        // 正文应该存在（对话被救援）
+        expect(result.content).toContain('精灵');
+        // reasoning 保留真正的思考部分
+        expect(result.reasoning).toContain('用户问剑术');
+    });
+
+    it('[Bug B] think 块里只有 <inner>，没有额外正文 → inner 被救援', () => {
+        const input = '<think>计划回复策略。<inner>这个问题很有趣。</inner></think>';
+        const result = parseDualLayerResponse(input);
+        expect(result.inner).toBe('这个问题很有趣。');
+    });
+
+    it('[选项B] AI 把动作/对话全塞进 <inner>（超过60字）→ 降级为正文显示', () => {
+        // 常见错误：inner 里面包含完整的动作+对话，超过60字
+        const overflowInner = '<inner>他问得真直接。*指尖沿着剑柄上的古老纹路轻轻摩挲，银发被晚风吹起几缕*「难？」*翠绿眸瞳在暮色里微微眯起*「精灵用三百年才把这套剑术磨到骨子里。每一个转身的弧度，每一次呼吸的节奏，都要和风的速度对齐。」</inner>';
+        const result = parseDualLayerResponse(overflowInner);
+        // inner 超过60字且正文为空 → 内容应移到正文，不再在💡里
+        expect(result.inner).toBeNull();
+        expect(result.content.length).toBeGreaterThan(0);
+        // 正文应该包含动作描写
+        expect(result.content).toContain('指尖');
+    });
+
+    it('[选项B] inner 短于60字 → 保留在💡不降级（正常情况）', () => {
+        const shortInner = '<inner>他问得真直接，得让他明白这不是儿戏。</inner>*指尖轻触剑柄*「难吗？」';
+        const result = parseDualLayerResponse(shortInner);
+        // inner 短 → 保留在💡
+        expect(result.inner).toContain('他问得真直接');
+        // 正文也存在
+        expect(result.content).toContain('指尖');
+    });
+
+    it('正常 think + inner + 正文格式不受影响', () => {
+        const input = '<think>推理</think><inner>内心</inner>*动作*「对话」';
+        const result = parseDualLayerResponse(input);
+        expect(result.reasoning).toBe('推理');
+        expect(result.inner).toBe('内心');
+        expect(result.content).toContain('rp-action');
+        expect(result.content).toContain('rp-dialogue');
+    });
+});
