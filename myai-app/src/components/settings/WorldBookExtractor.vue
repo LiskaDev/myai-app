@@ -107,7 +107,10 @@ const extractedEntries = ref([]);
 const currentChunkIndex = ref(0);
 const isPaused = ref(false);
 const isStopped = ref(false);
+// failedChunks: Array<{ index: number, reason: string }>
 const failedChunks = ref([]);
+const failedDismissed = ref(false);  // 用户选择忽略失败块
+const retryCount = ref(0);           // 已重试次数
 const extractionAbort = ref(null);
 const CONCURRENCY = 6;
 const CHUNK_TIMEOUT_MS = 15000;
@@ -361,6 +364,8 @@ async function startGeneration() {
     generatingError.value = '';
     isPaused.value = false;
     isStopped.value = false;
+    failedDismissed.value = false;
+    retryCount.value = 0;
 
     if (activeMode.value === MODE.EXTRACT) {
         currentChunkIndex.value = 0;
@@ -474,11 +479,11 @@ async function processChunks(startFrom) {
             if (err.name === 'AbortError') {
                 if (!isStopped.value) {
                     console.warn(`[Extractor] 块 ${i} 超时，跳过`);
-                    failedChunks.value.push(i);
+                    failedChunks.value.push({ index: i, reason: '请求超时（>15s）' });
                 }
             } else {
                 console.warn(`[Extractor] 块 ${i} 失败:`, err.message);
-                failedChunks.value.push(i);
+                failedChunks.value.push({ index: i, reason: err.message?.slice(0, 40) || 'API 错误' });
             }
         } finally {
             const idx = activeControllers.value.indexOf(controller);
@@ -520,6 +525,8 @@ async function retryFailed() {
     if (failedChunks.value.length === 0) return;
     const retryIndices = [...failedChunks.value];
     failedChunks.value = [];
+    failedDismissed.value = false;
+    retryCount.value++;
     phase.value = PHASE.GENERATING;
     isPaused.value = false;
     isStopped.value = false;
@@ -558,7 +565,7 @@ async function retryFailed() {
         } catch (err) {
             clearTimeout(timeoutId);
             if (err.name !== 'AbortError' || !isStopped.value) {
-                failedChunks.value.push(i);
+                failedChunks.value.push({ index: i, reason: err.name === 'AbortError' ? '请求超时（>15s）' : (err.message?.slice(0, 40) || 'API 错误') });
             }
         } finally {
             const idx = activeControllers.value.indexOf(controller);
@@ -567,9 +574,10 @@ async function retryFailed() {
         }
     }
 
-    for (let i = 0; i < retryIndices.length; i += CONCURRENCY) {
+    const indices = retryIndices.map(f => f.index);
+    for (let i = 0; i < indices.length; i += CONCURRENCY) {
         if (isStopped.value) break;
-        const batch = retryIndices.slice(i, i + CONCURRENCY);
+        const batch = indices.slice(i, i + CONCURRENCY);
         await Promise.all(batch.map(fetchRetryChunk));
     }
 
@@ -924,16 +932,35 @@ const progressPercent = computed(() => {
         <!-- ═══════════════════════════════════ -->
         <div v-else-if="phase === 'preview'" class="wbe-body">
           <div class="wbe-preview-header">
-            <span class="wbe-preview-count">生成完成：{{ extractedEntries.length }} 条设定</span>
+            <span class="wbe-preview-count">
+              ✅ 提取完成：{{ extractedEntries.length }} 条设定
+              <span v-if="failedChunks.length && !failedDismissed" style="color:#fde68a;font-weight:400;"> · {{ failedChunks.length }} 块失败</span>
+            </span>
             <div class="wbe-select-actions">
               <button @click="selectAll" class="wbe-btn-sm" :class="{ active: isAllSelected }">全选</button>
               <button @click="selectNone" class="wbe-btn-sm" :class="{ active: isNoneSelected }">全不选</button>
             </div>
           </div>
 
-          <div v-if="failedChunks.length" class="wbe-retry-bar">
-            <span>⚠️ {{ failedChunks.length }} 块提取失败</span>
-            <button @click="retryFailed" class="wbe-btn-sm primary">重试</button>
+          <!-- 失败块提示（可关闭） -->
+          <div v-if="failedChunks.length && !failedDismissed" class="wbe-retry-bar">
+            <div class="wbe-retry-main">
+              <div class="wbe-retry-title">
+                ⚠️ {{ failedChunks.length }} 块提取失败
+                <span class="wbe-retry-sub">（不影响已提取的 {{ extractedEntries.length }} 条条目，可直接继续）</span>
+              </div>
+              <div class="wbe-retry-reasons">
+                <span v-for="f in failedChunks.slice(0, 3)" :key="f.index" class="wbe-fail-chip">块{{ f.index + 1 }}: {{ f.reason }}</span>
+                <span v-if="failedChunks.length > 3" class="wbe-fail-chip muted">...共{{ failedChunks.length }}块</span>
+              </div>
+            </div>
+            <div class="wbe-retry-actions">
+              <button v-if="retryCount < 2" @click="retryFailed" class="wbe-btn-sm primary">🔁 重试</button>
+              <button @click="failedDismissed = true" class="wbe-btn-sm">跳过，没关系</button>
+            </div>
+          </div>
+          <div v-if="failedDismissed && failedChunks.length" class="wbe-retry-skip-msg">
+            ✅ 已跳过失败块，漏掉几块影响很小，后续可在世界书里手动补充。
           </div>
 
           <div class="wbe-groups">
@@ -1196,10 +1223,25 @@ const progressPercent = computed(() => {
 .wbe-preview-count { font-size: 14px; color: #e5e7eb; font-weight: 500; }
 .wbe-select-actions { display: flex; gap: 6px; }
 .wbe-retry-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 12px; background: rgba(251,191,36,0.1);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 10px 14px; background: rgba(251,191,36,0.08);
   border: 1px solid rgba(251,191,36,0.2); border-radius: 8px;
   margin-bottom: 12px; font-size: 12px; color: #fde68a;
+}
+.wbe-retry-main { flex: 1; min-width: 0; }
+.wbe-retry-title { font-weight: 500; margin-bottom: 4px; }
+.wbe-retry-sub { color: rgba(253,230,138,0.6); font-weight: 400; }
+.wbe-retry-reasons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.wbe-fail-chip {
+  padding: 1px 7px; background: rgba(251,191,36,0.12);
+  border: 1px solid rgba(251,191,36,0.2); border-radius: 10px; font-size: 11px;
+}
+.wbe-fail-chip.muted { color: rgba(253,230,138,0.45); }
+.wbe-retry-actions { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+.wbe-retry-skip-msg {
+  padding: 8px 12px; background: rgba(52,211,153,0.08);
+  border: 1px solid rgba(52,211,153,0.2); border-radius: 8px;
+  margin-bottom: 12px; font-size: 12px; color: rgba(110,231,183,0.85);
 }
 .wbe-groups { display: flex; flex-direction: column; gap: 8px; }
 .wbe-group {
