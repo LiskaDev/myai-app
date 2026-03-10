@@ -73,6 +73,8 @@ function handleFileSelect(event) {
         groups:     data.groups?.length  || 0,
         diaries:    data.diaries?.length || 0,
         persona:    data.persona?.traits?.length || 0,
+        novelBooks: data.novelBooks?.length || 0,
+        worldbooks: Object.keys(data.worldbooks || {}).length,
       };
 
       emit('update:importJson', text);
@@ -106,6 +108,8 @@ function handlePaste() {
       groups:     data.groups?.length  || 0,
       diaries:    data.diaries?.length || 0,
       persona:    data.persona?.traits?.length || 0,
+      novelBooks: data.novelBooks?.length || 0,
+      worldbooks: Object.keys(data.worldbooks || {}).length,
     };
     fileName.value = '粘贴数据';
   } catch (err) {
@@ -193,6 +197,14 @@ function handlePaste() {
             <div class="flex justify-between" v-if="preview.persona">
               <span class="text-gray-400">👤 画像</span>
               <span class="text-white font-medium">{{ preview.persona }} 条</span>
+            </div>
+            <div class="flex justify-between" v-if="preview.novelBooks">
+              <span class="text-gray-400">📚 小说书库</span>
+              <span class="text-white font-medium">{{ preview.novelBooks }} 本</span>
+            </div>
+            <div class="flex justify-between" v-if="preview.worldbooks">
+              <span class="text-gray-400">🌍 世界书</span>
+              <span class="text-white font-medium">{{ preview.worldbooks }} 个角色</span>
             </div>
           </div>
           <div class="text-xs text-amber-400/80 mt-2">
