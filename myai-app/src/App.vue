@@ -30,6 +30,7 @@ import RoleCardGenerator from './components/RoleCardGenerator.vue';
 import CardLibraryModal from './components/CardLibraryModal.vue';
 import CharacterHome from './components/CharacterHome.vue';
 import NovelMode from './components/novel/NovelMode.vue';
+import AssistantBot from './components/AssistantBot.vue';
 import { useNovelStore } from './composables/useNovelStore.js';
 
 // Initialize State
@@ -58,6 +59,27 @@ const showOnboarding = ref(!localStorage.getItem('myai_onboarding_done'));
 
 // 🏠 角色选择主页（首次进入或用户返回时显示）
 const showHomePage = ref(true);
+
+// 🤖 内置助手
+const showAssistant = ref(false);
+
+function handleAssistantAction(action) {
+  showAssistant.value = false;
+  if (!action) return;
+  if (action.type === 'navigate') {
+    switch (action.target) {
+      case 'settings':
+        showSettings.value = true;
+        if (action.tab) settingsInitialTab.value = action.tab;
+        break;
+      case 'characterHome':
+        showHomePage.value = true;
+        showNovelMode.value = false;
+        break;
+    }
+  }
+  // updateSetting 由 AssistantBot 直接写入 globalSettings，无需在此处理
+}
 
 function handleSelectRole(roleId) {
   groupChat.exitGroupMode();
@@ -1051,6 +1073,7 @@ function handleAvatarError(type, roleId) {
     @select-role="handleSelectRole"
     @open-settings="showSettings = true"
     @start-novel="handleStartNovel"
+    @open-assistant="showAssistant = true"
   />
 
   <!-- 🌏 小说冒险模式 -->
@@ -1064,6 +1087,7 @@ function handleAvatarError(type, roleId) {
     @exit="handleNovelExit"
     @save-book="handleNovelSaveBook"
     @delete-save="handleNovelDeleteSave"
+    @open-assistant="showAssistant = true"
   />
 
   <!-- 主界面（对话模式） -->
@@ -1172,6 +1196,8 @@ function handleAvatarError(type, roleId) {
           <!-- 点击外部关闭 -->
           <div v-if="showMoonMenu" class="fixed inset-0 z-40" @click="showMoonMenu = false"></div>
         </div>
+        <!-- 🤖 助手按钮 -->
+        <button @click="showAssistant = true" class="header-action-btn px-3 py-1 rounded-full hover:opacity-85 transition" title="AI 助手" style="background:linear-gradient(135deg,rgba(124,58,237,.35),rgba(37,99,235,.35));font-size:13px;font-weight:500;letter-spacing:.3px;">✨ 助手</button>
         <!-- 设置按钮 -->
         <button @click="showSettings = true" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="设置">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1559,4 +1585,13 @@ function handleAvatarError(type, roleId) {
     </Transition>
   </div>
   </template>
+
+  <!-- 🤖 内置助手（全局单例，项层 Teleport） -->
+  <AssistantBot
+    :show="showAssistant"
+    :global-settings="globalSettings"
+    :roles="roleList"
+    @close="showAssistant = false"
+    @action="handleAssistantAction"
+  />
 </template>

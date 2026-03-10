@@ -16,7 +16,7 @@ const props = defineProps({
   roleConfig:     { type: Object, default: null },
 });
 
-const emit = defineEmits(['exit', 'save-book', 'delete-save', 'load-save']);
+const emit = defineEmits(['exit', 'save-book', 'delete-save', 'load-save', 'open-assistant']);
 
 // ── 书籍/存档状态 ──
 const currentState      = ref(props.save?.state || {});
@@ -654,6 +654,7 @@ async function autoSave() {
       </div>
       <span v-if="roundCount" class="round-badge">第 {{ roundCount }} 轮</span>
       <div class="topbar-actions">
+        <button class="top-btn assistant-btn" @click="$emit('open-assistant')" title="AI 助手">✨</button>
         <button class="top-btn" @click="openSaveModal" title="存档">🔖</button>
         <button class="top-btn" @click="showSettings = true" title="书籍设置">⚙</button>
       </div>
@@ -1019,6 +1020,11 @@ async function autoSave() {
 .topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .top-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--ink-faint); border-radius: 6px; background: transparent; color: var(--ink-dim); cursor: pointer; font-size: 12px; transition: all 0.2s; }
 .top-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+.assistant-btn {
+  background: linear-gradient(135deg, rgba(124,58,237,0.4), rgba(37,99,235,0.4));
+  border-color: rgba(124,58,237,0.4); color: #c084fc; width: auto; padding: 0 8px; font-size: 11px; letter-spacing: 0.2px;
+}
+.assistant-btn:hover { background: linear-gradient(135deg, rgba(124,58,237,0.6), rgba(37,99,235,0.6)); border-color: rgba(124,58,237,0.6); color: #e9d5ff; }
 
 /* ── Layout ── */
 .layout { flex: 1; display: flex; overflow: hidden; position: relative; z-index: 1; }
