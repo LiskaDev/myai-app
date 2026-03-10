@@ -1531,7 +1531,7 @@ function handleAvatarError(type, roleId) {
     </div>
 
     <!-- 确认对话框 -->
-    <div v-if="confirmModal.show" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div v-if="confirmModal.show" class="fixed inset-0 z-[300] flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="handleCancel"></div>
       <div class="relative glass bg-glass-dark rounded-2xl max-w-sm w-full p-6 border border-white/10 shadow-2xl">
         <h3 class="text-xl font-bold mb-4 text-white text-shadow">{{ confirmModal.title }}</h3>

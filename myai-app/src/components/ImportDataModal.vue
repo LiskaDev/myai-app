@@ -115,7 +115,7 @@ function handlePaste() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+  <div class="fixed inset-0 z-[300] flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="$emit('close')"></div>
     <div class="relative glass bg-glass-dark rounded-2xl max-w-lg w-full p-6 border border-white/10 shadow-2xl flex flex-col max-h-[90vh]">
       <header class="flex justify-between items-center mb-4">
