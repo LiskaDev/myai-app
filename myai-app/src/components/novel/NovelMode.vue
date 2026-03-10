@@ -1013,9 +1013,13 @@ async function autoSave() {
 }
 .topbar-back:hover { border-color: var(--gold-dim); color: var(--gold); }
 
-.topbar-title { flex: 1; display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.topbar-name  { font-size: 15px; color: var(--gold); letter-spacing: 2px; white-space: nowrap; }
-.topbar-chapter { font-size: 11px; color: var(--ink-dim); letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar-title { flex: 1 1 0; display: flex; align-items: baseline; gap: 8px; min-width: 0; overflow: hidden; }
+.topbar-name  { font-size: 15px; color: var(--gold); letter-spacing: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.topbar-chapter { font-size: 11px; color: var(--ink-dim); letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; }
+@media (max-width: 480px) {
+  .topbar-name { max-width: 100px; letter-spacing: 1px; }
+  .topbar-chapter { display: none; }
+}
 
 .topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .top-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--ink-faint); border-radius: 6px; background: transparent; color: var(--ink-dim); cursor: pointer; font-size: 12px; transition: all 0.2s; }

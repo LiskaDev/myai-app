@@ -154,6 +154,7 @@ const showEditGroupModal = ref(false);
 const showDiaryModal = ref(false);
 const showDiaryRolePicker = ref(false);
 const showMoonMenu = ref(false);
+const showOverflowMenu = ref(false);
 const showStoryExport = ref(false);
 const diaryDisplayList = ref([]);
 
@@ -1146,7 +1147,7 @@ function handleAvatarError(type, roleId) {
         </template>
       </div>
       <div class="flex items-center space-x-2 header-actions flex-shrink-0">
-        <!-- ⚡ 后台任务指示器 -->
+        <!-- ⚡ 后台任务指示器（始终显示） -->
         <div v-if="bgTasks.isActive.value" class="relative group" title="后台分析中">
           <span class="bg-task-dot"></span>
           <div class="bg-task-tooltip">
@@ -1154,34 +1155,35 @@ function handleAvatarError(type, roleId) {
             <span v-if="bgTasks.totalBgTokens.value > 0" class="ml-1 opacity-60">(🪙 {{ bgTasks.totalBgTokens.value }})</span>
           </div>
         </div>
+
+        <!-- ══ 桌面端按钮（手机隐藏） ══ -->
         <!-- 搜索按钮 -->
-        <button @click="toggleSearch" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" :class="{ 'bg-white/15': showSearch }" title="搜索消息 (Ctrl+F)">
+        <button @click="toggleSearch" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition hidden sm:inline-flex" :class="{ 'bg-white/15': showSearch }" title="搜索消息 (Ctrl+F)">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
         </button>
-        <!-- 清空聊天按钮 -->
+        <!-- 清空聊天按钮（始终显示） -->
         <button @click="groupChat.isGroupMode.value ? groupChat.clearGroupChat() : clearChat()" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="清空聊天">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
           </svg>
         </button>
-        <!-- 编辑群聊按钮（仅群聊模式） -->
-        <button v-if="groupChat.isGroupMode.value" @click="showEditGroupModal = true" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="编辑群聊">
+        <!-- 编辑群聊按钮（仅群聊模式 + 桌面端） -->
+        <button v-if="groupChat.isGroupMode.value" @click="showEditGroupModal = true" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition hidden sm:inline-flex" title="编辑群聊">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
           </svg>
         </button>
-        <!-- 📖 导出故事按钮 -->
-        <button @click="showStoryExport = true" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="导出为故事">
+        <!-- 📖 导出故事按钮（桌面端） -->
+        <button @click="showStoryExport = true" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition hidden sm:inline-flex" title="导出为故事">
           <span class="text-base">📖</span>
         </button>
-        <!-- 🌙 夜晚菜单按钮 -->
-        <div class="relative">
+        <!-- 🌙 夜晚菜单按钮（桌面端） -->
+        <div class="relative hidden sm:block">
           <button @click="showMoonMenu = !showMoonMenu" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition relative" title="🌙 夜晚菜单" :disabled="diary.isGenerating.value">
             <span class="text-base" :class="{ 'animate-pulse': diary.isGenerating.value }">🌙</span>
           </button>
-          <!-- 下拉菜单 -->
           <Transition name="dropdown">
             <div v-if="showMoonMenu" class="absolute right-0 top-full mt-2 w-48 glass bg-glass-dark rounded-xl border border-white/15 shadow-2xl overflow-hidden z-50">
               <button @click="showMoonMenu = false; handleEndDay()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200">
@@ -1193,12 +1195,50 @@ function handleAvatarError(type, roleId) {
               </button>
             </div>
           </Transition>
-          <!-- 点击外部关闭 -->
           <div v-if="showMoonMenu" class="fixed inset-0 z-40" @click="showMoonMenu = false"></div>
         </div>
-        <!-- 🤖 助手按钮 -->
-        <button @click="showAssistant = true" class="header-action-btn px-3 py-1 rounded-full hover:opacity-85 transition" title="AI 助手" style="background:linear-gradient(135deg,rgba(124,58,237,.35),rgba(37,99,235,.35));font-size:13px;font-weight:500;letter-spacing:.3px;">✨ 助手</button>
-        <!-- 设置按钮 -->
+
+        <!-- 助手按钮：桌面端带文字，手机端纯图标 -->
+        <button @click="showAssistant = true" class="header-action-btn px-3 py-1 rounded-full hover:opacity-85 transition hidden sm:inline-flex" title="AI 助手" style="background:linear-gradient(135deg,rgba(124,58,237,.35),rgba(37,99,235,.35));font-size:13px;font-weight:500;letter-spacing:.3px;">✨ 助手</button>
+        <button @click="showAssistant = true" class="header-action-btn p-2 rounded-full hover:opacity-85 transition sm:hidden" title="AI 助手" style="background:linear-gradient(135deg,rgba(124,58,237,.25),rgba(37,99,235,.25));font-size:15px;">✨</button>
+
+        <!-- ⋯ 溢出菜单（仅手机端） -->
+        <div class="relative sm:hidden">
+          <button @click="showOverflowMenu = !showOverflowMenu" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="更多">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+            </svg>
+          </button>
+          <Transition name="dropdown">
+            <div v-if="showOverflowMenu" class="absolute right-0 top-full mt-2 w-44 glass bg-glass-dark rounded-xl border border-white/15 shadow-2xl overflow-hidden z-50">
+              <button @click="showOverflowMenu = false; toggleSearch()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <span>搜索消息</span>
+              </button>
+              <div class="border-t border-white/10"></div>
+              <button @click="showOverflowMenu = false; showStoryExport = true" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200">
+                <span>📖</span><span>导出故事</span>
+              </button>
+              <div class="border-t border-white/10"></div>
+              <button @click="showOverflowMenu = false; handleEndDay()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200" :disabled="diary.isGenerating.value">
+                <span :class="{ 'animate-pulse': diary.isGenerating.value }">🌙</span><span>结束今天</span>
+              </button>
+              <button @click="showOverflowMenu = false; openDiaryHistory()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200">
+                <span>📔</span><span>历史日记</span>
+              </button>
+              <template v-if="groupChat.isGroupMode.value">
+                <div class="border-t border-white/10"></div>
+                <button @click="showOverflowMenu = false; showEditGroupModal = true" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition text-sm text-gray-200">
+                  <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                  <span>编辑群聊</span>
+                </button>
+              </template>
+            </div>
+          </Transition>
+          <div v-if="showOverflowMenu" class="fixed inset-0 z-40" @click="showOverflowMenu = false"></div>
+        </div>
+
+        <!-- 设置按钮（始终显示） -->
         <button @click="showSettings = true" class="header-action-btn p-2 rounded-full hover:bg-white/10 transition" title="设置">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
