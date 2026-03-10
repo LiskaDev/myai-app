@@ -221,84 +221,57 @@ export function importWorldBook(jsonString) {
 
 
 // ─────────────────────────────────────────────
-// 5. 本地 BM25 搜索（@orama/orama，完全在浏览器内运行）
+// 5. 本地内容检索（n-gram 子串匹配，无外部依赖）
 // ─────────────────────────────────────────────
 
 /**
- * CJK bigram 分词：将汉字序列拆成相邻2字的 bigram，让 Orama BM25 能正确索引/检索中文。
- * Orama 默认会过滤掉长度 < 2 的 token，因此单字拆分会导致 0 结果。
- * bigram 示例："蒙德城" → "蒙德 德城"  "修仙" → "修仙"
+ * 提取文本的 n-gram 子串集合，用于中文模糊匹配
+ * @param {string} text
+ * @param {number[]} sizes - n-gram 尺寸（默认 2-4 字）
+ * @returns {Set<string>}
  */
-function tokenizeCJK(text) {
-    if (!text) return '';
-    const CJK = /[\u4e00-\u9fff\u3400-\u4dbf]/;
-    const tokens = [];
-    for (let i = 0; i < text.length; i++) {
-        const c = text[i];
-        if (CJK.test(c)) {
-            const next = text[i + 1];
-            if (next && CJK.test(next)) {
-                tokens.push(c + next); // bigram（滑动窗口，i+1 下一轮仍会处理）
-            }
-            // 孤立汉字（前后非CJK）忽略，信号极低不影响召回率
-        } else {
-            tokens.push(c);
+function _extractNgrams(text, sizes = [2, 3, 4]) {
+    const ngrams = new Set();
+    const clean = (text || '').replace(/\s+/g, '');
+    for (const n of sizes) {
+        for (let i = 0; i <= clean.length - n; i++) {
+            ngrams.add(clean.slice(i, i + n));
         }
     }
-    return tokens.join(' ').replace(/\s+/g, ' ').trim();
+    return ngrams;
 }
 
 /**
- * 本地 BM25 搜索 — 对当前角色的世界书做全文检索
- * 不依赖任何后端，不需要 Supabase / SiliconFlow
- * @param {string} query - 搜索文本（通常是最近几轮对话）
- * @param {Array}  lorebook - 世界书条目数组
- * @param {number} topK - 返回最相关的条目数
+ * 内容相似度检索（n-gram 子串匹配评分）
+ * 原理：提取查询的 2-4 字 n-gram，统计每个条目命中了多少个，按命中数排序
+ * @param {string} query
+ * @param {Array}  lorebook
+ * @param {number} topK
  * @returns {Promise<Array<{content: string, similarity: number}>>}
  */
 async function localBM25Search(query, lorebook, topK = 3) {
     if (!query || !lorebook?.length) return [];
-    try {
-        const { create, insert, search } = await import('@orama/orama');
+    const queryNgrams = _extractNgrams(query.slice(0, 500));
+    if (queryNgrams.size === 0) return [];
 
-        const db = await create({
-            schema: {
-                _id:      'string',
-                name:     'string',
-                content:  'string',
-                keywords: 'string',
-            },
-        });
-
-        // 只索引已启用、有内容的条目
-        const enabled = lorebook.filter(e => e.enabled && e.content?.trim());
-        for (const entry of enabled) {
-            await insert(db, {
-                _id:      entry.id || entry.name || '',
-                name:     tokenizeCJK(entry.name || ''),
-                content:  tokenizeCJK(entry.content || ''),
-                keywords: tokenizeCJK((entry.keywords || []).join(' ')),
-            });
+    const enabled = lorebook.filter(e => e.enabled && e.content?.trim());
+    const scored = enabled.map(entry => {
+        const target = [
+            entry.name || '',
+            entry.content || '',
+            (entry.keywords || []).join(' '),
+        ].join(' ');
+        let hits = 0;
+        for (const ng of queryNgrams) {
+            if (target.includes(ng)) hits++;
         }
+        return { content: entry.content, similarity: hits };
+    });
 
-        const results = await search(db, {
-            term:       tokenizeCJK(query),
-            properties: ['name', 'content', 'keywords'],
-            limit:      topK,
-        });
-
-        // 根据 _id 反查原始 entry，保留原始 content（未 tokenize 版）
-        const idToEntry = new Map(enabled.map(e => [e.id || e.name || '', e]));
-        return (results.hits || [])
-            .map(hit => {
-                const original = idToEntry.get(hit.document._id);
-                return original ? { content: original.content, similarity: hit.score } : null;
-            })
-            .filter(Boolean);
-    } catch (e) {
-        console.warn('[WorldBook] localBM25Search 失败:', e.message);
-        return [];
-    }
+    return scored
+        .filter(s => s.similarity > 0)
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, topK);
 }
 
 /**

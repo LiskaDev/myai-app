@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="character-home">
     <!-- 顶部标题区 -->
     <div class="home-header">
@@ -130,6 +130,21 @@
   <transition name="fade">
     <div v-if="importToast" class="import-toast">{{ importToast }}</div>
   </transition>
+
+  <!-- 同名书籍冲突内联弹窗 -->
+  <Teleport to="body">
+    <div v-if="pendingBookConflict" class="ch-conflict-overlay" @click.self="conflictCancel">
+      <div class="ch-conflict-box">
+        <p class="ch-conflict-title">书库中已有《{{ pendingBookConflict.title }}》</p>
+        <p class="ch-conflict-msg">请选择导入方式：</p>
+        <div class="ch-conflict-btns">
+          <button class="ch-btn-cancel" @click="conflictCancel">放弃</button>
+          <button class="ch-btn-new" @click="conflictNew">新建一本</button>
+          <button class="ch-btn-replace" @click="conflictReplace">覆盖现有</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -162,6 +177,15 @@ const novelStore = useNovelStore();
 const importFileRef = ref(null);      // 隐藏文件输入
 const importToast   = ref('');        // 简易反馈提示
 let importToastTimer = null;
+
+// 同名书籍冲突内联弹窗（替代 Chrome 可能拦截的 native confirm()）
+const pendingBookConflict = ref(null); // { title, onReplace, onCreateNew }
+function showBookConflict(title, onReplace, onCreateNew) {
+  pendingBookConflict.value = { title, onReplace, onCreateNew };
+}
+function conflictReplace() { const cb = pendingBookConflict.value?.onReplace;   pendingBookConflict.value = null; cb?.(); }
+function conflictNew()     { const cb = pendingBookConflict.value?.onCreateNew; pendingBookConflict.value = null; cb?.(); }
+function conflictCancel()  { pendingBookConflict.value = null; }
 
 function showImportToast(msg) {
   importToast.value = msg;
@@ -265,20 +289,20 @@ async function handleImportFile(e) {
   const existing = novelStore.bookList.value.find(b => b.title === raw.bookMeta.title);
 
   if (existing) {
-    const choice = confirm(
-      `书库中已有同名书籍《${raw.bookMeta.title}》\n\n` +
-      `点击「确定」覆盖现有数据（现有存档将被替换）\n` +
-      `点击「取消」新建一本（两本同名书并存）`
+    showBookConflict(
+      raw.bookMeta.title,
+      async () => {
+        await novelStore.replaceBook(existing, raw);
+        novelStore.loadBooks();
+        showImportToast(`✅ 已覆盖导入《${raw.bookMeta.title}》`);
+      },
+      async () => {
+        const newBook = await novelStore.importAsNew(raw);
+        novelStore.loadBooks();
+        showImportToast(`✅ 已新建导入《${newBook.title}》`);
+      },
     );
-    if (choice) {
-      await novelStore.replaceBook(existing, raw);
-      novelStore.loadBooks();
-      showImportToast(`✅ 已覆盖导入《${raw.bookMeta.title}》`);
-    } else {
-      const newBook = await novelStore.importAsNew(raw);
-      novelStore.loadBooks();
-      showImportToast(`✅ 已新建导入《${newBook.title}》`);
-    }
+    return;
   } else {
     const newBook = await novelStore.importAsNew(raw);
     novelStore.loadBooks();
@@ -338,20 +362,22 @@ async function onImportSaveFile(raw) {
   novelStore.loadBooks();
   const existing = novelStore.bookList.value.find(b => b.title === raw.bookMeta.title);
   if (existing) {
-    const choice = confirm(
-      `书库中已有同名书籍《${raw.bookMeta.title}》\n\n` +
-      `点击「确定」覆盖现有数据（现有存档将被替换）\n` +
-      `点击「取消」新建一本（两本同名书并存）`
+    showBookConflict(
+      raw.bookMeta.title,
+      async () => {
+        await novelStore.replaceBook(existing, raw);
+        novelStore.loadBooks();
+        showImportToast(`✅ 已覆盖导入《${raw.bookMeta.title}》`);
+        worldNav.value = 'library';
+      },
+      async () => {
+        const newBook = await novelStore.importAsNew(raw);
+        novelStore.loadBooks();
+        showImportToast(`✅ 已新建导入《${newBook.title}》`);
+        worldNav.value = 'library';
+      },
     );
-    if (choice) {
-      await novelStore.replaceBook(existing, raw);
-      novelStore.loadBooks();
-      showImportToast(`✅ 已覆盖导入《${raw.bookMeta.title}》`);
-    } else {
-      const newBook = await novelStore.importAsNew(raw);
-      novelStore.loadBooks();
-      showImportToast(`✅ 已新建导入《${newBook.title}》`);
-    }
+    return;
   } else {
     const newBook = await novelStore.importAsNew(raw);
     novelStore.loadBooks();
@@ -820,4 +846,14 @@ function hasHistory(role) {
 }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.25s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* ── 书籍冲突弹窗 ── */
+.ch-conflict-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.ch-conflict-box { background: #1e1b2e; border: 1px solid rgba(139,92,246,0.3); border-radius: 14px; padding: 24px; max-width: 320px; width: 100%; }
+.ch-conflict-title { color: #e2d9f3; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.ch-conflict-msg { color: rgba(226,217,243,0.6); font-size: 13px; margin-bottom: 20px; }
+.ch-conflict-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.ch-btn-cancel  { padding: 8px 14px; border-radius: 8px; background: rgba(255,255,255,0.08); color: rgba(226,217,243,0.6); border: none; cursor: pointer; font-size: 13px; }
+.ch-btn-new     { padding: 8px 14px; border-radius: 8px; background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); cursor: pointer; font-size: 13px; }
+.ch-btn-replace { padding: 8px 14px; border-radius: 8px; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); cursor: pointer; font-size: 13px; }
 </style>
