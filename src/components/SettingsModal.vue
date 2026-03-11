@@ -87,7 +87,7 @@ function resetCustomStyle() {
 
             <div class="form-group">
               <label class="form-label">用户头像 URL</label>
-              <input v-model="globalSettings.userAvatar" type="text" placeholder="/static/wo.jpg"
+              <input v-model="globalSettings.userAvatar" type="text" placeholder="/avatars/default_user.png"
                      class="form-input">
               <p class="form-hint">⚠️ 请输入图片 URL，不要上传图片文件</p>
             </div>

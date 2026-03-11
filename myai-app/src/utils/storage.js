@@ -12,7 +12,7 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     baseUrl: 'https://api.deepseek.com',
     apiKey: '',
     model: 'deepseek-reasoner',
-    userAvatar: '/wo.jpg',
+    userAvatar: '/avatars/default_user.png',
     showLogic: true,
     showInner: true,
     autoPlayTTS: false,
