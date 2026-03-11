@@ -540,8 +540,17 @@ async function doLoadSave(slotIndex) {
 }
 
 // ── 初始化 ──
+function onVVResize() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  // 键盘弹出时 visualViewport.height 缩小，将容器底部上移避免输入框被遮挡
+  const el = document.querySelector('.novel-mode');
+  if (el) el.style.height = vv.height + 'px';
+}
+
 onMounted(async () => {
   novelAreaRef.value?.addEventListener('scroll', onNovelScroll, { passive: true });
+  window.visualViewport?.addEventListener('resize', onVVResize);
   if (!isNewGame) {
     // 继续存档：从 IndexedDB 加载消息历史（save 元数据在 props 中，但 messages 只存 IDB）
     try {
@@ -572,6 +581,9 @@ onMounted(async () => {
 onUnmounted(() => {
   clearTimeout(toastTimer);
   abortCtrl.value?.abort();
+  window.visualViewport?.removeEventListener('resize', onVVResize);
+  const el = document.querySelector('.novel-mode');
+  if (el) el.style.height = '';
 });
 
 // ── STATE 侧边栏：通用渲染 ──
@@ -1167,7 +1179,7 @@ async function autoSave() {
 .input-inner { max-width: 660px; margin: 0 auto; padding: 0 24px; }
 
 .action-sugg { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
-.sugg-btn { font-size: 11px; padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(200,168,74,0.2); background: rgba(200,168,74,0.04); color: var(--ink-dim); cursor: pointer; font-family: inherit; letter-spacing: 0.5px; transition: all 0.2s; white-space: nowrap; }
+.sugg-btn { font-size: 11px; padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(200,168,74,0.2); background: rgba(200,168,74,0.04); color: var(--ink-dim); cursor: pointer; font-family: inherit; letter-spacing: 0.5px; transition: all 0.2s; white-space: normal; text-align: left; line-height: 1.5; }
 .sugg-btn:hover { border-color: var(--gold-dim); color: var(--ink-mid); background: rgba(200,168,74,0.08); }
 .sugg-btn.random { border-color: rgba(112,96,160,0.3); color: #a090d0; background: rgba(112,96,160,0.04); }
 .sugg-btn.random:hover { border-color: rgba(112,96,160,0.6); background: rgba(112,96,160,0.1); color: #c0b0e8; }
