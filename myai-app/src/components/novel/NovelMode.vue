@@ -444,6 +444,8 @@ function randomAction() {
 async function scrollToBottom(force = false) {
   if (!force && userScrolled.value) return;
   await nextTick();
+  // nextTick 后再检查一次，防止用户在 await 期间手动滚动被覆盖
+  if (!force && userScrolled.value) return;
   if (novelAreaRef.value) {
     novelAreaRef.value.scrollTop = novelAreaRef.value.scrollHeight;
   }
@@ -1178,8 +1180,9 @@ async function autoSave() {
 .input-zone { border-top: 1px solid rgba(200,168,74,0.08); background: rgba(8,6,4,0.97); padding: 10px 0 12px; flex-shrink: 0; }
 .input-inner { max-width: 660px; margin: 0 auto; padding: 0 24px; }
 
-.action-sugg { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
-.sugg-btn { font-size: 11px; padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(200,168,74,0.2); background: rgba(200,168,74,0.04); color: var(--ink-dim); cursor: pointer; font-family: inherit; letter-spacing: 0.5px; transition: all 0.2s; white-space: normal; text-align: left; line-height: 1.5; }
+.action-sugg { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin-bottom: 9px; padding-bottom: 4px; scrollbar-width: none; }
+.action-sugg::-webkit-scrollbar { display: none; }
+.sugg-btn { flex-shrink: 0; max-width: 210px; font-size: 11px; padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(200,168,74,0.2); background: rgba(200,168,74,0.04); color: var(--ink-dim); cursor: pointer; font-family: inherit; letter-spacing: 0.5px; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sugg-btn:hover { border-color: var(--gold-dim); color: var(--ink-mid); background: rgba(200,168,74,0.08); }
 .sugg-btn.random { border-color: rgba(112,96,160,0.3); color: #a090d0; background: rgba(112,96,160,0.04); }
 .sugg-btn.random:hover { border-color: rgba(112,96,160,0.6); background: rgba(112,96,160,0.1); color: #c0b0e8; }
