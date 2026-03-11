@@ -425,7 +425,12 @@ async function triggerChapterSummary() {
 // ── 行动建议 ──
 function useSuggestion(text) {
   userInput.value = text;
-  nextTick(() => inputRef.value?.focus());
+  nextTick(() => {
+    if (inputRef.value) {
+      autoResize(inputRef.value);
+      inputRef.value.focus();
+    }
+  });
 }
 
 const RANDOM_ACTIONS = [
