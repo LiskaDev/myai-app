@@ -52,12 +52,6 @@ function handleDelete(branchId) {
     }
 }
 
-function closeDropdown(e) {
-    // 点击外部关闭
-    if (!e.target.closest('.branch-switcher')) {
-        isOpen.value = false;
-    }
-}
 </script>
 
 <template>

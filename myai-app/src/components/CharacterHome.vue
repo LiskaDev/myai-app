@@ -1,16 +1,17 @@
-﻿<template>
+<template>
   <div class="character-home">
+    <!-- 助手按鈕（相对于整个页面定位） -->
+    <div class="home-top-actions">
+      <button
+        class="home-assistant-btn"
+        :class="{ 'intro-glow': !assistantIntroSeen }"
+        @click="$emit('open-assistant')"
+        title="AI 助手"
+      >✨ 助手</button>
+    </div>
+
     <!-- 顶部标题区 -->
     <div class="home-header">
-      <!-- 助手按鈕 -->
-      <div class="home-top-actions">
-        <button
-          class="home-assistant-btn"
-          :class="{ 'intro-glow': !assistantIntroSeen }"
-          @click="$emit('open-assistant')"
-          title="AI 助手"
-        >✨ 助手</button>
-      </div>
       <div class="home-logo">✨</div>
       <h1 class="home-title">MyAI RolePlay</h1>
       <p class="home-subtitle">选择一个角色，开始你的故事</p>
@@ -256,10 +257,7 @@ async function onExportBook(bookId) {
 }
 
 // ── 导入存档（触发文件选择）──
-const pendingImportBookId = ref(null);   // 如果非 null 表示"导入到某本书"（预留）
-
 function onImportBookTrigger() {
-  pendingImportBookId.value = null;
   importFileRef.value?.click();
 }
 
@@ -343,18 +341,30 @@ function onBookSettingsLoadSave(slotIndex) {
 }
 
 function onImportDone(book) {
-  novelStore.createBook({
-    title:        book.title,
-    coverEmoji:   book.coverEmoji,
-    worldEntries: book.worldEntries,
-    novelModel:   book.novelModel || null,
-    style:        book.style    || 'xianxia',
-    difficulty:   book.difficulty ?? 1,
-  });
-  // find the newly added book and navigate to save-select
   novelStore.loadBooks();
-  selectedBook.value = novelStore.bookList.value[novelStore.bookList.value.length - 1];
-  worldNav.value = 'save-select';
+  const existing = novelStore.bookList.value.find(b => b.title === book.title);
+  const doCreate = () => {
+    novelStore.createBook({
+      title:        book.title,
+      coverEmoji:   book.coverEmoji,
+      worldEntries: book.worldEntries,
+      novelModel:   book.novelModel || null,
+      style:        book.style    || 'xianxia',
+      difficulty:   book.difficulty ?? 1,
+    });
+    novelStore.loadBooks();
+    selectedBook.value = novelStore.bookList.value[novelStore.bookList.value.length - 1];
+    worldNav.value = 'save-select';
+  };
+  if (existing) {
+    showBookConflict(
+      book.title,
+      () => { novelStore.deleteBook(existing.id); doCreate(); },
+      doCreate,
+    );
+  } else {
+    doCreate();
+  }
 }
 
 // 导入存档 JSON （来自 BookImport 上传区）
@@ -392,7 +402,7 @@ function onSelectSave({ slotIndex, save, roleConfig = null }) {
   const hasBookKey = book?.novelModel?.apiKey;
   const hasGlobalKey = props.globalSettings?.apiKey;
   if (!hasBookKey && !hasGlobalKey) {
-    // Banner 已经提前告知用户，这里仅用 toast 轻提示，不应用 alert 阻塞会话
+    showImportToast('⚠️ 请先在设置中填写 API Key');
     return;
   }
   emit('start-novel', { book, slotIndex, save, roleConfig });
@@ -540,13 +550,13 @@ function hasHistory(role) {
   text-align: center;
   margin-bottom: 40px;
   animation: fadeSlideUp 0.6s ease-out;
-  position: relative;
 }
 
 .home-top-actions {
-  position: absolute;
-  top: 0;
-  right: 0;
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  z-index: 110;
   display: flex;
   align-items: center;
   gap: 8px;
