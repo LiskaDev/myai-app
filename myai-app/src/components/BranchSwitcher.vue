@@ -11,12 +11,18 @@ const emit = defineEmits(['switch', 'rename', 'delete']);
 const isOpen = ref(false);
 const editingId = ref(null);
 const editName = ref('');
+const buttonRef = ref(null);
+const dropdownPos = ref({ top: 0, left: 0 });
 
 const currentBranch = computed(() =>
     props.branches.find(b => b.id === props.currentBranchId) || props.branches[0]
 );
 
 function toggleDropdown() {
+    if (!isOpen.value && buttonRef.value) {
+        const rect = buttonRef.value.getBoundingClientRect();
+        dropdownPos.value = { top: rect.bottom + 6, left: rect.left };
+    }
     isOpen.value = !isOpen.value;
 }
 
@@ -56,7 +62,7 @@ function closeDropdown(e) {
 
 <template>
     <div class="branch-switcher" v-if="branches.length > 1">
-        <button class="branch-current" @click="toggleDropdown">
+        <button ref="buttonRef" class="branch-current" @click="toggleDropdown">
             <span class="branch-icon">🌿</span>
             <span class="branch-name">{{ currentBranch?.name || '主线' }}</span>
             <span class="branch-count">({{ branches.length }})</span>
@@ -68,10 +74,9 @@ function closeDropdown(e) {
 
         <Teleport to="body">
             <div v-if="isOpen" class="branch-overlay" @click="isOpen = false"></div>
-        </Teleport>
-
-        <transition name="dropdown">
-            <div v-if="isOpen" class="branch-dropdown">
+            <transition name="dropdown">
+                <div v-if="isOpen" class="branch-dropdown"
+                    :style="{ top: dropdownPos.top + 'px', left: dropdownPos.left + 'px' }">
                 <div v-for="branch in branches" :key="branch.id" class="branch-item"
                     :class="{ active: branch.id === currentBranchId }" @click="selectBranch(branch.id)">
                     <div class="branch-item-left">
@@ -91,8 +96,9 @@ function closeDropdown(e) {
                             class="branch-action-btn delete" title="删除">🗑️</button>
                     </div>
                 </div>
-            </div>
-        </transition>
+                </div>
+            </transition>
+        </Teleport>
     </div>
 </template>
 
@@ -152,9 +158,7 @@ function closeDropdown(e) {
 }
 
 .branch-dropdown {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
+    position: fixed;
     min-width: 240px;
     max-height: 300px;
     overflow-y: auto;
