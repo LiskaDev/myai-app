@@ -1,15 +1,5 @@
 <template>
   <div class="character-home">
-    <!-- 助手按鈕（相对于整个页面定位） -->
-    <div class="home-top-actions">
-      <button
-        class="home-assistant-btn"
-        :class="{ 'intro-glow': !assistantIntroSeen }"
-        @click="$emit('open-assistant')"
-        title="AI 助手"
-      >✨ 助手</button>
-    </div>
-
     <!-- 顶部标题区 -->
     <div class="home-header">
       <div class="home-logo">✨</div>
@@ -162,10 +152,7 @@ const props = defineProps({
   globalSettings: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(['select-role', 'start-novel', 'open-settings', 'open-assistant']);
-
-// 首次访问呼吸动效
-const assistantIntroSeen = ref(!!localStorage.getItem('assistantIntroSeen'));
+const emit = defineEmits(['select-role', 'start-novel', 'open-settings']);
 
 // ── Tab / 世界子导航 ──
 const activeTab      = ref('role');
@@ -550,40 +537,6 @@ function hasHistory(role) {
   text-align: center;
   margin-bottom: 40px;
   animation: fadeSlideUp 0.6s ease-out;
-}
-
-.home-top-actions {
-  position: fixed;
-  top: 16px;
-  right: 20px;
-  z-index: 110;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.home-assistant-btn {
-  padding: 6px 14px;
-  background: linear-gradient(135deg, #7c3aed, #2563eb);
-  border: none;
-  border-radius: 20px;
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-  transition: opacity 0.2s;
-}
-
-.home-assistant-btn:hover { opacity: 0.85; }
-
-.home-assistant-btn.intro-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.4); }
-  50%       { box-shadow: 0 0 0 8px rgba(124, 58, 237, 0); }
 }
 
 @keyframes fadeSlideUp {
