@@ -32,6 +32,7 @@ import CharacterHome from './components/CharacterHome.vue';
 import NovelMode from './components/novel/NovelMode.vue';
 import AssistantBot from './components/AssistantBot.vue';
 import { useNovelStore } from './composables/useNovelStore.js';
+import { exportAllBookMessages, saveNovelMessages } from './composables/useNovelDB.js';
 
 // Initialize State
 const appState = useAppState();
@@ -827,7 +828,7 @@ function cancelEditMessage() {
 }
 
 // 导出数据（完整备份：角色 + 群聊 + 日记 + 画像 + 世界书 + 小说书库）
-function exportData() {
+async function exportData() {
   // v6.0: 收集每个角色的世界书数据
   const worldbooks = {};
   for (const role of roleList.value) {
@@ -837,8 +838,16 @@ function exportData() {
     } catch { /* ignore */ }
   }
 
+  // v6.1: 收集小说书库的 IDB 消息数据
+  const novelBooks = JSON.parse(localStorage.getItem('myai_bookList_v1') || '[]');
+  const novelMessages = {};
+  for (const book of novelBooks) {
+    const slots = await exportAllBookMessages(book.id);
+    if (slots.length > 0) novelMessages[book.id] = slots;
+  }
+
   const data = {
-    version: '6.0',
+    version: '6.1',
     exportTime: new Date().toISOString(),
     globalSettings: globalSettings,
     roleList: roleList.value,
@@ -849,7 +858,9 @@ function exportData() {
     persona: JSON.parse(localStorage.getItem('myai_user_persona_v1') || 'null'),
     // v6.0: 世界书 + 小说书库元数据
     worldbooks,
-    novelBooks: JSON.parse(localStorage.getItem('myai_bookList_v1') || '[]'),
+    novelBooks,
+    // v6.1: 小说消息（IndexedDB）
+    novelMessages,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -961,7 +972,7 @@ function handleImport() {
   }
 }
 
-function executeImport(data, stats) {
+async function executeImport(data, stats) {
   try {
     // 🛡️ 安全合并设置：用当前默认值填充旧备份中缺失的字段
     const safeSettings = { ...globalSettings, ...data.globalSettings };
@@ -998,9 +1009,20 @@ function executeImport(data, stats) {
       }
     }
 
-    // v6.0: 恢复小说书库元数据（IndexedDB 消息数据无法通过 JSON 备份）
+    // v6.0: 恢复小说书库元数据
     if (Array.isArray(data.novelBooks) && data.novelBooks.length > 0) {
       localStorage.setItem('myai_bookList_v1', JSON.stringify(data.novelBooks));
+    }
+
+    // v6.1: 恢复小说消息到 IndexedDB
+    if (data.novelMessages && typeof data.novelMessages === 'object') {
+      for (const [bookId, slots] of Object.entries(data.novelMessages)) {
+        for (const { slotIndex, messages } of slots) {
+          if (Array.isArray(messages)) {
+            await saveNovelMessages(bookId, slotIndex, messages);
+          }
+        }
+      }
     }
 
     showImportModal.value = false;
