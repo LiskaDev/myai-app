@@ -827,9 +827,8 @@ function cancelEditMessage() {
   editModal.originalContent = '';
 }
 
-// 导出数据（完整备份：角色 + 群聊 + 日记 + 画像 + 世界书 + 小说书库）
-async function exportData() {
-  // v6.0: 收集每个角色的世界书数据
+// 收集当前所有数据（导出 / 自动备份共用）
+async function collectBackupData() {
   const worldbooks = {};
   for (const role of roleList.value) {
     try {
@@ -837,31 +836,30 @@ async function exportData() {
       if (raw) worldbooks[role.id] = JSON.parse(raw);
     } catch { /* ignore */ }
   }
-
-  // v6.1: 收集小说书库的 IDB 消息数据
   const novelBooks = JSON.parse(localStorage.getItem('myai_bookList_v1') || '[]');
   const novelMessages = {};
   for (const book of novelBooks) {
     const slots = await exportAllBookMessages(book.id);
     if (slots.length > 0) novelMessages[book.id] = slots;
   }
-
-  const data = {
+  return {
     version: '6.1',
     exportTime: new Date().toISOString(),
     globalSettings: globalSettings,
     roleList: roleList.value,
     currentRoleId: currentRoleId.value,
-    // v5.9: 完整备份 —— 群聊、日记、用户画像
     groups: JSON.parse(localStorage.getItem('myai_groups_v1') || '[]'),
     diaries: JSON.parse(localStorage.getItem('myai_diaries_v1') || '[]'),
     persona: JSON.parse(localStorage.getItem('myai_user_persona_v1') || 'null'),
-    // v6.0: 世界书 + 小说书库元数据
     worldbooks,
     novelBooks,
-    // v6.1: 小说消息（IndexedDB）
     novelMessages,
   };
+}
+
+// 导出数据（完整备份：角色 + 群聊 + 日记 + 画像 + 世界书 + 小说书库）
+async function exportData() {
+  const data = await collectBackupData();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -962,7 +960,7 @@ function handleImport() {
     // ⚠️ 二次确认：明确告知会覆盖现有数据
     showConfirmModal(
       '确认导入',
-      `即将导入 ${stats.join('、')}。\n\n⚠️ 这将覆盖当前所有数据！\n建议先导出当前数据作为备份。`,
+      `即将导入 ${stats.join('、')}。\n\n⚠️ 这将覆盖当前所有数据！\n导入前会自动下载一份当前数据的备份文件。`,
       () => {
         executeImport(data, stats);
       }
@@ -974,6 +972,19 @@ function handleImport() {
 
 async function executeImport(data, stats) {
   try {
+    // 🛡️ 导入前自动备份当前数据，防止意外覆盖造成数据丢失
+    try {
+      const currentBackup = await collectBackupData();
+      const blob = new Blob([JSON.stringify(currentBackup)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const dateStr = new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-');
+      a.download = `myai_auto_backup_before_import_${dateStr}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* 自动备份失败不阻止导入 */ }
+
     // 🛡️ 安全合并设置：用当前默认值填充旧备份中缺失的字段
     const safeSettings = { ...globalSettings, ...data.globalSettings };
     // 保护嵌套对象（如 customStyle）不被 undefined 覆盖
