@@ -4,6 +4,7 @@ import { useAutoSummary } from './useAutoSummary';
 import { useUserPersona } from './useUserPersona';
 import { useTimeline } from './useTimeline';
 import { useMemory } from './useMemory';
+import { getFriendlyError, getRechargeUrl } from '../utils/apiError.js';
 import {
     callWithRetry,
     detectRejection,
@@ -109,11 +110,12 @@ export function useChat(appState) {
             checkAndTriggerMemorySystems(currentRole.value, messages.value);
         } catch (error) {
             if (error.name !== 'AbortError') {
-                // 🛡️ 友好的错误提示
-                const errorMsg = error.name === 'TimeoutError'
-                    ? '请求超时，请检查网络连接'
-                    : `错误: ${error.message}`;
-                showToast(errorMsg, 'error');
+                const { msg, isInsufficient } = getFriendlyError(error);
+                const rechargeUrl = isInsufficient ? getRechargeUrl(globalSettings.baseUrl) : '';
+                showToast(msg, 'error', rechargeUrl ? {
+                    label: '去充值 →',
+                    callback: () => window.open(rechargeUrl, '_blank'),
+                } : null);
             }
         } finally {
             isStreaming.value = false;
@@ -531,7 +533,12 @@ Example format:
             // 🛡️ 传递角色 ID 用于验证
             chat(lastUserMsg.content, { targetRoleId }).catch(e => {
                 if (e.name !== 'AbortError') {
-                    showToast(`重新生成失败: ${e.message}`, 'error');
+                    const { msg, isInsufficient } = getFriendlyError(e);
+                    const rechargeUrl = isInsufficient ? getRechargeUrl(globalSettings.baseUrl) : '';
+                    showToast(msg, 'error', rechargeUrl ? {
+                        label: '去充值 →',
+                        callback: () => window.open(rechargeUrl, '_blank'),
+                    } : null);
                 }
             }).finally(() => {
                 isStreaming.value = false;

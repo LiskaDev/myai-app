@@ -4,6 +4,7 @@
  * 右侧抽屉，复用用户自己的 API Key，支持 ACTION 指令执行。
  */
 import { ref, nextTick, watch } from 'vue';
+import { getFriendlyError, getRechargeUrl } from '../utils/apiError.js';
 
 const props = defineProps({
   show:           { type: Boolean, default: false },
@@ -175,7 +176,9 @@ async function sendMessage(textOverride) {
       }
     }
   } catch (err) {
-    assistantMsg.content = `⚠️ 请求失败：${err.message}`;
+    const { msg, isInsufficient } = getFriendlyError(err);
+    const rechargeUrl = isInsufficient ? getRechargeUrl(props.globalSettings?.baseUrl || '') : '';
+    assistantMsg.content = `⚠️ ${msg}` + (rechargeUrl ? `\n\n[去充值 →](${rechargeUrl})` : '');
   } finally {
     assistantMsg.streaming = false;
     isStreaming.value       = false;

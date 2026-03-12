@@ -141,8 +141,9 @@ describe('useChat - 消息处理', () => {
         await sendMessage();
 
         expect(appState.showToast).toHaveBeenCalledWith(
-            expect.stringContaining('Network failed'),
-            'error'
+            expect.stringContaining('网络'),
+            'error',
+            null
         );
     });
 });

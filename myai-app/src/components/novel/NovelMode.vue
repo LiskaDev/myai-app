@@ -5,6 +5,7 @@
  */
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { streamChat, parseStateFromResponse, extractNarrative, buildNovelSystemPrompt, callChat } from '../../utils/novelUtils.js';
+import { getFriendlyError, getRechargeUrl } from '../../utils/apiError.js';
 import BookSettings from './BookSettings.vue';
 import { saveNovelMessages, loadNovelMessages } from '../../composables/useNovelDB.js';
 
@@ -210,7 +211,8 @@ async function initNewGame() {
         });
         messages.value.push({ role: 'assistant', content: streamingText.value });
       }
-      showToast(friendlyError(err));
+      const { msg: _msg1, action: _act1 } = friendlyError(err);
+      showToast(_msg1, _act1);
     }
   } finally {
     isStreaming.value    = false;
@@ -270,7 +272,8 @@ async function sendAction() {
         });
         messages.value.push({ role: 'assistant', content: streamingText.value });
       }
-      showToast(friendlyError(err));
+      const { msg: _msg2, action: _act2 } = friendlyError(err);
+      showToast(_msg2, _act2);
     }
   } finally {
     isStreaming.value = false;
@@ -493,10 +496,10 @@ function friendlyError(err) {
 }
 
 // ── Toast ──
-function showToast(msg) {
-  toast.value = { show: true, msg };
+function showToast(msg, action = null) {
+  toast.value = { show: true, msg, action };
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { toast.value.show = false; }, 2500);
+  toastTimer = setTimeout(() => { toast.value.show = false; toast.value.action = null; }, action ? 5000 : 2500);
 }
 
 // ── 书籍设置回调 ──
@@ -933,7 +936,12 @@ async function autoSave() {
     </div>
 
     <!-- ── Toast ── -->
-    <div class="novel-toast" :class="{ visible: toast.show }">{{ toast.msg }}</div>
+    <div class="novel-toast" :class="{ visible: toast.show }">
+      {{ toast.msg }}
+      <button v-if="toast.action" class="toast-action-btn" @click="toast.action.callback(); toast.show = false">
+        {{ toast.action.label }}
+      </button>
+    </div>
 
     <!-- ── 手动存档面板 ── -->
     <div v-if="showSavePanel" class="save-panel-overlay" @click.self="showSavePanel = false">
@@ -1211,8 +1219,9 @@ async function autoSave() {
 .mob-icon { font-size: 16px; line-height: 1; }
 
 /* ── Toast ── */
-.novel-toast { position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%) translateY(10px); background: rgba(32,24,16,0.95); border: 1px solid rgba(200,168,74,0.3); color: var(--ink-mid); font-size: 12px; letter-spacing: 1px; padding: 7px 18px; border-radius: 20px; z-index: 300; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; }
-.novel-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.novel-toast { position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%) translateY(10px); background: rgba(32,24,16,0.95); border: 1px solid rgba(200,168,74,0.3); color: var(--ink-mid); font-size: 12px; letter-spacing: 1px; padding: 7px 18px; border-radius: 20px; z-index: 300; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; display: flex; align-items: center; gap: 10px; }
+.novel-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+.toast-action-btn { background: rgba(200,168,74,0.2); border: 1px solid rgba(200,168,74,0.4); color: rgba(200,168,74,0.9); font-size: 11px; padding: 2px 8px; border-radius: 10px; cursor: pointer; white-space: nowrap; letter-spacing: 0.5px; }
 
 /* ── Save Panel Overlay ── */
 .save-panel-overlay {
