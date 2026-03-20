@@ -20,6 +20,9 @@ export function useAutoSummary(appState) {
         saveData,
     } = appState;
 
+    // 连续失败计数器：累计 3 次才提示一次，避免频繁打扰用户
+    let consecutiveFailures = 0;
+
     /**
      * 检查并触发自动摘要
      */
@@ -77,8 +80,8 @@ export function useAutoSummary(appState) {
                     messages: [{ role: 'user', content: summaryPrompt }],
                     max_tokens: 500,
                     temperature: 0.3,
-                    response_format: { type: 'json_object' },
                 }),
+                signal: AbortSignal.timeout(30000),
             });
 
             if (!response.ok) {
@@ -122,9 +125,19 @@ export function useAutoSummary(appState) {
 
                 // 保存数据
                 if (saveData) saveData();
+
+                // 成功后重置失败计数
+                consecutiveFailures = 0;
             }
         } catch (error) {
-            showToast('摘要生成失败，请稍后重试', 'error');
+            consecutiveFailures++;
+            console.warn(`[Summary] 自动摘要失败 (${consecutiveFailures}次):`, error.message);
+            // 连续失败 3 次才提示一次，防止偶发网络波动打扰用户
+            // 同时能暴露持续性配置错误（如 401、错误 baseUrl）
+            if (consecutiveFailures >= 3) {
+                showToast('⚠️ 摘要功能连续多次失败，请检查后台模型配置', 'warning');
+                consecutiveFailures = 0; // 重置，避免持续弹窗
+            }
         } finally {
             bgTask.done();
             releaseBackgroundLock();
