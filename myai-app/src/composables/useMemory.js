@@ -426,11 +426,11 @@ ${rawContent}`;
      * 🗂️ 章节摘要：将窗口外的旧消息归档为章节摘要
      */
     async function triggerChapterSummary(role, messagesToSummarize) {
-        if (isGeneratingChapter || !messagesToSummarize || messagesToSummarize.length < 5) return;
-        if (!globalSettings.apiKey) return;
+        if (isGeneratingChapter || !messagesToSummarize || messagesToSummarize.length < 5) return false;
+        if (!globalSettings.apiKey) return false;
         if (!acquireBackgroundLock()) {
             console.log('[ChapterSummary] 后台繁忙，跳过');
-            return;
+            return false;
         }
 
         isGeneratingChapter = true;
@@ -447,7 +447,7 @@ ${rawContent}`;
                 })
                 .join('\n');
 
-            if (!dialogueText.trim()) return;
+            if (!dialogueText.trim()) return false;
 
             const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com')
                 .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
@@ -482,7 +482,7 @@ ${dialogueText}`,
 
             const data = await response.json();
             const summary = data.choices?.[0]?.message?.content?.trim();
-            if (!summary) return;
+            if (!summary) return false;
 
             // 追加新章节
             if (!role.chapterSummaries) role.chapterSummaries = [];
@@ -515,8 +515,10 @@ ${dialogueText}`,
 
             saveData();
             console.log(`[ChapterSummary] ✅ 已归档 ${messagesToSummarize.length} 条消息为第 ${role.chapterSummaries.length} 章`);
+            return true;
         } catch (err) {
             console.warn('[ChapterSummary] 归档失败:', err.message);
+            return false;
         } finally {
             bgTask.done();
             isGeneratingChapter = false;
@@ -782,7 +784,9 @@ ${latestChapter.summary}`,
         const messagesToArchive = allMessages.slice(start, end);
 
         triggerChapterSummary(role, messagesToArchive)
-            .then(() => {
+            .then((didArchive) => {
+                if (!didArchive) return;
+
                 // 同步最新章节到向量记忆（语义搜索功能）
                 syncMemoriesToVector(role, role.id).catch(() => {});
 

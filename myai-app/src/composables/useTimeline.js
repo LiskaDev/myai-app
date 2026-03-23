@@ -126,6 +126,7 @@ export function useTimeline(appState) {
                     max_tokens: 400,
                     temperature: 0.3,
                 }),
+                signal: AbortSignal.timeout(30000),
             });
 
             if (!response.ok) {
