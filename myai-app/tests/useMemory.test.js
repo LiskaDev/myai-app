@@ -11,7 +11,7 @@
  *   - 正常路径：mock Orama BM25，验证返回正确 content
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ── 模拟 @orama/orama（BM25 简化 mock）────────────────────────────────────
 vi.mock('@orama/orama', async () => ({
@@ -24,7 +24,8 @@ vi.mock('@orama/orama', async () => ({
 }));
 
 // ── 被测模块（mock 设置完毕后再导入）────────────────────────────────────────
-import { retrieveRelevantMemories } from '../src/composables/useMemory.js';
+import { retrieveRelevantMemories, useMemory } from '../src/composables/useMemory.js';
+import { releaseBackgroundLock } from '../src/composables/useTimeline.js';
 
 // ── 辅助：往 localStorage 写入角色数据 ────────────────────────────────────
 function setRoles(roles) {
@@ -124,6 +125,99 @@ describe('retrieveRelevantMemories — 正常路径（mock 模型）', () => {
         })]);
         const result = await retrieveRelevantMemories('role-1', '随便一句话');
         result.forEach(item => expect(item).toBeTruthy());
+    });
+});
+
+function makeMessages(count = 16) {
+    return Array.from({ length: count }, (_, i) => ({
+        role: i % 2 === 0 ? 'user' : 'assistant',
+        content: `消息${i}`,
+        rawContent: `消息${i}`,
+    }));
+}
+
+function makeUseMemoryAppState(overrides = {}) {
+    const role = {
+        id: 'role-1',
+        name: '测试角色',
+        systemPrompt: '测试人设',
+        memoryWindow: 15,
+        chapterSummaries: [],
+        _lastCardMessageCount: 0,
+        ...overrides.role,
+    };
+
+    return {
+        globalSettings: {
+            apiKey: 'test-key',
+            baseUrl: 'https://api.deepseek.com',
+            model: 'deepseek-chat',
+            enableSmartAnalysis: true,
+            ...overrides.globalSettings,
+        },
+        roleList: { value: [role] },
+        currentRoleId: { value: role.id },
+        currentRole: { value: role },
+        messages: { value: makeMessages(16) },
+        memoryEditState: { editingIndex: null, editContent: '', refiningIndex: null, expandedIndex: null },
+        showToast: vi.fn(),
+        saveData: vi.fn(),
+    };
+}
+
+describe('useMemory — 认知卡计数推进规则', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        releaseBackgroundLock();
+    });
+
+    afterEach(() => {
+        releaseBackgroundLock();
+        vi.useRealTimers();
+    });
+
+    it('认知卡未真正更新时不应推进 _lastCardMessageCount', async () => {
+        const appState = makeUseMemoryAppState();
+        const role = appState.currentRole.value;
+        role._lastCardMessageCount = 0;
+
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                choices: [{ message: { content: '非 JSON 文本' } }],
+            }),
+        });
+
+        const { checkAndTriggerMemorySystems } = useMemory(appState);
+        checkAndTriggerMemorySystems(role, appState.messages.value);
+
+        await vi.advanceTimersByTimeAsync(2500);
+        await Promise.resolve();
+
+        expect(role._lastCardMessageCount).toBe(0);
+        expect(role.memoryCard).toBeUndefined();
+    });
+
+    it('仅 didUpdate=true 时推进 _lastCardMessageCount', async () => {
+        const appState = makeUseMemoryAppState();
+        const role = appState.currentRole.value;
+        role._lastCardMessageCount = 0;
+
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                choices: [{ message: { content: '{"userProfile":"小李","keyEvents":[]}' } }],
+            }),
+        });
+
+        const { checkAndTriggerMemorySystems } = useMemory(appState);
+        checkAndTriggerMemorySystems(role, appState.messages.value);
+
+        await vi.advanceTimersByTimeAsync(2500);
+        await Promise.resolve();
+
+        expect(role._lastCardMessageCount).toBe(16);
+        expect(role.memoryCard?.userProfile).toBe('小李');
     });
 });
 
