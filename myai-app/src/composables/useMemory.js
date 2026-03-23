@@ -530,18 +530,16 @@ ${dialogueText}`,
      * 🧠 认知卡更新：AI 自动维护角色对用户的结构化认知
      */
     async function triggerMemoryCardUpdate(role, recentMessages) {
-        if (isUpdatingCard) return;
-        if (!globalSettings.apiKey) return;
+        if (isUpdatingCard) return false;
+        if (!globalSettings.apiKey) return false;
         if (!acquireBackgroundLock()) {
-            console.log('[MemoryCard] 后台繁忙，10秒后重试...');
-            setTimeout(() => {
-                triggerMemoryCardUpdate(role, recentMessages).catch(() => { });
-            }, 10000);
-            return;
+            console.log('[MemoryCard] 后台繁忙，跳过本次更新');
+            return false;
         }
 
         isUpdatingCard = true;
         const bgTask = useBackgroundTasks().trackTask('认知卡更新');
+        let didUpdate = false;
 
         try {
             // 格式化对话文本
@@ -554,7 +552,7 @@ ${dialogueText}`,
                 })
                 .join('\n');
 
-            if (!dialogueText.trim()) return;
+            if (!dialogueText.trim()) return false;
 
             // 当前认知卡 JSON
             const currentCard = role.memoryCard || {};
@@ -631,6 +629,7 @@ ${dialogueText}
                             lastTone: parsed.lastTone || '',
                             updatedAt: Date.now(),
                         };
+                        didUpdate = true;
                         saveData();
                         console.log('[MemoryCard] ✅ 认知卡已更新');
                     }
@@ -640,8 +639,10 @@ ${dialogueText}
             } else {
                 console.warn('[MemoryCard] AI 返回无法提取 JSON:', aiResponse.slice(0, 100));
             }
+            return didUpdate;
         } catch (err) {
             console.warn('[MemoryCard] 更新失败:', err.message);
+            return false;
         } finally {
             bgTask.done();
             isUpdatingCard = false;
@@ -814,7 +815,8 @@ ${latestChapter.summary}`,
             }
             const recent = allMessages.slice(-30);
             triggerMemoryCardUpdate(role, recent)
-                .then(() => {
+                .then((didUpdate) => {
+                    if (!didUpdate) return;
                     // 🛡️ 只有执行成功后才推进计数器
                     role._lastCardMessageCount = snapshotCount;
                     saveData();
