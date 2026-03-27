@@ -486,8 +486,12 @@ ${dialogueText}`,
 
             // 追加新章节
             if (!role.chapterSummaries) role.chapterSummaries = [];
+            const nextIdx = role.chapterSummaries.length > 0 
+                ? role.chapterSummaries[role.chapterSummaries.length - 1].chapterIndex + 1 
+                : 1;
+
             role.chapterSummaries.push({
-                chapterIndex: role.chapterSummaries.length + 1,
+                chapterIndex: nextIdx,
                 createdAt: Date.now(),
                 messageCount: messagesToSummarize.length,
                 summary,
@@ -497,24 +501,25 @@ ${dialogueText}`,
             if (role.chapterSummaries.length > MAX_CHAPTERS) {
                 const overflow = role.chapterSummaries.length - MAX_CHAPTERS;
                 const oldChapters = role.chapterSummaries.slice(0, overflow + 1);
-                const condensed = oldChapters.map(c => c.summary).join(' ');
+                // 移除原有的[远古回忆]前缀，防止无限套娃叠加
+                const condensed = oldChapters.map(c => c.summary.replace(/^\[?远古回忆\]?\s*/g, '')).join(' ');
                 // 替换为一条合并摘要
                 role.chapterSummaries = [
                     {
                         chapterIndex: 0,
                         createdAt: Date.now(),
                         messageCount: oldChapters.reduce((s, c) => s + c.messageCount, 0),
-                        summary: `[远古回忆] ${condensed.slice(0, 300)}`,
+                        // 放宽截断限制到2000字，避免内容丢失
+                        summary: `[远古回忆] ${condensed.slice(0, 2000)}`,
                         isCondensed: true,
                     },
                     ...role.chapterSummaries.slice(overflow + 1),
                 ];
-                // 重新编号
-                role.chapterSummaries.forEach((c, i) => c.chapterIndex = i + 1);
+                // 不再重新编号，以保留最新章节号
             }
 
             saveData();
-            console.log(`[ChapterSummary] ✅ 已归档 ${messagesToSummarize.length} 条消息为第 ${role.chapterSummaries.length} 章`);
+            console.log(`[ChapterSummary] ✅ 已归档 ${messagesToSummarize.length} 条消息为第 ${nextIdx} 章`);
             return true;
         } catch (err) {
             console.warn('[ChapterSummary] 归档失败:', err.message);
@@ -574,9 +579,8 @@ ${dialogueText}`,
                 },
                 body: JSON.stringify({
                     model,
-                    max_tokens: 500,
+                    max_tokens: 2000,
                     temperature: 0.3,
-                    response_format: { type: 'json_object' },
                     messages: [
                         {
                             role: 'system',

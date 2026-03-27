@@ -134,12 +134,17 @@ const PERSONA_KEY = 'myai_user_persona_v1';
 const PERSONA_MAX_TRAITS = 60;
 
 export function loadUserPersona() {
+    const defaultPersona = getDefaultPersona();
     try {
         const raw = localStorage.getItem(PERSONA_KEY);
-        if (!raw) return getDefaultPersona();
-        return JSON.parse(raw);
+        if (!raw) return defaultPersona;
+        const parsed = JSON.parse(raw);
+        return {
+            traits: parsed.traits || [],
+            messageCountSinceLastAnalysis: parsed.messageCountSinceLastAnalysis || 0
+        };
     } catch {
-        return getDefaultPersona();
+        return defaultPersona;
     }
 }
 

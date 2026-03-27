@@ -118,7 +118,7 @@ category 只能是以下五种之一：preference / personality / fact / style /
                 },
                 body: JSON.stringify({
                     model,
-                    max_tokens: 500,
+                    max_tokens: 2000,
                     temperature: 0.3,
                     messages: [{ role: 'user', content: analysisPrompt }],
                 }),
@@ -130,12 +130,10 @@ category 只能是以下五种之一：preference / personality / fact / style /
             const data = await response.json();
             const rawText = data.choices?.[0]?.message?.content || '';
 
-            const cleanedText = rawText
-                .replace(/```json\s*/gi, '')
-                .replace(/```\s*/g, '')
-                .trim();
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) return;
 
-            const parsed = JSON.parse(cleanedText);
+            const parsed = JSON.parse(jsonMatch[0]);
             const newTraits = parsed?.new_traits;
 
             if (!Array.isArray(newTraits) || newTraits.length === 0) return;
@@ -211,7 +209,7 @@ ${others.map((t, i) => `${i + 1}. [${t.category}] ${t.content}`).join('\n')}
                 },
                 body: JSON.stringify({
                     model,
-                    max_tokens: 600,
+                    max_tokens: 2000,
                     temperature: 0.2,
                     messages: [{ role: 'user', content: consolidatePrompt }],
                 }),
@@ -222,12 +220,10 @@ ${others.map((t, i) => `${i + 1}. [${t.category}] ${t.content}`).join('\n')}
 
             const data = await response.json();
             const rawText = data.choices?.[0]?.message?.content || '';
-            const cleanedText = rawText
-                .replace(/```json\s*/gi, '')
-                .replace(/```\s*/g, '')
-                .trim();
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) return;
 
-            const parsed = JSON.parse(cleanedText);
+            const parsed = JSON.parse(jsonMatch[0]);
             const refined = parsed?.refined;
 
             if (!Array.isArray(refined) || refined.length === 0) return;

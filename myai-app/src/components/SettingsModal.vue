@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useAppState } from '../composables/useAppState';
 import AvatarCropper from './AvatarCropper.vue';
@@ -117,7 +117,12 @@ function handleDocClick(e) {
     bgModelPickerOpen.value = false;
   }
 }
-onMounted(() => document.addEventListener('click', handleDocClick, true));
+onMounted(() => {
+  document.addEventListener('click', handleDocClick, true);
+  if (props.appState && typeof props.appState.refreshStorageUsage === 'function') {
+    props.appState.refreshStorageUsage();
+  }
+});
 onBeforeUnmount(() => document.removeEventListener('click', handleDocClick, true));
 
 // 用户头像

@@ -78,7 +78,7 @@ export function useAutoSummary(appState) {
                 body: JSON.stringify({
                     model: globalSettings.bgModel || globalSettings.model || 'deepseek-chat',
                     messages: [{ role: 'user', content: summaryPrompt }],
-                    max_tokens: 500,
+                    max_tokens: 2000,
                     temperature: 0.3,
                 }),
                 signal: AbortSignal.timeout(30000),
@@ -94,7 +94,9 @@ export function useAutoSummary(appState) {
             if (newSummary) {
                 // 解析 JSON 格式的摘要，降级到纯文本
                 try {
-                    const parsed = JSON.parse(newSummary);
+                    const jsonMatch = newSummary.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch) throw new Error('No JSON found');
+                    const parsed = JSON.parse(jsonMatch[0]);
                     role.autoSummary = parsed.narrative || newSummary;
                     if (parsed.emotion)           role.currentEmotion    = parsed.emotion;
                     if (parsed.affectionDelta !== undefined) {

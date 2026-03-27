@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAppState } from '../../composables/useAppState';
 import AvatarCropper from '../AvatarCropper.vue';
 
@@ -40,6 +40,10 @@ const storageColor = computed(() => {
   if (storageUsage.value.percent >= 80) return 'red';
   if (storageUsage.value.percent >= 60) return 'yellow';
   return 'green';
+});
+
+onMounted(() => {
+  appState.refreshStorageUsage();
 });
 
 const useCustomModel = ref(false);

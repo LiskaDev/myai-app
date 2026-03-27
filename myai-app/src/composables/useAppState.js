@@ -9,8 +9,12 @@ import {
 } from '../utils/storage';
 import { syncMatrix } from './useRelationship';
 
+let _appStateInstance = null;
+
 // 创建应用状态组合式函数
 export function useAppState() {
+    if (_appStateInstance) return _appStateInstance;
+
     // ============== 响应式状态 ==============
     const globalSettings = reactive({ ...DEFAULT_GLOBAL_SETTINGS });
     const roleList = ref([]);
@@ -474,7 +478,7 @@ export function useAppState() {
         }
     }
 
-    return {
+    const appStateObj = {
         // 状态
         globalSettings,
         roleList,
@@ -518,4 +522,7 @@ export function useAppState() {
         cleanupStorageListener,
         refreshStorageUsage,
     };
+
+    _appStateInstance = appStateObj;
+    return appStateObj;
 }
