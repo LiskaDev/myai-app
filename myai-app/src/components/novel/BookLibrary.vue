@@ -438,6 +438,67 @@ function bookTags(book) {
 }
 .menu-confirm-no:hover { background: rgba(255, 255, 255, 0.1); }
 
+/* ── 日间模式覆盖 ── */
+[data-theme="light"] .empty-title { color: var(--ink); }
+[data-theme="light"] .empty-sub { color: var(--ink-faint); }
+[data-theme="light"] .library-label { color: var(--ink-faint); }
+[data-theme="light"] .import-btn-sm {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent);
+}
+[data-theme="light"] .import-btn-sm:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+[data-theme="light"] .book-card {
+  background: var(--brush);
+  border-color: var(--border);
+}
+[data-theme="light"] .book-card:hover {
+  background: var(--paper-warm);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: 0 10px 32px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+[data-theme="light"] .book-title { color: var(--ink); }
+[data-theme="light"] .book-meta { color: var(--ink-faint); }
+[data-theme="light"] .book-date { color: var(--ink-faint); }
+[data-theme="light"] .book-tag {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent);
+}
+[data-theme="light"] .book-tag-more {
+  background: var(--brush);
+  border-color: var(--border);
+  color: var(--ink-faint);
+}
+[data-theme="light"] .book-menu-btn {
+  background: var(--brush);
+  border-color: var(--border);
+  color: var(--ink-faint);
+}
+[data-theme="light"] .book-menu-btn:hover,
+[data-theme="light"] .book-menu-btn.active {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--accent);
+}
+[data-theme="light"] .book-menu-dropdown {
+  background: var(--paper-card);
+  border-color: var(--border);
+  box-shadow: 0 8px 24px var(--shadow-lg);
+}
+[data-theme="light"] .menu-item { color: var(--ink-faint); }
+[data-theme="light"] .menu-item:hover { background: var(--brush); color: var(--ink); }
+[data-theme="light"] .menu-confirm-yes { color: #c0392b; }
+[data-theme="light"] .menu-confirm-no {
+  background: var(--brush);
+  border-color: var(--border);
+  color: var(--ink-faint);
+}
+[data-theme="light"] .menu-confirm-no:hover { background: var(--paper-warm); }
+
 @media (max-width: 640px) {
   .book-grid {
     grid-template-columns: repeat(2, 1fr);

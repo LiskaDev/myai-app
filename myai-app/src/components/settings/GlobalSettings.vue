@@ -355,25 +355,8 @@ function resetCustomStyle() {
             ⚠️ 已关闭：角色状态、剧情章节、认知卡、时间线将全部停止更新
           </p>
 
-          <!-- 🎨 文字风格 -->
+          <!-- 亮度/深浅/粗细/字号滑块 -->
           <div>
-            <label class="block text-sm text-gray-300 mb-2">🎨 文字风格</label>
-            <div class="style-card-grid">
-              <div v-for="s in [
-                { id: 'clear', name: '清澈·标准', desc: '深色·无衬线', color: '#6b9fff' },
-                { id: 'misty', name: '烟雨·无气泡', desc: '深暖·衬线', color: '#c8a878' },
-                { id: 'day', name: '烟雨·日间', desc: '浅色·衬线', color: '#8b7355' },
-                { id: 'loveDark', name: '甜心·暗粉', desc: '深色·粉色调', color: '#ff6eb0' },
-                { id: 'loveLight', name: '甜心·浅粉', desc: '浅色·衬线', color: '#e8699a' }
-              ]" :key="s.id"
-                   class="style-card" :class="{ active: globalSettings.rpTextStyle === s.id }"
-                   :style="{ '--card-accent': s.color }" @click="globalSettings.rpTextStyle = s.id">
-                <div class="style-card-dot" :style="{ background: s.color }"></div>
-                <div class="style-card-name">{{ s.name }}</div>
-                <div class="style-card-desc">{{ s.desc }}</div>
-              </div>
-            </div>
-
             <!-- 聊天区亮度 -->
             <div class="mt-3">
               <div class="flex items-center justify-between mb-1">
@@ -470,13 +453,13 @@ function resetCustomStyle() {
 
 .user-avatar-picker {
   width: 64px; height: 64px;
-  border-radius: 50%; border: 2px dashed rgba(255,255,255,0.2);
+  border-radius: 50%; border: 2px dashed var(--border);
   cursor: pointer; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; position: relative;
-  transition: all 0.2s ease; background: rgba(255,255,255,0.04);
+  transition: all 0.2s ease; background: var(--brush);
 }
-.user-avatar-picker:hover { border-color: rgba(99,102,241,0.5); background: rgba(99,102,241,0.08); }
+.user-avatar-picker:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .user-avatar-picker:active { transform: scale(0.95); }
 .user-avatar-picker-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .user-avatar-loading {
@@ -489,19 +472,4 @@ function resetCustomStyle() {
   border-radius: 50%; animation: spin 0.6s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-.style-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
-.style-card {
-  padding: 10px 12px; border-radius: 10px;
-  border: 1.5px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);
-  cursor: pointer; transition: all 0.2s ease; text-align: center;
-}
-.style-card:hover { border-color: var(--card-accent, rgba(255,255,255,0.2)); background: rgba(255,255,255,0.06); }
-.style-card.active {
-  border-color: var(--card-accent, #6b9fff); background: rgba(255,255,255,0.08);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--card-accent) 20%, transparent);
-}
-.style-card-dot { width: 8px; height: 8px; border-radius: 50%; margin: 0 auto 6px; }
-.style-card-name { font-size: 12px; color: rgba(255,255,255,0.85); margin-bottom: 2px; letter-spacing: 1px; }
-.style-card-desc { font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.5px; }
 </style>

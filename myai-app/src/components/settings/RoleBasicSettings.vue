@@ -263,26 +263,26 @@ function clearAvatar() {
 <style scoped>
 .basic-field {
   padding: 12px;
-  background: rgba(255,255,255,0.02);
+  background: var(--brush);
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
   transition: all 0.2s ease;
 }
-.basic-field:hover { background: rgba(255,255,255,0.04); border-color: rgba(139,92,246,0.2); }
-.basic-field:focus-within { border-color: rgba(139,92,246,0.4); box-shadow: 0 0 0 3px rgba(139,92,246,0.1); }
+.basic-field:hover { background: var(--paper-warm); border-color: var(--border-accent); }
+.basic-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent); }
 
 /* 头像选择器 */
 .avatar-picker {
   width: 68px; height: 68px;
   border-radius: 50%;
-  border: 2px dashed rgba(255,255,255,0.2);
+  border: 2px dashed var(--border);
   cursor: pointer; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; position: relative;
   transition: all 0.2s ease;
-  background: rgba(255,255,255,0.04);
+  background: var(--brush);
 }
-.avatar-picker:hover { border-color: rgba(139,92,246,0.5); background: rgba(139,92,246,0.08); }
+.avatar-picker:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .avatar-picker:active { transform: scale(0.95); }
 .avatar-picker-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .avatar-picker-loading {
@@ -353,13 +353,13 @@ function clearAvatar() {
 .writing-style-option {
   display: flex; align-items: center; gap: 5px;
   padding: 6px 12px; border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.03);
-  color: rgba(200,200,220,0.8); font-size: 0.8rem;
+  border: 1px solid var(--border);
+  background: var(--brush);
+  color: var(--ink-faint); font-size: 0.8rem;
   cursor: pointer; transition: all 0.25s ease; white-space: nowrap;
 }
-.writing-style-option:hover { border-color: rgba(139,92,246,0.3); background: rgba(139,92,246,0.08); color: rgba(220,220,240,1); }
-.writing-style-option.active { border-color: rgba(139,92,246,0.6); background: rgba(139,92,246,0.15); color: white; box-shadow: 0 0 12px rgba(139,92,246,0.15); }
+.writing-style-option:hover { border-color: var(--border-accent); background: var(--paper-warm); color: var(--ink); }
+.writing-style-option.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--ink); box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 15%, transparent); }
 .ws-icon { font-size: 0.9rem; line-height: 1; }
 .ws-label { font-weight: 500; }
 </style>

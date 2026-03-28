@@ -1,24 +1,63 @@
-.chat-style-clear {
-  --style-body-font-family: var(--font-sans-sc);
-  --style-body-color: rgba(245, 248, 255, 0.8);
-  --style-dialogue-color: rgba(255, 255, 255, 0.9);
-  --style-action-color: rgba(240, 244, 255, 0.4);
-  --style-thought-color: rgba(228, 235, 250, 0.74);
-  --style-status-color: rgba(214, 224, 242, 0.5);
-  --style-quote-color: rgba(220, 120, 160, 0.8);
-}
+/* ============================================================
+   theme-tokens.css
+   两套主题：light（优莅·日间）/ dark（林小夏·夜间）
+   通过 html[data-theme] 切换，覆盖所有旧的 chat-style-* 变量
+   ============================================================ */
 
-.chat-style-misty {
-  --style-body-font-family: var(--font-serif-sc);
-  --style-body-color: rgba(235, 215, 185, 0.72);
-  --style-dialogue-color: rgba(250, 235, 210, 0.88);
-  --style-action-color: rgba(200, 168, 120, 0.55);
-  --style-thought-color: rgba(235, 215, 185, 0.72);
-  --style-status-color: rgba(214, 191, 156, 0.5);
-  --style-quote-color: rgba(180, 145, 95, 0.8);
-}
+/* ── 日间主题（优莅·暖纸） ── */
+[data-theme="light"] {
 
-.chat-style-day {
+  /* DESIGN_SPEC 变量别名 */
+  --ink: #1a1410;
+  --ink-light: #3d3530;
+  --ink-faint: #6b5e54;
+  --paper: #f5f0e8;
+  --paper-warm: #ede6d6;
+  --paper-card: #faf7f2;
+  --brush: rgba(139,111,94,0.15);
+
+  /* 背景层级 */
+  --bg-base: #f5f0e8;
+  --bg-layer: #ede6d6;
+  --bg-card: #faf7f2;
+  --bg-glass: rgba(255, 255, 255, 0.55);
+  --bg-glass-dark: rgba(237, 230, 214, 0.85);
+  --bg-glass-message: rgba(250, 247, 242, 0.9);
+  --bg-glass-light: rgba(255, 255, 255, 0.35);
+
+  /* 文字 */
+  --text-primary: #1a1410;
+  --text-secondary: #3d3530;
+  --text-faint: #6b5e54;
+
+  /* 强调色 */
+  --accent: #8b6f5e;
+  --accent-gold: #c4963a;
+  --accent-rose: #c07070;
+  --color-primary: #8b6f5e;
+
+  /* 边框 & 阴影 */
+  --border: rgba(139, 111, 94, 0.2);
+  --border-accent: rgba(196, 150, 58, 0.4);
+  --shadow: rgba(26, 20, 16, 0.12);
+  --shadow-lg: rgba(26, 20, 16, 0.18);
+
+  /* 用户气泡 */
+  --user-bubble-bg: #1a1410;
+  --user-bubble-text: #f5f0e8;
+
+  /* AI 气泡 */
+  --ai-bubble-bg: #faf7f2;
+  --ai-bubble-border: rgba(139, 111, 94, 0.12);
+
+  /* 内心戏气泡 */
+  --thought-bg: rgba(139, 111, 94, 0.08);
+  --thought-border: rgba(196, 150, 58, 0.5);
+
+  /* 打字指示点 */
+  --dot-color: #8b6f5e;
+
+  /* ── 文字风格变量（对应旧 chat-style-* 的 day 风格）── */
   --style-body-font-family: var(--font-serif-sc);
   --style-body-color: rgba(58, 43, 30, 0.82);
   --style-dialogue-color: rgba(42, 31, 22, 0.88);
@@ -26,24 +65,177 @@
   --style-thought-color: rgba(77, 58, 38, 0.7);
   --style-status-color: rgba(110, 88, 64, 0.72);
   --style-quote-color: rgba(180, 145, 95, 0.8);
+
+  /* 顶栏/底栏 */
+  --topbar-bg: rgba(237, 230, 214, 0.92);
+  --bottombar-bg: rgba(237, 230, 214, 0.92);
+  --input-bg: rgba(250, 247, 242, 0.95);
+
+  /* 侧边栏 */
+  --sidebar-bg: rgba(237, 230, 214, 0.96);
+
+  /* 滚动条 */
+  --scrollbar-thumb: rgba(139, 111, 94, 0.25);
+
+  /* 遮罩 */
+  --overlay-bg: rgba(26, 20, 16, 0.45);
 }
 
-.chat-style-loveDark {
-  --style-body-font-family: var(--font-sans-sc);
-  --style-body-color: rgba(255, 234, 245, 0.84);
-  --style-dialogue-color: rgba(255, 241, 248, 0.92);
-  --style-action-color: rgba(255, 140, 180, 0.52);
-  --style-thought-color: rgba(255, 224, 238, 0.78);
-  --style-status-color: rgba(255, 190, 216, 0.52);
-  --style-quote-color: rgba(200, 95, 140, 0.8);
-}
+/* ── 夜间主题（林小夏·深紫） ── */
+[data-theme="dark"] {
 
-.chat-style-loveLight {
+  /* DESIGN_SPEC 变量别名 */
+  --ink: #e8e6f0;
+  --ink-light: #9490a8;
+  --ink-faint: #5a5670;
+  --paper: #0d0e14;
+  --paper-warm: #13151f;
+  --paper-card: #1a1d2e;
+  --brush: rgba(139,120,255,0.1);
+
+  /* 背景层级 */
+  --bg-base: #0d0e14;
+  --bg-layer: #13151f;
+  --bg-card: #1a1d2e;
+  --bg-glass: rgba(255, 255, 255, 0.04);
+  --bg-glass-dark: rgba(19, 21, 31, 0.88);
+  --bg-glass-message: rgba(26, 29, 46, 0.85);
+  --bg-glass-light: rgba(255, 255, 255, 0.07);
+
+  /* 文字 */
+  --text-primary: #e8e6f0;
+  --text-secondary: #9490a8;
+  --text-faint: #5a5670;
+
+  /* 强调色 */
+  --accent: #8b78ff;
+  --accent-gold: #d4a843;
+  --accent-rose: #e07070;
+  --color-primary: #8b78ff;
+
+  /* 边框 & 阴影 */
+  --border: rgba(255, 255, 255, 0.07);
+  --border-accent: rgba(139, 120, 255, 0.3);
+  --shadow: rgba(0, 0, 0, 0.35);
+  --shadow-lg: rgba(0, 0, 0, 0.5);
+
+  /* 用户气泡 */
+  --user-bubble-bg: #2a2350;
+  --user-bubble-text: #d4d0f0;
+
+  /* AI 气泡 */
+  --ai-bubble-bg: #1a1d2e;
+  --ai-bubble-border: rgba(255, 255, 255, 0.07);
+
+  /* 内心戏气泡 */
+  --thought-bg: rgba(139, 120, 255, 0.07);
+  --thought-border: rgba(139, 120, 255, 0.25);
+
+  /* 打字指示点 */
+  --dot-color: #5a5670;
+
+  /* ── 文字风格变量（对应旧 chat-style-* 的 clear 风格）── */
   --style-body-font-family: var(--font-serif-sc);
-  --style-body-color: rgba(70, 38, 54, 0.8);
-  --style-dialogue-color: rgba(56, 30, 43, 0.88);
-  --style-action-color: rgba(142, 76, 108, 0.82);
-  --style-thought-color: rgba(86, 47, 66, 0.7);
-  --style-status-color: rgba(120, 72, 95, 0.76);
-  --style-quote-color: rgba(200, 95, 140, 0.8);
+  --style-body-color: rgba(232, 230, 240, 0.82);
+  --style-dialogue-color: rgba(245, 243, 255, 0.92);
+  --style-action-color: rgba(180, 175, 210, 0.45);
+  --style-thought-color: rgba(210, 205, 240, 0.7);
+  --style-status-color: rgba(180, 175, 210, 0.5);
+  --style-quote-color: rgba(212, 168, 67, 0.85);
+
+  /* 顶栏/底栏 */
+  --topbar-bg: rgba(19, 21, 31, 0.92);
+  --bottombar-bg: rgba(19, 21, 31, 0.92);
+  --input-bg: rgba(26, 29, 46, 0.95);
+
+  /* 侧边栏 */
+  --sidebar-bg: rgba(19, 21, 31, 0.97);
+
+  /* 滚动条 */
+  --scrollbar-thumb: rgba(139, 120, 255, 0.2);
+
+  /* 遮罩 */
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+}
+
+/* ============================================================
+   气泡基础样式（不再用 chat-style-* class 切换，统一走主题变量）
+   把这段复制进全局 CSS 或 App.vue 的 <style> 里
+   ============================================================ */
+
+/* 用户气泡 */
+.user-speech-bubble {
+  background: var(--user-bubble-bg);
+  color: var(--user-bubble-text);
+  border-radius: 18px 4px 18px 18px;
+  padding: 11px 15px;
+  font-size: 15px;
+  line-height: 1.65;
+  box-shadow: 0 2px 10px var(--shadow-lg);
+  transition: background 0.3s, color 0.3s;
+}
+
+/* AI 主气泡 */
+.speech-bubble {
+  background: var(--ai-bubble-bg);
+  border: 1px solid var(--ai-bubble-border);
+  border-radius: 4px 16px 16px 16px;
+  padding: 13px 16px;
+  font-family: var(--style-body-font-family);
+  font-size: 15px;
+  line-height: 1.9;
+  box-shadow: 0 2px 12px var(--shadow);
+  transition: background 0.3s, border-color 0.3s;
+}
+
+/* 内心戏气泡 */
+.thought-cloud {
+  background: var(--thought-bg);
+  border-left: 2px solid var(--thought-border);
+  border-radius: 0 10px 10px 0;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-faint);
+  line-height: 1.6;
+  transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+
+/* 打字指示 */
+.typing-indicator .dot {
+  background: var(--dot-color);
+}
+
+/* 顶栏/底栏 */
+header.topbar,
+footer.bottombar {
+  background: var(--topbar-bg);
+  border-color: var(--border);
+  transition: background 0.3s, border-color 0.3s;
+}
+
+/* 侧边栏 */
+.sidebar {
+  background: var(--sidebar-bg);
+  border-color: var(--border);
+  transition: background 0.3s, border-color 0.3s;
+}
+
+/* 输入框 */
+.form-input {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border-color: var(--border);
+  transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+
+/* 遮罩 */
+.overlay-mask {
+  background: var(--overlay-bg);
 }

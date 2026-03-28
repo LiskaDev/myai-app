@@ -322,30 +322,30 @@ function toggleVectorMemory() {
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #a1a1aa;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--brush);
+  color: var(--ink-faint);
+  border: 1px solid var(--border);
   cursor: pointer;
   transition: all 0.15s;
 }
-.wb-action-btn:hover { background: rgba(255, 255, 255, 0.1); color: #d4d4d8; }
-.wb-action-btn.primary { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border-color: rgba(99, 102, 241, 0.25); }
-.wb-action-btn.primary:hover { background: rgba(99, 102, 241, 0.25); }
+.wb-action-btn:hover { background: var(--paper-warm); color: var(--ink); }
+.wb-action-btn.primary { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); border-color: var(--border-accent); }
+.wb-action-btn.primary:hover { background: color-mix(in srgb, var(--accent) 25%, transparent); }
 .wb-action-btn.ai { background: rgba(168, 85, 247, 0.15); color: #c4b5fd; border-color: rgba(168, 85, 247, 0.25); }
 .wb-action-btn.ai:hover { background: rgba(168, 85, 247, 0.25); }
 
 /* ── 编辑表单 ── */
 .wb-edit-form {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--brush);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px;
 }
 .wb-form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.wb-close-btn { background: none; border: none; color: #71717a; cursor: pointer; font-size: 16px; padding: 2px 6px; }
-.wb-close-btn:hover { color: #d4d4d8; }
+.wb-close-btn { background: none; border: none; color: var(--ink-faint); cursor: pointer; font-size: 16px; padding: 2px 6px; }
+.wb-close-btn:hover { color: var(--ink); }
 .wb-field { margin-bottom: 12px; }
-.wb-field label { display: block; font-size: 12px; color: #a1a1aa; margin-bottom: 4px; }
+.wb-field label { display: block; font-size: 12px; color: var(--ink-faint); margin-bottom: 4px; }
 .wb-row { display: flex; gap: 12px; }
 .wb-textarea { font-family: inherit; resize: vertical; min-height: 80px; line-height: 1.6; }
 
@@ -355,22 +355,22 @@ function toggleVectorMemory() {
   flex-wrap: wrap;
   gap: 4px;
   padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--brush);
+  border: 1px solid var(--border);
   border-radius: 8px;
   min-height: 36px;
   align-items: center;
   cursor: text;
   transition: border-color 0.15s;
 }
-.wb-tag-input-wrap:focus-within { border-color: rgba(99, 102, 241, 0.5); }
+.wb-tag-input-wrap:focus-within { border-color: var(--accent); }
 .wb-tag {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   padding: 2px 8px;
-  background: rgba(99, 102, 241, 0.18);
-  color: #c7d2fe;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
   border-radius: 4px;
   font-size: 12px;
   line-height: 1.4;
@@ -378,7 +378,7 @@ function toggleVectorMemory() {
 .wb-tag-remove {
   background: none;
   border: none;
-  color: #818cf8;
+  color: var(--accent);
   cursor: pointer;
   font-size: 14px;
   padding: 0 1px;
@@ -392,47 +392,47 @@ function toggleVectorMemory() {
   background: none;
   border: none;
   outline: none;
-  color: #e5e7eb;
+  color: var(--ink);
   font-size: 13px;
   padding: 2px 0;
 }
-.wb-tag-input::placeholder { color: #52525b; }
+.wb-tag-input::placeholder { color: var(--ink-faint); }
 
 /* ── 保存/取消按钮 ── */
 .wb-save-btn {
   padding: 6px 16px;
   border-radius: 6px;
   font-size: 13px;
-  background: rgba(99, 102, 241, 0.2);
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+  border: 1px solid var(--border-accent);
   cursor: pointer;
   transition: all 0.15s;
 }
-.wb-save-btn:hover { background: rgba(99, 102, 241, 0.3); }
+.wb-save-btn:hover { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 .wb-cancel-btn {
   padding: 6px 16px;
   border-radius: 6px;
   font-size: 13px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #71717a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--brush);
+  color: var(--ink-faint);
+  border: 1px solid var(--border);
   cursor: pointer;
   transition: all 0.15s;
 }
-.wb-cancel-btn:hover { color: #a1a1aa; }
+.wb-cancel-btn:hover { color: var(--ink); }
 
 /* ── 条目列表 ── */
 .wb-entry {
   display: flex;
   align-items: stretch;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--brush);
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
   transition: all 0.15s;
 }
-.wb-entry:hover { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.12); }
+.wb-entry:hover { background: var(--paper-warm); border-color: var(--border-accent); }
 .wb-entry.disabled { opacity: 0.45; }
 .wb-entry-main {
   flex: 1;
@@ -441,7 +441,7 @@ function toggleVectorMemory() {
   min-width: 0;
 }
 .wb-entry-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.wb-entry-name { font-size: 13px; font-weight: 500; color: #e5e7eb; }
+.wb-entry-name { font-size: 13px; font-weight: 500; color: var(--ink); }
 .wb-entry-priority {
   font-size: 10px;
   padding: 1px 5px;
@@ -450,19 +450,19 @@ function toggleVectorMemory() {
 }
 .wb-entry-priority.high { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
 .wb-entry-priority.mid { background: rgba(234, 179, 8, 0.12); color: #fde68a; }
-.wb-entry-priority.low { background: rgba(255, 255, 255, 0.06); color: #71717a; }
+.wb-entry-priority.low { background: var(--brush); color: var(--ink-faint); }
 .wb-entry-keywords { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 4px; }
 .wb-keyword-pill {
   font-size: 10px;
   padding: 1px 6px;
-  background: rgba(99, 102, 241, 0.12);
-  color: #a5b4fc;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
   border-radius: 3px;
 }
-.wb-keyword-more { font-size: 10px; color: #52525b; align-self: center; }
+.wb-keyword-more { font-size: 10px; color: var(--ink-faint); align-self: center; }
 .wb-entry-preview {
   font-size: 11px;
-  color: #71717a;
+  color: var(--ink-faint);
   line-height: 1.5;
   white-space: nowrap;
   overflow: hidden;
@@ -475,7 +475,7 @@ function toggleVectorMemory() {
   justify-content: center;
   gap: 4px;
   padding: 4px 8px;
-  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 1px solid var(--border);
 }
 .wb-toggle {
   background: none;
@@ -503,13 +503,13 @@ function toggleVectorMemory() {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--brush);
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 .wb-semantic-info { display: flex; flex-direction: column; gap: 2px; }
-.wb-semantic-label { font-size: 13px; font-weight: 500; color: #e5e7eb; }
-.wb-semantic-desc { font-size: 11px; color: #71717a; line-height: 1.4; }
+.wb-semantic-label { font-size: 13px; font-weight: 500; color: var(--ink); }
+.wb-semantic-desc { font-size: 11px; color: var(--ink-faint); line-height: 1.4; }
 .wb-toggle-switch {
   flex-shrink: 0;
   padding: 4px 12px;
@@ -517,9 +517,9 @@ function toggleVectorMemory() {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.06);
-  color: #71717a;
+  border: 1px solid var(--border);
+  background: var(--brush);
+  color: var(--ink-faint);
   cursor: pointer;
   transition: all 0.2s;
 }

@@ -335,7 +335,7 @@ const CHIPS = [
 /* ── 遮罩 ── */
 .ab-overlay {
   position: fixed; inset: 0; z-index: 9998;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--overlay-bg);
   backdrop-filter: blur(2px);
 }
 
@@ -343,10 +343,10 @@ const CHIPS = [
 .ab-drawer {
   position: fixed; top: 0; right: 0; bottom: 0;
   width: 380px; z-index: 9999;
-  background: #13111f;
-  border-left: 1px solid rgba(139, 92, 246, 0.2);
+  background: var(--paper-card);
+  border-left: 1px solid var(--border);
   display: flex; flex-direction: column;
-  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.5);
+  box-shadow: -8px 0 40px var(--shadow-lg);
 }
 
 @media (max-width: 480px) {
@@ -365,19 +365,19 @@ const CHIPS = [
 .ab-header {
   display: flex; align-items: flex-start; justify-content: space-between;
   padding: 16px 16px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 .ab-header-info { display: flex; align-items: flex-start; gap: 10px; }
 .ab-header-icon { font-size: 22px; margin-top: 1px; flex-shrink: 0; }
-.ab-header-title { font-size: 15px; font-weight: 600; color: #e5e7eb; }
-.ab-header-sub   { font-size: 11px; color: rgba(255, 255, 255, 0.4); margin-top: 2px; line-height: 1.4; }
+.ab-header-title { font-size: 15px; font-weight: 600; color: var(--ink); }
+.ab-header-sub   { font-size: 11px; color: var(--ink-faint); margin-top: 2px; line-height: 1.4; }
 .ab-close {
-  background: none; border: none; color: rgba(255,255,255,0.35);
+  background: none; border: none; color: var(--ink-faint);
   font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1;
   transition: color 0.15s; flex-shrink: 0;
 }
-.ab-close:hover { color: rgba(255,255,255,0.7); }
+.ab-close:hover { color: var(--ink); }
 
 /* ── 消息区 ── */
 .ab-messages {
@@ -387,12 +387,12 @@ const CHIPS = [
 }
 .ab-messages::-webkit-scrollbar { width: 4px; }
 .ab-messages::-webkit-scrollbar-track { background: transparent; }
-.ab-messages::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.25); border-radius: 2px; }
+.ab-messages::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
 
 /* ── 欢迎 ── */
 .ab-welcome {
   text-align: center; padding: 24px 12px 8px;
-  color: rgba(255,255,255,0.4); font-size: 13px;
+  color: var(--ink-faint); font-size: 13px;
 }
 .ab-welcome-icon { font-size: 36px; margin-bottom: 10px; }
 .ab-welcome-text { line-height: 1.5; }
@@ -409,19 +409,19 @@ const CHIPS = [
 }
 
 .ab-msg-user .ab-bubble {
-  background: linear-gradient(135deg, rgba(124,58,237,0.7), rgba(37,99,235,0.7));
-  color: #f3f4f6; border-bottom-right-radius: 4px;
+  background: var(--user-bubble-bg);
+  color: var(--user-bubble-text); border-bottom-right-radius: 4px;
 }
 .ab-msg-ai .ab-bubble {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.85); border-bottom-left-radius: 4px;
+  background: var(--ai-bubble-bg);
+  border: 1px solid var(--ai-bubble-border);
+  color: var(--ink); border-bottom-left-radius: 4px;
 }
 
 /* ── 流式光标 ── */
 .ab-cursor {
   display: inline-block; width: 2px; height: 14px;
-  background: rgba(255,255,255,0.6); margin-left: 2px;
+  background: var(--ink-faint); margin-left: 2px;
   vertical-align: text-bottom;
   animation: ab-blink 0.9s step-end infinite;
 }
@@ -429,45 +429,43 @@ const CHIPS = [
 
 /* ── 快捷问题 ── */
 .ab-chips { margin-top: 8px; }
-.ab-chips-label { font-size: 11px; color: rgba(255,255,255,0.3); margin-bottom: 8px; }
+.ab-chips-label { font-size: 11px; color: var(--ink-faint); margin-bottom: 8px; }
 .ab-chips-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .ab-chip {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 10px;
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: 10px; color: rgba(192, 132, 252, 0.85);
+  background: var(--brush);
+  border: 1px solid var(--border);
+  border-radius: 10px; color: var(--accent);
   font-size: 12px; cursor: pointer; text-align: left;
   transition: all 0.15s;
 }
 .ab-chip:hover {
-  background: rgba(124, 58, 237, 0.18);
-  border-color: rgba(124, 58, 237, 0.4);
-  color: #c084fc;
+  border-color: var(--border-accent);
 }
 
 /* ── 底部输入 ── */
 .ab-footer {
   display: flex; align-items: flex-end; gap: 8px;
   padding: 12px 12px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
 .ab-input {
   flex: 1; resize: none; min-height: 36px; max-height: 120px;
-  padding: 8px 12px; background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;
-  color: #e5e7eb; font-size: 13px; line-height: 1.5;
+  padding: 8px 12px; background: var(--brush);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--ink); font-size: 13px; line-height: 1.5;
   outline: none; font-family: inherit;
   transition: border-color 0.15s;
 }
-.ab-input:focus { border-color: rgba(124, 58, 237, 0.5); }
+.ab-input:focus { border-color: var(--accent); }
 .ab-input:disabled { opacity: 0.5; }
-.ab-input::placeholder { color: rgba(255, 255, 255, 0.25); }
+.ab-input::placeholder { color: var(--ink-faint); opacity: .6; }
 
 .ab-send {
   width: 36px; height: 36px; flex-shrink: 0;
-  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  background: var(--accent);
   border: none; border-radius: 10px; color: white;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: opacity 0.15s;

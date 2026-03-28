@@ -6,27 +6,17 @@ const props = defineProps({
   roleList: Array,
   currentRoleId: [String, Number],
   showSidebar: Boolean,
-  groupChats: { type: Array, default: () => [] },
-  currentGroupId: { type: String, default: null },
-  isGroupMode: { type: Boolean, default: false },
 });
 
 const EXPR_EMOJI = { joy: '😊', sadness: '😢', anger: '😠', surprise: '😲', fear: '😰', disgust: '😒', neutral: '😐', love: '🥰' };
 
-// 🔍 侧边栏搜索
 const sidebarSearch = ref('');
 const filteredRoles = computed(() => {
   const q = sidebarSearch.value.trim().toLowerCase();
   if (!q) return props.roleList;
   return props.roleList.filter(r => r.name.toLowerCase().includes(q));
 });
-const filteredGroups = computed(() => {
-  const q = sidebarSearch.value.trim().toLowerCase();
-  if (!q) return props.groupChats;
-  return props.groupChats.filter(g => g.name.toLowerCase().includes(q));
-});
 
-// 获取角色的活跃分支聊天记录
 function getActiveHistory(role) {
   if (role.branches && role.branches.length > 0) {
     const branch = role.branches.find(b => b.id === role.activeBranchId) || role.branches[0];
@@ -51,25 +41,17 @@ function getRoleLastLine(role) {
   for (let i = hist.length - 1; i >= 0; i--) {
     if (hist[i].role === 'assistant') {
       let raw = hist[i].rawContent || hist[i].content || '';
-      
-      // 如果think标签未闭合，说明还在流式输出，跳过这条
       const thinkStart = raw.indexOf('<think>');
       const thinkEnd = raw.indexOf('</think>');
       if (thinkStart !== -1 && thinkEnd === -1) continue;
-      
-      // 处理 R1 省略 <think> 开头标签的情况：只有 </think> 没有 <think>
-      if (thinkStart === -1 && thinkEnd !== -1) {
-        raw = raw.substring(thinkEnd + 8);
-      }
-      
+      if (thinkStart === -1 && thinkEnd !== -1) raw = raw.substring(thinkEnd + 8);
       const clean = raw
         .replace(/<think>[\s\S]*?<\/think>/g, '')
         .replace(/<inner>[\s\S]*?<\/inner>/g, '')
         .replace(/<expr:[^>]+>/g, '')
         .replace(/<[^>]+>/g, '')
-        .replace(/\*[^*]+\*/g, '')  // 必须要有闭合的 *
+        .replace(/\*[^*]+\*/g, '')
         .trim();
-      
       const first = clean.split(/[。！？\n]/)[0].trim();
       if (first) return first.slice(0, 30);
     }
@@ -77,149 +59,272 @@ function getRoleLastLine(role) {
   return '';
 }
 
-
 defineEmits([
-  'switch-role',
-  'create-role',
-  'ai-create-role',
-  'delete-role',
-  'export-role',
-  'generate-card',
-  'open-card-library',
-  'close',
+  'switch-role', 'create-role', 'ai-create-role', 'delete-role',
+  'export-role', 'generate-card', 'open-card-library', 'close',
   'avatar-error',
-  'switch-group',
-  'delete-group',
-  'create-group',
 ]);
 
-// 🃏 卡片库计数
 const libraryCount = computed(() => {
-  try {
-    return JSON.parse(localStorage.getItem('myai_card_library_v1') || '[]').length
-  } catch { return 0 }
-})
-
+  try { return JSON.parse(localStorage.getItem('myai_card_library_v1') || '[]').length; }
+  catch { return 0; }
+});
 </script>
 
 <template>
-  <!-- 侧边栏（角色列表 + 群聊） -->
-  <div class="sidebar fixed inset-y-0 left-0 w-80 glass-strong bg-glass-dark z-30 border-r border-white/10 overflow-y-auto" :class="{ 'hidden': !showSidebar }">
-    <div class="p-4">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="font-bold text-lg text-shadow">🎭 角色列表</h2>
-        <button @click="$emit('close')" class="p-2 rounded-full hover:bg-white/10 transition">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+  <!-- 侧边栏 -->
+  <div class="sidebar" :class="{ hidden: !showSidebar }">
+    <div class="sidebar-inner">
+
+      <!-- 头部 -->
+      <div class="sidebar-head">
+        <span class="sidebar-title">🎭 角色列表</span>
+        <button class="sidebar-close" @click="$emit('close')">
+          <svg class="svg-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
       </div>
 
-      <!-- 🔍 搜索框 -->
-      <div class="mb-3">
-        <input v-model="sidebarSearch" type="text" placeholder="🔍 搜索角色或群聊..."
-               class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 text-sm outline-none border border-white/10 focus:border-primary transition" />
+      <!-- 搜索 -->
+      <div class="sidebar-search-wrap">
+        <input v-model="sidebarSearch" type="text" placeholder="搜索角色…"
+               class="sidebar-search" />
       </div>
 
-      <!-- 角色列表 -->
-      <div class="space-y-3">
-        <div v-for="role in filteredRoles" :key="role.id" @click="$emit('switch-role', role.id)"
-             class="role-item p-3 rounded-lg cursor-pointer border border-white/10 relative"
-             :class="{ 'active': !isGroupMode && role.id === currentRoleId }">
-          <div class="flex items-center space-x-3">
-            <div class="relative flex-shrink-0">
-              <div v-if="role.avatar" class="avatar">
-                <img :src="role.avatar" alt="Role Avatar" class="w-full h-full rounded-full object-cover" @error="$emit('avatar-error', 'ai', role.id)">
+      <div class="sidebar-scroll-area">
+        <!-- 角色列表 -->
+        <div class="role-list">
+          <div v-for="role in filteredRoles" :key="role.id"
+               class="role-item"
+               :class="{ active: role.id === currentRoleId }"
+               @click="$emit('switch-role', role.id)">
+            <div class="role-ava-wrap">
+              <div v-if="role.avatar" class="role-ava">
+                <img :src="role.avatar" alt="" class="ava-img"
+                     @error="$emit('avatar-error', 'ai', role.id)">
               </div>
-              <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
-              <span class="mood-badge">{{ getRoleMood(role) }}</span>
+              <div v-else class="role-ava role-ava-placeholder">🎭</div>
+              <span class="mood-dot">{{ getRoleMood(role) }}</span>
             </div>
-            <div class="flex-1 min-w-0">
-              <h3 class="font-semibold text-sm truncate">{{ role.name }}</h3>
-              <p class="text-xs truncate italic" :class="getActiveHistory(role).length ? 'text-gray-300' : 'text-gray-500'">
+            <div class="role-meta">
+              <div class="role-name">{{ role.name }}</div>
+              <div class="role-preview">
                 {{ getActiveHistory(role).length
                   ? getRoleLastLine(role)
-                  : (role.firstMessage || '点击开始对话').replace(/<[^>]+>/g, '').slice(0, 28)
-                }}
-              </p>
+                  : (role.firstMessage || '点击开始对话').replace(/<[^>]+>/g, '').slice(0, 28) }}
+              </div>
             </div>
-            <!-- 导出按钮 -->
-            <button @click.stop="$emit('export-role', role.id)" class="delete-btn p-1 rounded-full hover:bg-indigo-500/20 transition" title="导出角色 JSON">
-              <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-              </svg>
-            </button>
-            <!-- 🃏 角色卡按钮 -->
-            <button @click.stop="$emit('generate-card', role.id)" class="delete-btn p-1 rounded-full hover:bg-purple-500/20 transition" title="生成角色卡">
-              <span class="text-base leading-none">🃏</span>
-            </button>
-            <!-- 删除按钮 -->
-            <button @click.stop="$emit('delete-role', role.id)" class="delete-btn p-1 rounded-full hover:bg-red-500/20 transition" title="删除角色">
-              <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="mt-4 space-y-2">
-        <button @click="$emit('create-role')" class="w-full glass bg-glass-message text-gray-300 rounded-xl px-4 py-3 text-center hover:bg-glass-light transition border border-dashed border-white/20">
-          ➕ 创建新角色
-        </button>
-        <button @click="$emit('ai-create-role')" class="w-full text-gray-300 rounded-xl px-4 py-3 text-center hover:bg-glass-light transition border border-dashed border-white/20" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(168, 85, 247, 0.06));">
-          ✨ AI 生成角色
-        </button>
-      </div>
-
-      <!-- 群聊区域分隔 -->
-      <div class="mt-6 mb-3 flex items-center space-x-2">
-        <div class="flex-1 h-px bg-white/10"></div>
-        <span class="text-xs text-gray-400 whitespace-nowrap">👥 群聊</span>
-        <div class="flex-1 h-px bg-white/10"></div>
-      </div>
-
-      <!-- 群聊列表 -->
-      <div class="space-y-3">
-        <div v-for="group in filteredGroups" :key="group.id" @click="$emit('switch-group', group.id)"
-             class="role-item p-3 rounded-lg cursor-pointer border border-white/10 relative"
-             :class="{ 'active': isGroupMode && group.id === currentGroupId }">
-          <div class="flex items-center space-x-3">
-            <div class="avatar-placeholder avatar-ai text-white" style="background: linear-gradient(135deg, #6366f1, #ec4899);">👥</div>
-            <div class="flex-1 min-w-0">
-              <h3 class="font-semibold text-sm truncate">{{ group.name }}</h3>
-              <p class="text-xs text-gray-400 truncate">{{ group.participantIds.length }} 位角色 · {{ group.chatHistory?.length || 0 }} 条消息</p>
+            <div class="role-actions">
+              <button class="role-action-btn" @click.stop="$emit('export-role', role.id)" title="导出">
+                <svg class="svg-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+              </button>
+              <button class="role-action-btn" @click.stop="$emit('generate-card', role.id)" title="角色卡">
+                <span>🃏</span>
+              </button>
+              <button class="role-action-btn danger" @click.stop="$emit('delete-role', role.id)" title="删除">
+                <svg class="svg-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
             </div>
-            <!-- 删除按钮 -->
-            <button @click.stop="$emit('delete-group', group.id)" class="delete-btn p-1 rounded-full hover:bg-red-500/20 transition" title="删除群聊">
-              <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-              </svg>
-            </button>
           </div>
         </div>
 
-        <div v-if="groupChats.length === 0" class="text-center text-xs text-gray-500 py-2">
-          还没有群聊，点击下方创建
+        <!-- 创建角色 -->
+        <div class="sidebar-btns">
+          <button class="create-btn" @click="$emit('create-role')">➕ 创建新角色</button>
+          <button class="create-btn ai-btn" @click="$emit('ai-create-role')">✨ AI 生成角色</button>
         </div>
       </div>
 
-      <!-- 创建群聊按钮 -->
-      <div class="mt-4">
-        <button @click="$emit('create-group')" class="w-full text-gray-300 rounded-xl px-4 py-3 text-center hover:bg-glass-light transition border border-dashed border-white/20" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(236, 72, 153, 0.06));">
-          👥 创建群聊
-        </button>
+      <!-- 卡片库入口 -->
+      <div class="card-lib-entry" @click="$emit('open-card-library')">
+        <span>🃏</span>
+        <span class="card-lib-label">我的卡片库</span>
+        <span v-if="libraryCount > 0" class="card-lib-count">{{ libraryCount }}</span>
       </div>
 
-      <!-- 🃏 我的卡片库 入口 -->
-      <div class="card-library-entry" @click="$emit('open-card-library')">
-        <span class="card-library-icon">🃏</span>
-        <span class="card-library-label">我的卡片库</span>
-        <span class="card-library-count" v-if="libraryCount > 0">{{ libraryCount }}</span>
-      </div>
     </div>
   </div>
 
-  <!-- 遮罩层 -->
-  <div v-if="showSidebar" @click="$emit('close')" class="fixed inset-0 bg-black/50 z-20"></div>
+  <!-- 遮罩 -->
+  <div v-if="showSidebar" class="sidebar-overlay" @click="$emit('close')"></div>
 </template>
+
+<style scoped>
+.sidebar {
+  position: fixed;
+  top: 0; bottom: 0; left: 0;
+  width: 300px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  z-index: 30;
+  display: flex; flex-direction: column; overflow: hidden;
+  transition: transform .3s ease, background .3s, border-color .3s;
+  box-shadow: 2px 0 16px var(--shadow);
+}
+.sidebar.hidden { transform: translateX(-100%); }
+
+.sidebar-inner { 
+  display: flex; 
+  flex-direction: column; 
+  height: 100%;
+  padding: 16px; 
+}
+.sidebar-scroll-area { 
+  flex: 1; 
+  overflow-y: auto;
+  padding-right: 4px; /* 防止滚动条贴脸 */
+}
+.sidebar-scroll-area::-webkit-scrollbar { width: 3px; }
+.sidebar-scroll-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.sidebar-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+.sidebar-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 16px; font-weight: 500; color: var(--ink);
+  transition: color .3s;
+}
+.sidebar-close {
+  width: 32px; height: 32px; border-radius: 8px; border: none;
+  background: transparent; color: var(--ink-faint);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.sidebar-close:active { background: var(--brush); }
+
+.sidebar-search-wrap { 
+  margin-bottom: 12px; 
+  flex-shrink: 0;
+}
+.sidebar-search {
+  width: 100%; padding: 9px 14px; border-radius: 22px;
+  border: 1px solid var(--border); background: var(--paper-card);
+  font-family: 'Noto Sans SC', sans-serif; font-size: 13px;
+  color: var(--ink); outline: none; transition: border-color .2s, background .3s;
+}
+.sidebar-search::placeholder { color: var(--ink-faint); opacity: .6; }
+.sidebar-search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--brush); }
+
+/* ── 角色列表 ── */
+.role-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+
+.role-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 12px;
+  border: 1px solid transparent;
+  cursor: pointer; transition: all .15s;
+  background: transparent;
+}
+.role-item:hover { background: var(--brush); }
+.role-item.active {
+  background: var(--brush);
+  border-color: var(--border);
+  box-shadow: 0 1px 4px var(--shadow);
+  border-left: 3px solid var(--accent);
+}
+
+.role-ava-wrap { position: relative; flex-shrink: 0; }
+.role-ava {
+  width: 40px; height: 40px; border-radius: 50%;
+  overflow: hidden; border: 1.5px solid var(--border);
+  background: linear-gradient(135deg, #b8a89a, #8b6f5e);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; transition: all .3s;
+}
+[data-theme="dark"] .role-ava {
+  background: linear-gradient(135deg, #a090e0, #6040c0);
+  border-color: rgba(139,120,255,0.3);
+}
+.role-ava-placeholder { background: linear-gradient(135deg, #c4b8ae, #9e8478); }
+.mood-dot {
+  position: absolute; bottom: -2px; right: -2px;
+  font-size: 11px; line-height: 1;
+  background: var(--paper-card);
+  border-radius: 50%; padding: 1px;
+  border: 1px solid var(--border);
+}
+
+.role-meta { flex: 1; min-width: 0; }
+.role-name {
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 14px; font-weight: 500; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: color .3s;
+}
+.role-preview {
+  font-size: 12px; color: var(--ink-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-style: italic; margin-top: 2px; transition: color .3s;
+}
+
+.role-actions {
+  display: flex; align-items: center; gap: 2px;
+  opacity: 0; transition: opacity .15s;
+}
+.role-item:hover .role-actions { opacity: 1; }
+/* 触屏设备始终显示 */
+@media (hover: none) { .role-actions { opacity: 1; } }
+
+.role-action-btn {
+  width: 28px; height: 28px; border-radius: 8px; border: none;
+  background: transparent; color: var(--ink-faint);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; transition: all .15s;
+}
+.role-action-btn:hover { background: var(--brush); color: var(--ink); }
+.role-action-btn.danger:hover { background: rgba(192,112,112,0.15); color: #c07070; }
+.role-action-btn:active { transform: scale(.88); }
+
+/* ── 按钮 ── */
+.sidebar-btns { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.create-btn {
+  width: 100%; padding: 10px 16px; border-radius: 12px;
+  border: 1.5px dashed var(--border); background: transparent;
+  font-family: 'Noto Sans SC', sans-serif; font-size: 13px;
+  color: var(--ink-faint); cursor: pointer; text-align: center;
+  transition: all .15s;
+}
+.create-btn:hover { background: var(--brush); color: var(--ink); border-color: var(--accent); }
+.create-btn:active { transform: scale(.98); }
+.ai-btn { background: rgba(196,150,58,0.06); }
+
+
+/* ── 卡片库 ── */
+.card-lib-entry {
+  flex-shrink: 0;
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 -16px; padding: 11px 30px;
+  cursor: pointer;
+  box-shadow: 0 -1px 6px var(--shadow);
+  transition: background .15s;
+}
+.card-lib-entry:hover { background: var(--brush); }
+.card-lib-label {
+  flex: 1; font-family: 'Noto Sans SC', sans-serif;
+  font-size: 13px; color: var(--ink-faint); transition: color .3s;
+}
+.card-lib-count {
+  font-size: 11px; background: var(--brush); color: var(--accent);
+  border: 1px solid var(--border); padding: 1px 8px; border-radius: 999px;
+}
+
+/* ── 遮罩 ── */
+.sidebar-overlay {
+  position: fixed; inset: 0;
+  background: var(--overlay-bg);
+  z-index: 20; backdrop-filter: blur(2px);
+}
+
+.svg-md { width: 20px; height: 20px; }
+.svg-sm { width: 16px; height: 16px; }
+.ava-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+</style>

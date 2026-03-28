@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
 import { parseDualLayerResponse } from '../utils/textParser';
@@ -82,21 +82,10 @@ function removeFloatingHearts() {
   heartElements = [];
 }
 
-watch(() => props.globalSettings.rpTextStyle, (style) => {
-  if (style === 'loveDark') {
-    createFloatingHearts();
-  } else {
-    removeFloatingHearts();
-  }
-}, { immediate: true });
-
-onMounted(() => {
-  if (props.globalSettings.rpTextStyle === 'loveDark') {
-    createFloatingHearts();
-  }
-});
+/* rpTextStyle 已移除，浮动爱心功能废弃 */
 
 onUnmounted(() => removeFloatingHearts());
+
 
 // ⏰ 格式化时间戳
 function formatTime(ts) {
@@ -392,9 +381,8 @@ function isCurrentMatch(originalIndex) {
 </script>
 
 <template>
-  <main ref="containerRef" class="flex-1 overflow-y-scroll p-4 space-y-4" @click="handleChatAreaClick"
+  <main ref="containerRef" class="chat-scroll-area flex-1 overflow-y-scroll" @click="handleChatAreaClick"
         :class="[
-          'chat-style-' + (globalSettings.rpTextStyle || 'clear'),
           { 'mode-immersive': globalSettings.immersiveMode }
         ]">
 
@@ -485,7 +473,7 @@ function isCurrentMatch(originalIndex) {
     <!-- 🛡️ 消息折叠提示 -->
     <div v-if="hiddenCount > 0" class="flex justify-center mb-4">
       <button @click="loadMoreMessages"
-              class="glass bg-glass-light px-4 py-2 rounded-full text-sm text-gray-300 hover:bg-white/20 transition border border-white/10 flex items-center gap-2">
+              class="load-more-btn">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
         </svg>
@@ -505,10 +493,10 @@ function isCurrentMatch(originalIndex) {
                @touchend="longPress.onTouchEnd"
                @touchmove="longPress.onTouchMove">
             <div class="flex items-start justify-end space-x-3 space-x-reverse w-full">
-              <div class="w-full max-w-[80%] message-wrapper">
+              <div class="max-w-[68%] message-wrapper">
                 <div @click.stop="$emit('toggle-select', getOriginalIndex(visibleIndex))"
                      class="user-speech-bubble cursor-pointer"
-                     :class="['style-' + (globalSettings.rpTextStyle || 'clear'), { 'selected': activeMessageIndex === getOriginalIndex(visibleIndex) }]">
+                     :class="{ 'selected': activeMessageIndex === getOriginalIndex(visibleIndex) }">
                   <div class="message-body message-content text-sm whitespace-pre-wrap" v-html="renderMarkdown(msg.content || '')"></div>
                 </div>
 
@@ -586,15 +574,14 @@ function isCurrentMatch(originalIndex) {
 
                 <!-- Layer 2: Inner Thoughts Bubble - 按风格显示 -->
                 <div v-if="globalSettings.showInner && parsedMessages[visibleIndex]?.inner"
-                     class="inner-bubble"
-                     :class="'inner-' + (globalSettings.rpTextStyle || 'clear')">
-                  <span class="inner-icon">{{ ['loveDark','loveLight'].includes(globalSettings.rpTextStyle) ? '🌸' : '💭' }}</span>
+                     class="inner-bubble">
+                  <span class="inner-icon">💭</span>
                   <span class="inner-text">{{ parsedMessages[visibleIndex].inner }}</span>
                 </div>
 
                 <div @click.stop="msg.isActiveMessage && (msg.content || '').includes('📔') ? $emit('open-diary') : $emit('toggle-select', getOriginalIndex(visibleIndex))"
                      class="speech-bubble cursor-pointer"
-                     :class="['style-' + globalSettings.rpTextStyle, { 'selected': activeMessageIndex === getOriginalIndex(visibleIndex), 'diary-clickable': msg.isActiveMessage && (msg.content || '').includes('📔') }]">
+                     :class="{ 'selected': activeMessageIndex === getOriginalIndex(visibleIndex), 'diary-clickable': msg.isActiveMessage && (msg.content || '').includes('📔') }">
                   <div class="message-body vn-body message-content"
                        :class="{ 'typing-cursor': isStreaming && getOriginalIndex(visibleIndex) === messages.length - 1 }"
                        v-html="parsedMessages[visibleIndex]?.bodyHtml"></div>
@@ -670,12 +657,12 @@ function isCurrentMatch(originalIndex) {
       </template>
     </TransitionGroup>
 
-    <div v-if="isThinking" class="message-bubble flex items-start space-x-3">
+    <div v-if="isThinking" class="msg-ai">
       <div v-if="currentRole.avatar" class="avatar">
         <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover" @error="$event.target.style.display='none'">
       </div>
-      <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
-      <div class="glass bg-glass-message rounded-2xl rounded-tl-sm px-4 py-3">
+      <div v-else class="avatar-placeholder avatar-ai">🎭</div>
+      <div class="typing-bubble">
         <div class="typing-named-indicator">
           <span class="typing-name">{{ currentRole.name }} 正在思考</span>
           <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
@@ -684,12 +671,12 @@ function isCurrentMatch(originalIndex) {
     </div>
 
     <div v-if="isStreaming && !isThinking && (messages.length === 0 || messages[messages.length - 1]?.role !== 'assistant')"
-         class="flex items-start space-x-3">
+         class="msg-ai">
       <div v-if="currentRole.avatar" class="avatar">
         <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover" @error="$event.target.style.display='none'">
       </div>
-      <div v-else class="avatar-placeholder avatar-ai text-white">🎭</div>
-      <div class="glass bg-glass-message rounded-2xl rounded-tl-sm px-4 py-3">
+      <div v-else class="avatar-placeholder avatar-ai">🎭</div>
+      <div class="typing-bubble">
         <div class="typing-named-indicator">
           <span class="typing-name">{{ currentRole.name }} 正在输入</span>
           <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
@@ -700,12 +687,198 @@ function isCurrentMatch(originalIndex) {
 </template>
 
 <style scoped>
-/* 😊 表情反应 */
+/* ============================================================
+   ChatWindow.vue — Scoped Styles (DESIGN_SPEC compliant)
+   所有颜色走 CSS 变量，字体走 --font-serif-sc / --font-sans-sc
+   ============================================================ */
+
+/* ── 聊天滚动区 ── */
+.chat-scroll-area {
+  padding: 20px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--paper);
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-scroll-area::-webkit-scrollbar {
+  width: 3px;
+}
+
+.chat-scroll-area::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+/* ── AI 消息行（打字指示器复用） ── */
+.msg-ai {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* ── 头像覆写（规范: 38×38px） ── */
+.avatar,
+.avatar-placeholder {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+  border: 1.5px solid var(--border-accent, rgba(196,150,58,0.35));
+  transition: all 0.3s;
+}
+
+.avatar-placeholder.avatar-ai {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+
+[data-theme="light"] .avatar,
+[data-theme="light"] .avatar-placeholder {
+  background: linear-gradient(135deg, #c4b8ae, #9e8478);
+  border-color: rgba(196, 150, 58, 0.35);
+}
+
+[data-theme="dark"] .avatar,
+[data-theme="dark"] .avatar-placeholder {
+  background: linear-gradient(135deg, #a090e0, #6040c0);
+  border-color: rgba(139, 120, 255, 0.3);
+  box-shadow: 0 0 8px rgba(139, 120, 255, 0.2);
+}
+
+/* ── 打字指示器气泡 ── */
+.typing-bubble {
+  background: var(--ai-bubble-bg);
+  border: 1px solid var(--ai-bubble-border);
+  border-radius: 4px 16px 16px 16px;
+  padding: 10px 14px;
+  box-shadow: 0 1px 6px var(--shadow);
+  transition: background 0.3s;
+}
+
+.typing-named-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.typing-name {
+  font-family: var(--font-sans-sc);
+  font-size: 13px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.typing-dots span {
+  animation: typingBlink 1.4s infinite;
+  color: var(--dot-color);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* ── 加载更多按钮 ── */
+.load-more-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-family: var(--font-sans-sc);
+  font-size: 13px;
+  color: var(--ink-faint);
+  background: var(--paper-card);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.load-more-btn:hover {
+  background: var(--brush);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.load-more-btn svg {
+  color: var(--ink-faint);
+}
+
+/* ── 内心戏气泡覆写（只保留 border-left, 无其他边框） ── */
+.inner-bubble {
+  background: var(--thought-bg) !important;
+  border: none !important;
+  border-left: 2px solid var(--thought-border) !important;
+  border-radius: 0 10px 10px 0 !important;
+  padding: 8px 12px !important;
+  margin-bottom: 6px;
+}
+
+.inner-bubble::after {
+  display: none !important;
+}
+
+.inner-bubble .inner-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
+  margin-top: 1px;
+}
+
+.inner-bubble .inner-text {
+  font-family: var(--font-sans-sc) !important;
+  font-size: 13px !important;
+  font-style: italic !important;
+  line-height: 1.6 !important;
+  color: var(--ink-faint) !important;
+}
+
+/* ── 角色名标签覆写 ── */
+.role-name-label {
+  display: block !important;
+  font-family: var(--font-sans-sc) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: var(--accent) !important;
+  margin-bottom: 5px;
+  padding-left: 2px;
+  letter-spacing: normal !important;
+}
+
+/* ── 主动消息标记 ── */
+.active-message-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(212, 168, 67, 0.12);
+  border: 1px solid rgba(212, 168, 67, 0.3);
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-family: var(--font-sans-sc);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent-gold);
+  margin-bottom: 6px;
+}
+
+/* ── 😊 表情反应 ── */
 .reaction-picker {
   display: flex;
   align-items: center;
   gap: 1px;
 }
+
 .reaction-btn {
   font-size: 0.85rem;
   padding: 3px 4px;
@@ -715,16 +888,19 @@ function isCurrentMatch(originalIndex) {
   background: transparent;
   opacity: 0.55;
 }
+
 .reaction-btn:hover {
   transform: scale(1.25);
-  background: rgba(255,255,255,0.1);
+  background: var(--brush);
   opacity: 1;
 }
+
 .reaction-btn.active {
-  background: rgba(99, 102, 241, 0.25);
+  background: var(--brush);
   opacity: 1;
   transform: scale(1.15);
 }
+
 .reaction-pill {
   display: inline-flex;
   align-items: center;
@@ -732,17 +908,19 @@ function isCurrentMatch(originalIndex) {
   margin-left: 4px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: var(--brush);
+  border: 1px solid var(--border);
   font-size: 0.8rem;
   cursor: pointer;
   transition: background 0.15s;
   user-select: none;
 }
+
 .reaction-pill:hover {
-  background: rgba(255,255,255,0.14);
+  background: var(--paper-warm);
 }
 
+/* ── TTS ── */
 .tts-wave {
   display: flex;
   align-items: center;
@@ -753,49 +931,35 @@ function isCurrentMatch(originalIndex) {
 .tts-wave span {
   width: 2px;
   height: 100%;
-  background: #10b981;
+  background: #7aad6e;
   animation: ttsWave 0.5s ease-in-out infinite;
 }
 
-.tts-wave span:nth-child(2) {
-  animation-delay: 0.1s;
-}
-
-.tts-wave span:nth-child(3) {
-  animation-delay: 0.2s;
-}
-
-.tts-wave span:nth-child(4) {
-  animation-delay: 0.3s;
-}
+.tts-wave span:nth-child(2) { animation-delay: 0.1s; }
+.tts-wave span:nth-child(3) { animation-delay: 0.2s; }
+.tts-wave span:nth-child(4) { animation-delay: 0.3s; }
 
 @keyframes ttsWave {
-  0%,
-  100% {
-    transform: scaleY(0.5);
-  }
-  50% {
-    transform: scaleY(1);
-  }
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1); }
 }
 
-/* 搜索工具栏 */
+/* ── 搜索工具栏 ── */
 .search-bar {
   position: sticky;
   top: 0;
   z-index: 10;
   padding: 8px 12px;
-  backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--paper-warm);
+  border-bottom: 1px solid var(--border);
 }
 
 .search-bar-inner {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--paper-card);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 6px 12px;
 }
@@ -805,18 +969,20 @@ function isCurrentMatch(originalIndex) {
   background: transparent;
   border: none;
   outline: none;
-  color: #e5e7eb;
+  color: var(--ink);
   font-size: 14px;
   min-width: 0;
 }
 
 .search-input::placeholder {
-  color: #6b7280;
+  color: var(--ink-faint);
+  opacity: 0.5;
 }
 
 .search-count {
+  font-family: var(--font-sans-sc);
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--ink-faint);
   white-space: nowrap;
   padding: 0 4px;
 }
@@ -829,7 +995,7 @@ function isCurrentMatch(originalIndex) {
 .search-nav-btn {
   padding: 4px;
   border-radius: 6px;
-  color: #9ca3af;
+  color: var(--ink-faint);
   transition: all 0.15s;
   display: flex;
   align-items: center;
@@ -837,11 +1003,11 @@ function isCurrentMatch(originalIndex) {
 }
 
 .search-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
+  background: var(--brush);
+  color: var(--ink);
 }
 
-/* 搜索匹配高亮 */
+/* ── 搜索匹配高亮 ── */
 .search-match {
   position: relative;
 }
@@ -851,16 +1017,16 @@ function isCurrentMatch(originalIndex) {
   position: absolute;
   inset: -2px;
   border-radius: 16px;
-  border: 2px solid rgba(234, 179, 8, 0.3);
+  border: 2px solid rgba(196, 150, 58, 0.3);
   pointer-events: none;
 }
 
 .search-current::before {
-  border-color: rgba(234, 179, 8, 0.8);
-  box-shadow: 0 0 12px rgba(234, 179, 8, 0.25);
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 12px rgba(196, 150, 58, 0.25);
 }
 
-/* 搜索栏动画 */
+/* ── 搜索栏动画 ── */
 .search-bar-enter-active,
 .search-bar-leave-active {
   transition: all 0.2s ease;
@@ -870,6 +1036,14 @@ function isCurrentMatch(originalIndex) {
 .search-bar-leave-to {
   opacity: 0;
   transform: translateY(-100%);
+}
+
+/* ── 搜索图标 ── */
+.search-bar-inner svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-faint);
+  flex-shrink: 0;
 }
 </style>
 

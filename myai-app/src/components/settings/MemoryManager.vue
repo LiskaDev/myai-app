@@ -251,58 +251,58 @@ function formatTime(ts) {
 
 <style scoped>
 .memory-edit-input {
-  background: rgba(0,0,0,0.3); border: 1px solid rgba(99,102,241,0.4);
+  background: var(--brush); border: 1px solid var(--border-accent);
   border-radius: 8px; padding: 8px 12px; width: 100%;
-  color: #e0e0e0; font-size: 0.8rem; resize: vertical; min-height: 60px;
+  color: var(--ink); font-size: 0.8rem; resize: vertical; min-height: 60px;
   transition: border-color 0.2s ease;
 }
-.memory-edit-input:focus { outline: none; border-color: rgba(99,102,241,0.8); }
+.memory-edit-input:focus { outline: none; border-color: var(--accent); }
 
 .memory-action-btn {
   padding: 4px 8px; border-radius: 6px; font-size: 0.7rem;
   transition: all 0.2s ease; border: none; cursor: pointer;
   display: inline-flex; align-items: center; gap: 4px;
 }
-.memory-action-btn.refine { background: rgba(139,92,246,0.2); color: #a78bfa; }
-.memory-action-btn.refine:hover { background: rgba(139,92,246,0.4); }
+.memory-action-btn.refine { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+.memory-action-btn.refine:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 .memory-action-btn.edit { background: rgba(59,130,246,0.2); color: #60a5fa; }
 .memory-action-btn.edit:hover { background: rgba(59,130,246,0.4); }
 .memory-action-btn.save { background: rgba(34,197,94,0.2); color: #4ade80; }
 .memory-action-btn.save:hover { background: rgba(34,197,94,0.4); }
-.memory-action-btn.cancel { background: rgba(107,114,128,0.2); color: #9ca3af; }
-.memory-action-btn.cancel:hover { background: rgba(107,114,128,0.4); }
+.memory-action-btn.cancel { background: var(--brush); color: var(--ink-faint); }
+.memory-action-btn.cancel:hover { background: var(--border); }
 .memory-action-btn.delete { background: rgba(239,68,68,0.2); color: #f87171; }
 .memory-action-btn.delete:hover { background: rgba(239,68,68,0.4); }
 
 .memory-add-btn {
   width: 100%; padding: 10px;
-  border: 2px dashed rgba(139,92,246,0.4); border-radius: 10px;
-  background: transparent; color: #a78bfa; font-size: 0.85rem;
+  border: 2px dashed var(--border-accent); border-radius: 10px;
+  background: transparent; color: var(--accent); font-size: 0.85rem;
   cursor: pointer; transition: all 0.2s ease;
 }
-.memory-add-btn:hover { border-color: rgba(139,92,246,0.8); background: rgba(139,92,246,0.1); }
+.memory-add-btn:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .spinning { animation: spin 1s linear infinite; display: inline-block; }
 
 .memory-content-preview { cursor: pointer; transition: all 0.2s ease; }
-.memory-content-preview:hover { color: #fff; }
+.memory-content-preview:hover { color: var(--ink); }
 .memory-content-expanded { white-space: pre-wrap; word-break: break-word; }
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .memory-item { transition: all 0.2s ease; }
-.memory-item:hover { background: rgba(255,255,255,0.1); }
+.memory-item:hover { background: var(--paper-warm); }
 
-.card-field { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 2px solid rgba(99,102,241,0.4); }
-.card-label { font-size: 0.65rem; color: #9ca3af; font-weight: 500; }
-.card-value { font-size: 0.75rem; color: #d1d5db; line-height: 1.5; }
+.card-field { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: var(--brush); border-radius: 6px; border-left: 2px solid var(--border-accent); }
+.card-label { font-size: 0.65rem; color: var(--ink-faint); font-weight: 500; }
+.card-value { font-size: 0.75rem; color: var(--ink-light); line-height: 1.5; }
 .card-events { list-style: none; padding: 0; margin: 2px 0 0 0; }
-.card-events li { font-size: 0.7rem; color: #d1d5db; padding: 1px 0; line-height: 1.4; }
-.card-events li::before { content: '· '; color: #6366f1; }
+.card-events li { font-size: 0.7rem; color: var(--ink-light); padding: 1px 0; line-height: 1.4; }
+.card-events li::before { content: '· '; color: var(--accent); }
 .card-edit-field { display: flex; flex-direction: column; gap: 3px; }
-.card-edit-field label { font-size: 0.65rem; color: #9ca3af; }
-.card-edit-input { background: rgba(0,0,0,0.3); border: 1px solid rgba(99,102,241,0.3); border-radius: 6px; padding: 5px 8px; color: #e0e0e0; font-size: 0.75rem; transition: border-color 0.2s; }
-.card-edit-input:focus { outline: none; border-color: rgba(99,102,241,0.7); }
+.card-edit-field label { font-size: 0.65rem; color: var(--ink-faint); }
+.card-edit-input { background: var(--brush); border: 1px solid var(--border-accent); border-radius: 6px; padding: 5px 8px; color: var(--ink); font-size: 0.75rem; transition: border-color 0.2s; }
+.card-edit-input:focus { outline: none; border-color: var(--accent); }
 .chapter-item { transition: all 0.2s ease; }
-.chapter-item:hover { background: rgba(255,255,255,0.08); }
+.chapter-item:hover { background: var(--paper-warm); }
 .rotate-180 { transform: rotate(180deg); }
 </style>

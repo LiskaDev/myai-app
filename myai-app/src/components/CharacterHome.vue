@@ -422,8 +422,8 @@ function hasHistory(role) {
 .home-tabs {
   display: flex;
   gap: 4px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--brush);
+  border: 1px solid var(--border);
   border-radius: 24px;
   padding: 4px;
   margin-bottom: 28px;
@@ -437,7 +437,7 @@ function hasHistory(role) {
   border-radius: 20px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--ink-faint);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -446,14 +446,14 @@ function hasHistory(role) {
 }
 
 .home-tab.active {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.6), rgba(59, 130, 246, 0.5));
-  color: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.25);
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 2px 12px var(--shadow);
 }
 
 .home-tab:not(.active):hover {
-  color: rgba(255, 255, 255, 0.65);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  background: var(--brush);
 }
 
 /* ===== World Section ===== */
@@ -472,10 +472,10 @@ function hasHistory(role) {
 
 .world-back-btn {
   padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--brush);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--ink-faint);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
@@ -483,23 +483,23 @@ function hasHistory(role) {
 }
 
 .world-back-btn:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.7);
+  border-color: var(--border-accent);
+  color: var(--ink);
 }
 
 .world-nav-title {
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--ink-faint);
   letter-spacing: 1px;
 }
 
 .world-settings-btn {
   width: 30px;
   height: 30px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--brush);
+  border: 1px solid var(--border);
   border-radius: 50%;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--ink-faint);
   font-size: 14px;
   cursor: pointer;
   display: flex;
@@ -510,8 +510,8 @@ function hasHistory(role) {
   flex-shrink: 0;
 }
 .world-settings-btn:hover {
-  border-color: rgba(200, 168, 74, 0.4);
-  color: rgba(200, 168, 74, 0.9);
+  border-color: var(--border-accent);
+  color: var(--accent-gold);
 }
 
 .character-home {
@@ -523,7 +523,7 @@ function hasHistory(role) {
   align-items: center;
   overflow-y: auto;
   padding: 40px 24px 60px;
-  background: linear-gradient(145deg, #0f0a1a 0%, #1a1030 35%, #12081f 70%, #0a0612 100%);
+  background: var(--paper);
   animation: homeIn 0.5s ease-out;
 }
 
@@ -547,23 +547,21 @@ function hasHistory(role) {
 .home-logo {
   font-size: 48px;
   margin-bottom: 12px;
-  filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.5));
+  filter: drop-shadow(0 0 16px var(--shadow));
 }
 
 .home-title {
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, #c084fc 0%, #818cf8 50%, #38bdf8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--ink);
   margin: 0 0 8px;
   letter-spacing: 1px;
+  font-family: 'Noto Serif SC', serif;
 }
 
 .home-subtitle {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--ink-faint);
   margin: 0;
   letter-spacing: 2px;
 }
@@ -585,8 +583,8 @@ function hasHistory(role) {
   align-items: center;
   padding: 28px 16px 20px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--paper-card);
+  border: 1px solid var(--border);
   cursor: pointer;
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
@@ -609,11 +607,9 @@ function hasHistory(role) {
 
 .role-card:hover {
   transform: translateY(-6px);
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(139, 92, 246, 0.4);
-  box-shadow:
-    0 12px 40px rgba(139, 92, 246, 0.15),
-    0 0 0 1px rgba(139, 92, 246, 0.2);
+  background: var(--paper-warm);
+  border-color: var(--border-accent);
+  box-shadow: 0 12px 40px var(--shadow-lg);
 }
 
 .role-card:active {
@@ -627,7 +623,7 @@ function hasHistory(role) {
   left: -20%;
   width: 140%;
   height: 100%;
-  background: radial-gradient(ellipse, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+  background: radial-gradient(ellipse, var(--brush) 0%, transparent 70%);
   opacity: 0;
   transition: opacity 0.4s;
   pointer-events: none;
@@ -644,14 +640,14 @@ function hasHistory(role) {
   border-radius: 50%;
   overflow: hidden;
   margin-bottom: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid var(--border);
   transition: border-color 0.3s, box-shadow 0.3s;
   flex-shrink: 0;
 }
 
 .role-card:hover .role-card-avatar {
-  border-color: rgba(139, 92, 246, 0.5);
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.25);
+  border-color: var(--accent);
+  box-shadow: 0 0 16px var(--shadow);
 }
 
 .role-card-avatar img {
@@ -680,14 +676,14 @@ function hasHistory(role) {
 .role-card-name {
   font-size: 16px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
   margin: 0 0 6px;
   letter-spacing: 0.5px;
 }
 
 .role-card-desc {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--ink-faint);
   margin: 0;
   line-height: 1.5;
   display: -webkit-box;
@@ -702,10 +698,10 @@ function hasHistory(role) {
   margin-top: 12px;
   padding: 3px 10px;
   border-radius: 20px;
-  background: rgba(139, 92, 246, 0.12);
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  background: var(--brush);
+  border: 1px solid var(--border);
   font-size: 10px;
-  color: rgba(192, 132, 252, 0.85);
+  color: var(--accent);
   letter-spacing: 0.5px;
 }
 
@@ -717,8 +713,6 @@ function hasHistory(role) {
   font-size: 14px;
   opacity: 0.6;
 }
-
-
 
 /* ===== 手机端适配 ===== */
 @media (max-width: 640px) {
@@ -796,27 +790,27 @@ function hasHistory(role) {
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(20, 15, 40, 0.96);
-  border: 1px solid rgba(139, 92, 246, 0.35);
-  color: rgba(255, 255, 255, 0.88);
+  background: var(--ink);
+  border: 1px solid var(--border);
+  color: var(--paper);
   font-size: 14px;
   padding: 10px 22px;
   border-radius: 24px;
   white-space: nowrap;
   z-index: 999;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 20px var(--shadow-lg);
   pointer-events: none;
 }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.25s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
 /* ── 书籍冲突弹窗 ── */
-.ch-conflict-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; padding: 20px; }
-.ch-conflict-box { background: #1e1b2e; border: 1px solid rgba(139,92,246,0.3); border-radius: 14px; padding: 24px; max-width: 320px; width: 100%; }
-.ch-conflict-title { color: #e2d9f3; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
-.ch-conflict-msg { color: rgba(226,217,243,0.6); font-size: 13px; margin-bottom: 20px; }
+.ch-conflict-overlay { position: fixed; inset: 0; z-index: 400; background: var(--overlay-bg); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.ch-conflict-box { background: var(--paper-card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; max-width: 320px; width: 100%; box-shadow: 0 8px 32px var(--shadow-lg); }
+.ch-conflict-title { color: var(--ink); font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.ch-conflict-msg { color: var(--ink-faint); font-size: 13px; margin-bottom: 20px; }
 .ch-conflict-btns { display: flex; gap: 8px; justify-content: flex-end; }
-.ch-btn-cancel  { padding: 8px 14px; border-radius: 8px; background: rgba(255,255,255,0.08); color: rgba(226,217,243,0.6); border: none; cursor: pointer; font-size: 13px; }
-.ch-btn-new     { padding: 8px 14px; border-radius: 8px; background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); cursor: pointer; font-size: 13px; }
+.ch-btn-cancel  { padding: 8px 14px; border-radius: 8px; background: var(--brush); color: var(--ink-faint); border: none; cursor: pointer; font-size: 13px; }
+.ch-btn-new     { padding: 8px 14px; border-radius: 8px; background: var(--brush); color: var(--accent); border: 1px solid var(--border-accent); cursor: pointer; font-size: 13px; }
 .ch-btn-replace { padding: 8px 14px; border-radius: 8px; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); cursor: pointer; font-size: 13px; }
 </style>

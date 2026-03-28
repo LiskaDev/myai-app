@@ -1242,4 +1242,54 @@ function finish() {
 }
 .gen-hint { font-size: 13px; color: rgba(255,255,255,0.4); }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 日间模式覆盖 ── */
+[data-theme="light"] .phase-title { color: var(--ink); }
+[data-theme="light"] .mode-card {
+  background: var(--brush);
+  border-color: var(--border);
+}
+[data-theme="light"] .mode-card:hover {
+  background: var(--paper-warm);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+[data-theme="light"] .mode-name { color: var(--ink); }
+[data-theme="light"] .mode-desc { color: var(--ink-faint); }
+[data-theme="light"] .cancel-btn {
+  background: var(--brush);
+  border-color: var(--border);
+  color: var(--ink-faint);
+}
+[data-theme="light"] .cancel-btn:hover { border-color: var(--border-accent); color: var(--ink); }
+[data-theme="light"] .drop-zone {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+[data-theme="light"] .form-textarea {
+  background: var(--brush);
+  border-color: var(--border);
+  color: var(--ink);
+}
+[data-theme="light"] .form-textarea:focus { border-color: var(--accent); }
+[data-theme="light"] .form-textarea::placeholder { color: var(--ink-faint); }
+[data-theme="light"] .cat-chip { border-color: var(--border); color: var(--ink-faint); }
+[data-theme="light"] .cat-chip:hover { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+[data-theme="light"] .cat-chip.cat-chip-active {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  color: var(--accent);
+}
+[data-theme="light"] .slider-range-hint { color: var(--ink-faint); }
+[data-theme="light"] .gen-hint { color: var(--ink-faint); }
+[data-theme="light"] .pause-btn,
+[data-theme="light"] .resume-btn {
+  background: var(--brush);
+  border-color: var(--border);
+  color: var(--ink-faint);
+}
+[data-theme="light"] .stop-btn {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent);
+}
 </style>

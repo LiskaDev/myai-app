@@ -86,7 +86,7 @@ export async function streamChat(messages, settings, onChunk, signal) {
 
   let reader;
   try {
-    const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+    const res = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -151,7 +151,7 @@ export async function callChat(messages, settings, signal) {
   const baseUrl = (settings.baseUrl || 'https://api.deepseek.com').replace(/\/+$/, '');
   const { apiKey, model } = settings;
 
-  const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+  const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
