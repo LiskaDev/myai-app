@@ -422,7 +422,7 @@ Example format:
                 .trim();
             messages.value[msgIndex].content = fallback
                 ? formatRoleplayText(fallback)
-                : '(内容生成中断，请重试)';
+                : (fullThinking ? '*(深陷沉思中……)*' : '(内容生成中断，请重试)');
         }
         if (finalParsed.inner) {
             messages.value[msgIndex].inner = finalParsed.inner;
@@ -492,6 +492,11 @@ Example format:
                 const fb = FALLBACK[Math.floor(Math.random() * FALLBACK.length)];
                 messages.value.push({ role: 'assistant', content: fb, rawContent: fb, timestamp: Date.now() });
             }
+        }
+
+        // 🛡️ 空内容兜底：R1 全部输出在 think 里时
+        if (!messages.value[msgIndex].content?.trim() && fullThinking) {
+            messages.value[msgIndex].content = '*(沉默片刻)*';
         }
 
         saveData();
