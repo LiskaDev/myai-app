@@ -38,6 +38,28 @@ async function handleFileSelect(event) {
 function onCropConfirm(dataUrl) { props.currentRole.avatar = dataUrl; cropperSrc.value = null; emit('show-toast', '头像已更新 ✓', 'success'); }
 function onCropCancel() { cropperSrc.value = null; }
 function clearAvatar() { props.currentRole.avatar = ''; }
+
+// 背景图片本地选择
+const bgFileInputRef = ref(null);
+function triggerBgFilePicker() { bgFileInputRef.value?.click(); }
+async function handleBgFileSelect(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (file.size > 20 * 1024 * 1024) { emit('show-toast', '背景图片不能超过 20MB', 'error'); return; }
+  try {
+    props.currentRole.background = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => reject(new Error('文件读取失败'));
+      reader.readAsDataURL(file);
+    });
+    emit('show-toast', '背景图片已更新 ✓', 'success');
+  } catch (err) {
+    emit('show-toast', '图片读取失败: ' + err.message, 'error');
+  } finally {
+    event.target.value = '';
+  }
+}
 </script>
 
 <template>
@@ -60,10 +82,16 @@ function clearAvatar() { props.currentRole.avatar = ''; }
 
         <!-- 🌆 背景图片 -->
         <div>
-          <label class="block text-sm text-gray-400 mb-1">🌆 背景图片 URL</label>
-          <input v-model="currentRole.background" type="text" placeholder="https://example.com/background.jpg"
-                 class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light text-sm">
-          <p class="text-xs text-gray-600 mt-1">填入图片链接，作为与此角色聊天时的背景</p>
+          <label class="block text-sm text-gray-400 mb-1">🌆 背景图片</label>
+          <div class="flex gap-2">
+            <input v-model="currentRole.background" type="text" placeholder="https://example.com/background.jpg"
+                   class="flex-1 glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-primary transition text-shadow-light text-sm">
+            <button @click="triggerBgFilePicker" class="bg-pick-btn" title="从本地选择图片">
+              📁
+            </button>
+          </div>
+          <p class="text-xs text-gray-600 mt-1">填入图片链接，或点击 📁 从本地选择图片作为聊天背景</p>
+          <input ref="bgFileInputRef" type="file" accept="image/*" class="hidden" @change="handleBgFileSelect">
         </div>
 
         <!-- ✍️ 写作风格 / 对话规则 -->
@@ -202,4 +230,28 @@ function clearAvatar() { props.currentRole.avatar = ''; }
   transition: all 0.2s ease; pointer-events: none;
 }
 .tooltip-trigger:hover .tooltip-content { opacity: 1; visibility: visible; transform: translateY(0); }
+
+.bg-pick-btn {
+  flex-shrink: 0;
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.bg-pick-btn:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.25);
+}
+[data-theme="light"] .bg-pick-btn {
+  background: var(--brush);
+  border-color: var(--border);
+}
+[data-theme="light"] .bg-pick-btn:hover {
+  background: var(--paper-warm);
+  border-color: var(--border-accent);
+}
 </style>

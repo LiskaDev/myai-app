@@ -14,7 +14,7 @@
   --paper: #f5f0e8;
   --paper-warm: #ede6d6;
   --paper-card: #faf7f2;
-  --brush: rgba(139,111,94,0.15);
+  --brush: rgba(139, 111, 94, 0.15);
 
   /* 背景层级 */
   --bg-base: #f5f0e8;
@@ -91,7 +91,7 @@
   --paper: #0d0e14;
   --paper-warm: #13151f;
   --paper-card: #1a1d2e;
-  --brush: rgba(139,120,255,0.1);
+  --brush: rgba(139, 120, 255, 0.1);
 
   /* 背景层级 */
   --bg-base: #0d0e14;
@@ -135,7 +135,7 @@
   --dot-color: #5a5670;
 
   /* ── 文字风格变量（对应旧 chat-style-* 的 clear 风格）── */
-  --style-body-font-family: var(--font-serif-sc);
+  --style-body-font-family: var(--font-sans-sc);
   --style-body-color: rgba(232, 230, 240, 0.82);
   --style-dialogue-color: rgba(245, 243, 255, 0.92);
   --style-action-color: rgba(180, 175, 210, 0.45);
