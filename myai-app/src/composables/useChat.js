@@ -428,6 +428,11 @@ Example format:
             messages.value[msgIndex].inner = finalParsed.inner;
         }
 
+        // 🛡️ 空内容兜底：R1 全部输出在 think 里时
+        if (!messages.value[msgIndex].content?.trim() && fullThinking) {
+            messages.value[msgIndex].content = '*(沉默片刻)*';
+        }
+
         // 🛡️ 拒绝语检测：用 modelAdapter callWithRetry（最多 2 次重试，重试失败用占位兜底）
         const finalContent = messages.value[msgIndex].content || '';
         const { rejected } = detectRejection(finalContent);
@@ -494,10 +499,7 @@ Example format:
             }
         }
 
-        // 🛡️ 空内容兜底：R1 全部输出在 think 里时
-        if (!messages.value[msgIndex].content?.trim() && fullThinking) {
-            messages.value[msgIndex].content = '*(沉默片刻)*';
-        }
+
 
         saveData();
     }
