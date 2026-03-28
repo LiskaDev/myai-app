@@ -69,6 +69,9 @@ export function useAutoSummary(appState) {
             const baseUrl = (globalSettings.bgBaseUrl || globalSettings.baseUrl || 'https://api.deepseek.com')
                 .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const apiKey = globalSettings.bgApiKey || globalSettings.apiKey;
+            const rawModel = globalSettings.bgModel || globalSettings.model || 'deepseek-chat';
+            const model = rawModel.includes('reasoner') ? 'deepseek-chat' : rawModel;
+
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -76,12 +79,12 @@ export function useAutoSummary(appState) {
                     'Authorization': `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
-                    model: globalSettings.bgModel || globalSettings.model || 'deepseek-chat',
+                    model: model,
                     messages: [{ role: 'user', content: summaryPrompt }],
                     max_tokens: 2000,
                     temperature: 0.3,
                 }),
-                signal: AbortSignal.timeout(30000),
+                signal: AbortSignal.timeout(15000),
             });
 
             if (!response.ok) {
@@ -98,7 +101,7 @@ export function useAutoSummary(appState) {
                     if (!jsonMatch) throw new Error('No JSON found');
                     const parsed = JSON.parse(jsonMatch[0]);
                     role.autoSummary = parsed.narrative || newSummary;
-                    if (parsed.emotion)           role.currentEmotion    = parsed.emotion;
+                    if (parsed.emotion) role.currentEmotion = parsed.emotion;
                     if (parsed.affectionDelta !== undefined) {
                         role.affectionDelta = parsed.affectionDelta;
                         // 累计好感值，初始 50，范围 0-100
@@ -137,7 +140,7 @@ export function useAutoSummary(appState) {
             // 连续失败 3 次才提示一次，防止偶发网络波动打扰用户
             // 同时能暴露持续性配置错误（如 401、错误 baseUrl）
             if (consecutiveFailures >= 3) {
-                showToast('⚠️ 摘要功能连续多次失败，请检查后台模型配置', 'warning');
+                showToast('⚠️ 自动摘要暂时失败，不影响对话，将自动重试', 'warning');
                 consecutiveFailures = 0; // 重置，避免持续弹窗
             }
         } finally {
