@@ -309,6 +309,8 @@ export function createNewRoleData() {
         styleDirectives: [],     // 动态风格指令数组（用户在聊天中添加的）
         // v7.0: 内容偏好（独立于角色人设）
         contentPreferences: '',  // 故事内容基调和边界设定
+        // v8.x: 故事时间锚点
+        storyDate: '',           // 当前故事时间节点（自由文本，如"第3天，周三下午"）
         // v6.0: 三层记忆系统
         memoryCard: {
             updatedAt: 0,          // 上次更新时的时间戳

@@ -70,6 +70,7 @@ function buildDynamicStatus(role) {
 
     const lines = [
         `情绪：${role.currentEmotion || '平静'}${absenceNote}`,
+        role.storyDate ? `故事时间：${role.storyDate}` : null,
         `好感：${score}/100（${affectionLevel}）`,
         `关系阶段：${role.relationshipStage || '普通朋友'}`,
         recentKeyMoment ? `最近记住的事：${recentKeyMoment}` : null,
