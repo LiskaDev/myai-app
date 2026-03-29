@@ -41,14 +41,14 @@ export function useUserPersona() {
         });
 
         return (
-            '\n\n【关于与你对话的用户的情报】\n' +
-            '在长期接触中，你观察到了以下关于该用户的信息：\n' +
+            '\n\n【关于与你对话的用户的背景参考】\n' +
+            '在长期互动中积累的关于该用户的观察，请在不破坏当前角色人设的前提下自然融入：\n' +
             lines.join('\n') +
-            '\n你必须将这些信息作为对话的基础认知：\n' +
-            '1. 偏好/风格：主动迎合用户的喜好，往他们喜欢的方向发展剧情\n' +
+            '\n参考原则：\n' +
+            '1. 偏好/风格：在角色逻辑允许的范围内，自然向用户偏好的方向发展，不强行改变角色性格\n' +
             '2. 性格：理解用户的沟通风格，匹配他们的节奏和语气\n' +
-            '3. 雷区：严格禁止涉及任何雷区内容，即使剧情需要也绝不触碰\n' +
-            '4. 事实：自然地在对话中体现你记住了这些信息（如用户的职业、喜好等）'
+            '3. 雷区：尽量避免触碰，若角色设定本身涉及可以淡化处理\n' +
+            '4. 事实：自然地体现你记住了这些信息'
         );
     });
 
@@ -101,8 +101,8 @@ ${recentMessages.map(m => `${m.role === 'user' ? '用户' : 'AI'}：${(m.rawCont
 }
 category 只能是以下五种之一：preference / personality / fact / style / boundary`;
 
+        const bgTask = useBackgroundTasks().trackTask('用户画像');
         try {
-            const bgTask = useBackgroundTasks().trackTask('用户画像');
             const baseUrl = (apiConfig.bgBaseUrl || apiConfig.baseUrl || 'https://api.deepseek.com')
                 .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const apiKey = apiConfig.bgApiKey || apiConfig.apiKey;
@@ -152,7 +152,7 @@ category 只能是以下五种之一：preference / personality / fact / style /
             if (toAdd.length === 0) return;
 
             persona.value.traits = [...persona.value.traits, ...toAdd];
-            persona.value.messageCountSinceLastAnalysis = 0;
+            persona.value.lastAnalyzedAt = new Date().toISOString();
             saveUserPersona(persona.value);
 
             console.log(`[UserPersona] 🔍 后台分析完成，新增 ${toAdd.length} 条画像（当前共 ${persona.value.traits.length} 条）`);
@@ -164,7 +164,8 @@ category 只能是以下五种之一：preference / personality / fact / style /
             }
         } catch {
             // 静默失败
-            persona.value.messageCountSinceLastAnalysis = 0;
+        } finally {
+            bgTask.done();
         }
     }
 
@@ -261,6 +262,9 @@ ${others.map((t, i) => `${i + 1}. [${t.category}] ${t.content}`).join('\n')}
         saveUserPersona(persona.value);
 
         if (persona.value.messageCountSinceLastAnalysis >= 8) {
+            // 立刻重置，防止连发消息触发多次并发分析
+            persona.value.messageCountSinceLastAnalysis = 0;
+            saveUserPersona(persona.value);
             analyzeChatHistory(messages, apiConfig).catch(() => { });
         }
     }

@@ -163,7 +163,7 @@ function formatTime(ts) {
 
         <div v-if="showChapters" class="mt-3">
           <template v-if="(currentRole.chapterSummaries || []).length > 0">
-            <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
               <div v-for="(ch, i) in currentRole.chapterSummaries" :key="i"
                    class="chapter-item rounded-lg bg-white/5 p-2.5">
                 <div class="flex items-center gap-2 mb-1">

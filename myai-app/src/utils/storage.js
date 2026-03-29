@@ -141,7 +141,8 @@ export function loadUserPersona() {
         const parsed = JSON.parse(raw);
         return {
             traits: parsed.traits || [],
-            messageCountSinceLastAnalysis: parsed.messageCountSinceLastAnalysis || 0
+            messageCountSinceLastAnalysis: parsed.messageCountSinceLastAnalysis || 0,
+            lastAnalyzedAt: parsed.lastAnalyzedAt || null,
         };
     } catch {
         return defaultPersona;

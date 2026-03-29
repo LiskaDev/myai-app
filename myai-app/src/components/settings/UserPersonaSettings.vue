@@ -1,8 +1,18 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useUserPersona } from '../../composables/useUserPersona.js';
 
-const { traits, addTrait, removeTrait, clearAllTraits } = useUserPersona();
+const { traits, persona, addTrait, removeTrait, clearAllTraits } = useUserPersona();
+
+const lastAnalyzedText = computed(() => {
+    const t = persona.value.lastAnalyzedAt;
+    if (!t) return null;
+    const diff = Math.floor((Date.now() - new Date(t).getTime()) / 1000);
+    if (diff < 60) return '刚刚';
+    if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+    return `${Math.floor(diff / 86400)} 天前`;
+});
 
 const newContent = ref('');
 const newCategory = ref('preference');
@@ -59,6 +69,7 @@ function handleKeydown(e) {
             </p>
             <p class="mt-2 text-xs text-gray-500">
                 已保存 {{ traits.length }} 条画像信息 · 每 8 条消息自动分析一次
+                <span v-if="lastAnalyzedText"> · 上次更新：{{ lastAnalyzedText }}</span>
             </p>
         </div>
 
