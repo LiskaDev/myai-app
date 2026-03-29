@@ -3,7 +3,6 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useAppState } from '../composables/useAppState';
 import AvatarCropper from './AvatarCropper.vue';
 import RoleBasicSettings from './settings/RoleBasicSettings.vue';
-import RoleAdvancedSettings from './settings/RoleAdvancedSettings.vue';
 import CharacterDepthSettings from './settings/CharacterDepthSettings.vue';
 import MemoryManager from './settings/MemoryManager.vue';
 import UserPersonaSettings from './settings/UserPersonaSettings.vue';
@@ -180,7 +179,6 @@ const ROLE_SECTIONS = [
   { id: 'basic',    icon: '📋', label: '基础设定' },
   { id: 'depth',    icon: '✨', label: '人设深度' },
   { id: 'worldbook',icon: '📖', label: '世界书' },
-  { id: 'advanced', icon: '🔧', label: '外观 & 背景' },
 ];
 const activeRoleSection = ref('basic');
 
@@ -302,9 +300,6 @@ function handleOverlayClick(e) {
               :currentRole="currentRole" />
             <WorldBookSettings v-else-if="activeRoleSection === 'worldbook'"
               :currentRole="currentRole" :globalSettings="globalSettings"
-              @show-toast="(msg, type) => emit('show-toast', msg, type)" />
-            <RoleAdvancedSettings v-else-if="activeRoleSection === 'advanced'"
-              :currentRole="currentRole" :availableVoices="availableVoices"
               @show-toast="(msg, type) => emit('show-toast', msg, type)" />
             <div v-else-if="activeRoleSection === 'params'" class="params-section">
               <!-- 高级参数直接在这里展开，不折叠 -->

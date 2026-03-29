@@ -588,13 +588,18 @@ function handleAvatarError(type, roleId) {
 
   <div class="fullscreen-bg" :style="[
     currentRole.background ? { backgroundImage: `url(${currentRole.background})` } : {},
-    { filter: `brightness(${(globalSettings.chatBgBrightness || 100) / 100})` }
+    (globalSettings.chatBgBrightness && globalSettings.chatBgBrightness !== 100)
+      ? { filter: `brightness(${globalSettings.chatBgBrightness / 100})` }
+      : {}
   ]">
     <img v-if="currentRole.background" :src="currentRole.background" style="display:none" @error="currentRole.background = ''" />
   </div>
 
   <div id="app" class="h-full flex flex-col relative"
-       :style="{ '--bg-brightness': (globalSettings.chatBgBrightness || 100) / 100, '--text-brightness': (globalSettings.chatTextBrightness || 100) / 100, '--font-weight-delta': (globalSettings.chatFontWeight || 0) * 100 }">
+       :style="{
+         '--text-filter': (globalSettings.chatTextBrightness && globalSettings.chatTextBrightness !== 100) ? `brightness(${globalSettings.chatTextBrightness / 100})` : undefined,
+         '--font-weight-delta': (globalSettings.chatFontWeight || 0) * 100
+       }">
 
     <!-- ══ 顶栏 ══ -->
     <header class="topbar">

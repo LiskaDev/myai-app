@@ -36,12 +36,19 @@ select optgroup {
   color: #94a3b8;
 }
 
+html {
+  background-color: #1a1a2e; /* 画布底色，z-index:-1 的 .fullscreen-bg 在此之上、body 之下 */
+}
+html[data-theme="light"] {
+  background-color: #f5f0e8; /* 日间主题画布底色，防止深色漏出 */
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   overscroll-behavior: none;
   margin: 0;
   padding: 0;
-  background-color: #1a1a2e;
+  background-color: transparent; /* 让 .fullscreen-bg 透过来 */
   color: #f0f0f5;
 }
 
@@ -977,7 +984,7 @@ footer {
 [class*="inner-"] .inner-text,
 .inner-bubble,
 .reasoning-content {
-  filter: brightness(var(--text-brightness, 1)) !important;
+  filter: var(--text-filter, none) !important;
 }
 
 /* ── 用户可调：文字粗细（影响聊天区所有文字） ── */
@@ -2536,10 +2543,6 @@ details.reasoning-block[open]>summary {
   background: var(--border) !important;
 }
 
-/* ── 14. RoleAdvancedSettings summary 折叠边框 ── */
-[data-theme="light"] .advanced-panel[open] summary {
-  border-bottom-color: var(--border) !important;
-}
 
 /* ── 15. bg-white/5 通用半透明白背景 ── */
 [data-theme="light"] .bg-white\/5  { background: var(--brush) !important; }
