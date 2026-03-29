@@ -48,7 +48,8 @@ const emit = defineEmits([
   'delete-branch',
   'send-suggestion',
   'open-diary',
-  'set-reaction'
+  'set-reaction',
+  'continue-generation'
 ]);
 
 const containerRef = ref(null);
@@ -484,7 +485,7 @@ function isCurrentMatch(originalIndex) {
     <!-- 消息列表 -->
     <TransitionGroup name="message" tag="div">
       <template v-for="(msg, visibleIndex) in visibleMessages" :key="getOriginalIndex(visibleIndex)">
-        <template v-if="msg.role === 'user'">
+        <template v-if="msg.role === 'user' && !msg.hidden">
           <div class="message-bubble flex flex-col items-end"
                v-memo="[msg.content, activeMessageIndex === getOriginalIndex(visibleIndex), isCurrentMatch(getOriginalIndex(visibleIndex)), searchResults.length]"
                :data-msg-index="getOriginalIndex(visibleIndex)"
@@ -604,17 +605,9 @@ function isCurrentMatch(originalIndex) {
                     <button class="toolbar-btn regenerate" @click.stop="$emit('regenerate', getOriginalIndex(visibleIndex))">
                       🔄 重写
                     </button>
-                    <!-- 😊 表情反应按钮组 -->
-                    <div class="reaction-picker">
-                      <template v-for="emoji in ['❤️','👍','🔥','👎']" :key="emoji">
-                        <button
-                          class="reaction-btn"
-                          :class="{ 'active': msg.reaction === emoji }"
-                          @click.stop="$emit('set-reaction', getOriginalIndex(visibleIndex), msg.reaction === emoji ? null : emoji)"
-                          :title="emoji === '👎' ? '不喜欢这条' : '喜欢这条'"
-                        >{{ emoji }}</button>
-                      </template>
-                    </div>
+                    <button class="toolbar-btn continue-btn" @click.stop="$emit('continue-generation')">
+                      ▶ 继续
+                    </button>
                     <button class="toolbar-btn more-btn" @click.stop="moreMenuIndex = moreMenuIndex === getOriginalIndex(visibleIndex) ? null : getOriginalIndex(visibleIndex)">
                       ···
                     </button>
@@ -630,6 +623,17 @@ function isCurrentMatch(originalIndex) {
                       <button class="more-menu-item" @click.stop="$emit('fork-at', getOriginalIndex(visibleIndex)); moreMenuIndex = null">
                         <span>🔀</span><span>分叉</span>
                       </button>
+                      <div class="more-menu-divider"></div>
+                      <!-- 表情反应 -->
+                      <div class="more-menu-reactions">
+                        <template v-for="emoji in ['❤️','👍','🔥','👎']" :key="emoji">
+                          <button
+                            class="reaction-btn"
+                            :class="{ 'active': msg.reaction === emoji }"
+                            @click.stop="$emit('set-reaction', getOriginalIndex(visibleIndex), msg.reaction === emoji ? null : emoji); moreMenuIndex = null"
+                          >{{ emoji }}</button>
+                        </template>
+                      </div>
                       <div class="more-menu-divider"></div>
                       <button class="more-menu-item delete" @click.stop="$emit('delete-message', getOriginalIndex(visibleIndex)); moreMenuIndex = null">
                         <span>🗑️</span><span>删除</span>

@@ -761,65 +761,69 @@ footer {
 
 .toolbar-inner {
   display: flex;
-  gap: 8px;
-  padding: 8px 12px;
-  background: rgba(30, 30, 46, 0.95);
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--paper-card);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
 }
 
 .toolbar-btn {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: 8px;
-  font-size: 0.8rem;
-  color: #a0a0c0;
-  background: rgba(255, 255, 255, 0.05);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 12px;
+  color: var(--ink-faint);
+  background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .toolbar-btn:hover {
-  background: rgba(99, 102, 241, 0.3);
-  color: white;
+  background: var(--brush);
+  color: var(--ink);
 }
 
 .toolbar-btn.pin {
-  color: #f59e0b;
+  color: var(--accent-gold);
 }
 
 .toolbar-btn.pin:hover {
-  background: rgba(245, 158, 11, 0.3);
+  background: color-mix(in srgb, var(--accent-gold) 15%, transparent);
+  color: var(--accent-gold);
 }
 
 .toolbar-btn.pin.pinned {
-  background: rgba(245, 158, 11, 0.4);
-  color: #fbbf24;
+  background: color-mix(in srgb, var(--accent-gold) 20%, transparent);
+  color: var(--accent-gold);
 }
 
 .toolbar-btn.regenerate:hover {
-  background: rgba(34, 197, 94, 0.3);
+  background: var(--brush);
+  color: var(--ink);
+}
+
+.toolbar-btn.continue-btn:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
 }
 
 .toolbar-btn.delete:hover {
-  background: rgba(239, 68, 68, 0.3);
+  background: rgba(192, 112, 112, 0.12);
+  color: #c07070;
 }
 
-.toolbar-btn.tts {
-  color: #10b981;
-}
+.toolbar-btn.tts { color: var(--ink-faint); }
 
-.toolbar-btn.tts:hover {
-  background: rgba(16, 185, 129, 0.3);
-}
+.toolbar-btn.tts:hover { background: var(--brush); color: var(--ink); }
 
-.toolbar-btn.tts.playing {
-  background: rgba(16, 185, 129, 0.4);
-  color: white;
-}
+.toolbar-btn.tts.playing { background: var(--brush); color: var(--accent); }
 
 /* More menu (overflow actions) */
 .toolbar-btn.more-btn {
@@ -827,6 +831,7 @@ footer {
   letter-spacing: 2px;
   font-size: 1rem;
   min-width: 36px;
+  justify-content: center;
 }
 
 .more-menu {
@@ -834,13 +839,12 @@ footer {
   right: 0;
   top: calc(100% + 4px);
   min-width: 140px;
-  background: rgba(20, 20, 35, 0.95);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--paper-card);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 4px;
   z-index: 50;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 16px var(--shadow-lg);
 }
 
 .more-menu-item {
@@ -852,31 +856,36 @@ footer {
   border-radius: 8px;
   border: none;
   background: none;
-  color: rgba(220, 220, 240, 0.85);
-  font-size: 0.8rem;
+  color: var(--ink-faint);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 12px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .more-menu-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--brush);
+  color: var(--ink);
 }
 
-.more-menu-item.delete {
-  color: rgba(239, 68, 68, 0.85);
-}
+.more-menu-item.delete { color: #c07070; }
 
 .more-menu-item.delete:hover {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(192, 112, 112, 0.1);
+  color: #c07070;
 }
 
-.more-menu-item.pinned {
-  color: rgba(99, 102, 241, 0.9);
+.more-menu-item.pinned { color: var(--accent); }
+
+.more-menu-reactions {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px;
 }
 
 .more-menu-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border);
   margin: 4px 8px;
 }
 

@@ -304,7 +304,7 @@ const {
   setupWatchers, confirmModal, cleanupTimers, cleanupStorageListener
 } = appState;
 
-const { sendMessage, stopGeneration, regenerateMessage, deleteMessage, handleShiftEnter } = chatFunctions;
+const { sendMessage, stopGeneration, regenerateMessage, continueGeneration, deleteMessage, handleShiftEnter } = chatFunctions;
 const { toggleMessagePin, isMessagePinned, removeManualMemory, addManualMemory, startEditMemory, saveEditMemory, cancelEditMemory, toggleMemoryExpand, refineMemoryWithAI } = memoryFunctions;
 const { loadVoices, playTTS, stopTTS } = ttsFunctions;
 
@@ -688,6 +688,7 @@ function handleAvatarError(type, roleId) {
         @start-edit="handleStartEdit"
         @delete-message="deleteMessage"
         @regenerate="regenerateMessage"
+        @continue-generation="continueGeneration"
         @play-tts="playTTS"
         @update:search-query="searchQuery = $event"
         @search-next="goToMatch('next')"

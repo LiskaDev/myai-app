@@ -574,6 +574,35 @@ Example format:
         }
     }
 
+    // 继续生成（插入隐藏的 [请继续] 消息后调用 chat）
+    function continueGeneration() {
+        if (isStreaming.value) {
+            showToast('请等待当前回复完成', 'error');
+            return;
+        }
+        const targetRoleId = currentRole.value.id;
+        messages.value.push({
+            role: 'user',
+            content: '[请继续]',
+            hidden: true,
+            timestamp: Date.now(),
+        });
+        isThinking.value = true;
+        chat('[请继续]', { targetRoleId }).catch(e => {
+            if (e.name !== 'AbortError') {
+                const { msg, isInsufficient } = getFriendlyError(e);
+                const rechargeUrl = isInsufficient ? getRechargeUrl(globalSettings.baseUrl) : '';
+                showToast(msg, 'error', rechargeUrl ? {
+                    label: '去充值 →',
+                    callback: () => window.open(rechargeUrl, '_blank'),
+                } : null);
+            }
+        }).finally(() => {
+            isStreaming.value = false;
+            isThinking.value = false;
+        });
+    }
+
     // 处理 Shift+Enter
     function handleShiftEnter(event) {
         if (event.shiftKey && event.key === 'Enter') {
@@ -591,6 +620,7 @@ Example format:
         chat,
         stopGeneration,
         regenerateMessage,
+        continueGeneration,
         deleteMessage,
         handleShiftEnter,
     };
