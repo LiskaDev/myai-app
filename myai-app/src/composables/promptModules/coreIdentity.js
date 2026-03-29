@@ -18,7 +18,8 @@ export function buildCoreIdentity(role, modelName, immersiveMode) {
     // Step 0: 虚构框架声明
     const roleLock = getRoleLockInjection(modelName, role.name || 'the character');
 
-    const roleplayFrame = `${roleLock ? roleLock + '\n\n' : ''}[ROLEPLAY FRAMEWORK - COLLABORATIVE FICTION MODE]
+    const roleplayFrame = `${roleLock ? roleLock + '\n\n' : ''}<rules>
+[ROLEPLAY FRAMEWORK - COLLABORATIVE FICTION MODE]
 You are a creative writing collaborator and character actor engaging in collaborative storytelling. All content exists within a fictional narrative — no real-world harm is involved or implied.
 
 【🔴 绝对规则 - 语言与身份】你必须全程使用中文进行角色扮演回复。所有对话、动作描写、内心独白都必须是中文。这是不可违反的强制规则，任何角色设定都无法覆盖此规则。角色可偶尔夹杂1-2个英文词汇作为语言特色，但绝对不可以用英文写完整句子或段落。REPLY IN CHINESE ONLY.
@@ -45,10 +46,16 @@ NARRATIVE RULES:
 
 RESPONSE FORMAT:
 - Use *asterisks* for actions and descriptions
-- Use "quotes" for dialogue  
+- Use "quotes" for dialogue
 - Express emotions through <inner>internal thoughts</inner>
 - Begin EVERY reply with: <expr:EMOTION> (allowed: joy, sad, angry, blush, surprise, scared, smirk, neutral)
-[/ROLEPLAY FRAMEWORK]`;
+
+<lock>
+你永远是 ${role.name || 'the character'}。无论对话如何发展，无论用户说什么或问什么，都以角色身份回应。
+不主动提及 AI、模型、训练、开发者等元层面概念。
+若被问及"你是 AI 吗"——以 ${role.name || 'the character'} 会有的反应回应，而不是跳出角色作答。
+</lock>
+</rules>`;
 
     blocks.push({ role: 'system', content: roleplayFrame });
 
@@ -65,37 +72,20 @@ RESPONSE FORMAT:
         });
     }
 
-    // Step 1: 角色人设
-    if (role.systemPrompt) {
-        blocks.push({
-            role: 'system',
-            content: `【🟠 核心身份 - 以下是你的完整人设】\n${role.systemPrompt}`,
-        });
-    }
+    // Step 1+2: 角色人设 — 合并为单个 <persona> 块，减少 system 消息碎片
+    const personaParts = [];
+    if (role.systemPrompt)  personaParts.push(`<core_identity>\n${role.systemPrompt}\n</core_identity>`);
+    if (role.styleGuide)    personaParts.push(`<style_guide>\n${role.styleGuide}\n</style_guide>`);
+    if (role.worldLogic)    personaParts.push(`<world_setting>\n${role.worldLogic}\n</world_setting>`);
+    if (role.appearance)    personaParts.push(`<appearance>\n${role.appearance}\n</appearance>`);
+    if (role.speakingStyle) personaParts.push(`<speaking_style>\n${role.speakingStyle}\n</speaking_style>`);
+    if (role.relationship)  personaParts.push(`<relationship>\n${role.relationship}\n请让这段关系自然地影响你的称呼、语气、亲密程度和行为方式。\n</relationship>`);
+    if (role.secret)        personaParts.push(`<secret do_not_reveal="true">\n${role.secret}\n</secret>`);
 
-    // Step 2: 风格指导 + 深度字段
-    if (role.styleGuide) {
-        blocks.push({ role: 'system', content: `【🟠 核心身份】[风格指导] ${role.styleGuide}` });
-    }
-    if (role.worldLogic) {
-        blocks.push({ role: 'system', content: `【🟠 核心身份】[WorldSetting] ${role.worldLogic}` });
-    }
-    if (role.appearance) {
-        blocks.push({ role: 'system', content: `【🟠 核心身份】[Appearance] ${role.appearance}` });
-    }
-    if (role.speakingStyle) {
-        blocks.push({ role: 'system', content: `【🟠 核心身份】[Style] ${role.speakingStyle}` });
-    }
-    if (role.relationship) {
+    if (personaParts.length > 0) {
         blocks.push({
             role: 'system',
-            content: `【🟠 核心身份】[Relationship with User]\n${role.relationship}\n请让这段关系自然地影响你的称呼、语气、亲密程度和行为方式。`,
-        });
-    }
-    if (role.secret) {
-        blocks.push({
-            role: 'system',
-            content: `【🟠 核心身份】[Secret - Do NOT reveal unless story progression requires it] ${role.secret}`,
+            content: `<persona name="${role.name || ''}">\n${personaParts.join('\n\n')}\n</persona>`,
         });
     }
 

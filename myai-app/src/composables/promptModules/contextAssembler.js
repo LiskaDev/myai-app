@@ -25,7 +25,7 @@ export function assemblePrompt({ coreBlocks, styleBlocks, memoryBlocks, loreBloc
     if (loreBlocks?.before?.length) {
         apiMessages.push({
             role: 'system',
-            content: `[World Lore — 以下是当前场景相关的世界观设定，请在角色扮演中自然融入]\n${loreBlocks.before.join('\n\n')}`,
+            content: `<world>\n${loreBlocks.before.join('\n\n')}\n</world>`,
         });
     }
 
@@ -65,7 +65,7 @@ ${vectorMemoryBlocks.join('\n\n')}`,
     if (loreBlocks?.after?.length) {
         apiMessages.push({
             role: 'system',
-            content: `[Additional Lore — 补充世界设定]\n${loreBlocks.after.join('\n\n')}`,
+            content: `<world position="near_context">\n${loreBlocks.after.join('\n\n')}\n</world>`,
         });
     }
 

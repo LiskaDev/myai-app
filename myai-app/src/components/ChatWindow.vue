@@ -57,6 +57,12 @@ const searchInputRef = ref(null);
 const moreMenuIndex = ref(null);
 const copyFeedbackIndex = ref(null);
 
+// 滑动保护：touchmove 发生过就不触发 toggle-select，防止滑动时误弹工具栏
+const touchScrolled = ref(false);
+function onMsgTouchStart(e, index) { touchScrolled.value = false; longPress.onTouchStart(e, index); }
+function onMsgTouchMove(e) { touchScrolled.value = true; longPress.onTouchMove(e); }
+function handleToggleSelect(index) { if (!touchScrolled.value) emit('toggle-select', index); }
+
 // 💕 loveDark 飘动心形背景
 let heartElements = [];
 function createFloatingHearts() {
@@ -490,12 +496,12 @@ function isCurrentMatch(originalIndex) {
                v-memo="[msg.content, activeMessageIndex === getOriginalIndex(visibleIndex), isCurrentMatch(getOriginalIndex(visibleIndex)), searchResults.length]"
                :data-msg-index="getOriginalIndex(visibleIndex)"
                :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }"
-               @touchstart="(e) => longPress.onTouchStart(e, getOriginalIndex(visibleIndex))"
+               @touchstart="(e) => onMsgTouchStart(e, getOriginalIndex(visibleIndex))"
                @touchend="longPress.onTouchEnd"
-               @touchmove="longPress.onTouchMove">
+               @touchmove="onMsgTouchMove">
             <div class="flex items-start justify-end space-x-3 space-x-reverse w-full">
               <div class="max-w-[68%] message-wrapper">
-                <div @click.stop="$emit('toggle-select', getOriginalIndex(visibleIndex))"
+                <div @click.stop="handleToggleSelect(getOriginalIndex(visibleIndex))"
                      class="user-speech-bubble cursor-pointer"
                      :class="{ 'selected': activeMessageIndex === getOriginalIndex(visibleIndex) }">
                   <div class="message-body message-content text-sm whitespace-pre-wrap" v-html="renderMarkdown(msg.content || '')"></div>
@@ -539,9 +545,9 @@ function isCurrentMatch(originalIndex) {
                v-memo="[parsedMessages[visibleIndex]?.bodyHtml, parsedMessages[visibleIndex]?.thought, parsedMessages[visibleIndex]?.inner, activeMessageIndex === getOriginalIndex(visibleIndex), isCurrentMatch(getOriginalIndex(visibleIndex)), isStreaming && getOriginalIndex(visibleIndex) === messages.length - 1, globalSettings.showLogic, globalSettings.showInner, globalSettings.showTokens, searchResults.length, msg.isActiveMessage, msg.reaction]"
                :data-msg-index="getOriginalIndex(visibleIndex)"
                :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }"
-               @touchstart="(e) => longPress.onTouchStart(e, getOriginalIndex(visibleIndex))"
+               @touchstart="(e) => onMsgTouchStart(e, getOriginalIndex(visibleIndex))"
                @touchend="longPress.onTouchEnd"
-               @touchmove="longPress.onTouchMove">
+               @touchmove="onMsgTouchMove">
             <div class="flex items-start space-x-3 w-full">
               <div v-if="currentRole.avatar"
                    class="avatar flex-shrink-0 expr-avatar"
@@ -580,7 +586,7 @@ function isCurrentMatch(originalIndex) {
                   <span class="inner-text">{{ parsedMessages[visibleIndex].inner }}</span>
                 </div>
 
-                <div @click.stop="msg.isActiveMessage && (msg.content || '').includes('📔') ? $emit('open-diary') : $emit('toggle-select', getOriginalIndex(visibleIndex))"
+                <div @click.stop="msg.isActiveMessage && (msg.content || '').includes('📔') ? $emit('open-diary') : handleToggleSelect(getOriginalIndex(visibleIndex))"
                      class="speech-bubble cursor-pointer"
                      :class="{ 'selected': activeMessageIndex === getOriginalIndex(visibleIndex), 'diary-clickable': msg.isActiveMessage && (msg.content || '').includes('📔') }">
                   <div class="message-body vn-body message-content"
