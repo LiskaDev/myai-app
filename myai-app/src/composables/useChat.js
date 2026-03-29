@@ -88,6 +88,9 @@ export function useChat(appState) {
             baseUrl: globalSettings.baseUrl,
             model: globalSettings.model,
             enableSmartAnalysis: globalSettings.enableSmartAnalysis,
+            bgModel: globalSettings.bgModel,
+            bgBaseUrl: globalSettings.bgBaseUrl,
+            bgApiKey: globalSettings.bgApiKey,
         });
 
         isThinking.value = true;

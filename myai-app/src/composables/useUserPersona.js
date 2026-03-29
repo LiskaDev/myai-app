@@ -107,8 +107,13 @@ category 只能是以下五种之一：preference / personality / fact / style /
                 .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const apiKey = apiConfig.bgApiKey || apiConfig.apiKey;
 
-            // 使用便宜的模型做分析
-            const model = apiConfig.bgModel || apiConfig.model || 'deepseek-chat';
+            // 使用便宜的模型做分析；推理模型（reasoner/r1/qwq）自动降级到 deepseek-chat
+            const rawModel = apiConfig.bgModel || apiConfig.model || 'deepseek-chat';
+            const isReasoner = /reasoner|r1(-|$)|qwq/i.test(rawModel);
+            const model = isReasoner ? 'deepseek-chat' : rawModel;
+            if (isReasoner) {
+                console.log(`[UserPersona] ⚡ 推理模型自动降级 ${rawModel} → deepseek-chat（建议在设置-后台模型中单独配置）`);
+            }
 
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
@@ -122,7 +127,7 @@ category 只能是以下五种之一：preference / personality / fact / style /
                     temperature: 0.3,
                     messages: [{ role: 'user', content: analysisPrompt }],
                 }),
-                signal: AbortSignal.timeout(30000),
+                signal: AbortSignal.timeout(120000),
             });
 
             if (!response.ok) return;
@@ -135,6 +140,10 @@ category 只能是以下五种之一：preference / personality / fact / style /
 
             const parsed = JSON.parse(jsonMatch[0]);
             const newTraits = parsed?.new_traits;
+
+            // 无论是否有新 traits，都记录本次分析时间
+            persona.value.lastAnalyzedAt = new Date().toISOString();
+            saveUserPersona(persona.value);
 
             if (!Array.isArray(newTraits) || newTraits.length === 0) return;
 
@@ -152,7 +161,6 @@ category 只能是以下五种之一：preference / personality / fact / style /
             if (toAdd.length === 0) return;
 
             persona.value.traits = [...persona.value.traits, ...toAdd];
-            persona.value.lastAnalyzedAt = new Date().toISOString();
             saveUserPersona(persona.value);
 
             console.log(`[UserPersona] 🔍 后台分析完成，新增 ${toAdd.length} 条画像（当前共 ${persona.value.traits.length} 条）`);
