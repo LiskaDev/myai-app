@@ -59,11 +59,78 @@ function getRoleLastLine(role) {
   return '';
 }
 
-defineEmits([
+const emit = defineEmits([
   'switch-role', 'create-role', 'ai-create-role', 'delete-role',
   'export-role', 'generate-card', 'open-card-library', 'close',
-  'avatar-error',
+  'avatar-error', 'import-sillytavern',
 ]);
+
+const stFileInput = ref(null);
+
+function triggerStImport() {
+  stFileInput.value?.click();
+}
+
+async function onStFileSelected(e) {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const cardData = await parseSillyTavernPng(file);
+    emit('import-sillytavern', cardData);
+  } catch (err) {
+    alert('角色卡解析失败：' + err.message);
+  }
+}
+
+/**
+ * 解析 SillyTavern PNG 角色卡
+ * PNG tEXt chunk: 4字节长度 + 4字节类型 + data(key\0value) + 4字节CRC
+ * key="chara"，value 是 base64 编码的 JSON
+ */
+async function parseSillyTavernPng(file) {
+  const buf = await file.arrayBuffer();
+  const view = new DataView(buf);
+  const bytes = new Uint8Array(buf);
+
+  // 验证 PNG 签名
+  const PNG_SIG = [137, 80, 78, 71, 13, 10, 26, 10];
+  for (let i = 0; i < 8; i++) {
+    if (bytes[i] !== PNG_SIG[i]) throw new Error('不是有效的 PNG 文件');
+  }
+
+  // 遍历 chunks
+  let offset = 8;
+  while (offset < bytes.length - 12) {
+    const length = view.getUint32(offset, false);
+    const type = String.fromCharCode(bytes[offset+4], bytes[offset+5], bytes[offset+6], bytes[offset+7]);
+    const dataStart = offset + 8;
+
+    if (type === 'tEXt' || type === 'iTXt') {
+      // 找 null byte 分隔符
+      let nullIdx = dataStart;
+      while (nullIdx < dataStart + length && bytes[nullIdx] !== 0) nullIdx++;
+      const key = new TextDecoder().decode(bytes.slice(dataStart, nullIdx));
+
+      if (key === 'chara') {
+        // iTXt 需要跳过额外的元数据字节
+        const valueStart = type === 'iTXt' ? nullIdx + 3 : nullIdx + 1;
+        const rawValue = new TextDecoder().decode(bytes.slice(valueStart, dataStart + length));
+        const jsonStr = atob(rawValue.trim());
+        const parsed = JSON.parse(jsonStr);
+
+        // 支持 V1 和 V2 格式
+        const card = parsed.spec === 'chara_card_v2' ? parsed.data : parsed;
+        return card;
+      }
+    }
+
+    offset = dataStart + length + 4; // +4 跳过 CRC
+    if (length === 0 && type === 'IEND') break;
+  }
+
+  throw new Error('未找到角色卡数据（chara chunk），请确认是 SillyTavern 导出的角色卡 PNG');
+}
 
 const libraryCount = computed(() => {
   try { return JSON.parse(localStorage.getItem('myai_card_library_v1') || '[]').length; }
@@ -137,6 +204,8 @@ const libraryCount = computed(() => {
         <div class="sidebar-btns">
           <button class="create-btn" @click="$emit('create-role')">➕ 创建新角色</button>
           <button class="create-btn ai-btn" @click="$emit('ai-create-role')">✨ AI 生成角色</button>
+          <button class="create-btn st-btn" @click="triggerStImport" title="导入 SillyTavern 角色卡 PNG">🃏 导入酒馆角色卡</button>
+          <input ref="stFileInput" type="file" accept="image/png" class="hidden" @change="onStFileSelected" />
         </div>
       </div>
 
@@ -295,6 +364,7 @@ const libraryCount = computed(() => {
 .create-btn:hover { background: var(--brush); color: var(--ink); border-color: var(--accent); }
 .create-btn:active { transform: scale(.98); }
 .ai-btn { background: rgba(196,150,58,0.06); }
+.st-btn { background: rgba(99,102,241,0.07); font-size: 12px; }
 
 
 /* ── 卡片库 ── */

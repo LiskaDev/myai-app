@@ -554,7 +554,7 @@ function handleOverlayClick(e) {
 
                 <div v-if="timelineSource?.length" class="space-y-2">
                   <div v-for="(event, idx) in timelineSource" :key="idx"
-                       class="timeline-item" :class="{ 'active': editingTimelineIdx === idx }"
+                       class="timeline-item group" :class="{ 'active': editingTimelineIdx === idx }"
                        @click="editingTimelineIdx !== idx && startEditTimeline(idx)">
                     <span class="timeline-icon">{{ event.importance === 'high' ? '⚡' : event.importance === 'medium' ? '📌' : '·' }}</span>
                     <div class="flex-1 min-w-0">

@@ -11,7 +11,7 @@ import { useDiary } from './composables/useDiary';
 import { useActiveMessage } from './composables/useActiveMessage';
 import { useBackgroundTasks } from './composables/useBackgroundTasks';
 import { extractExpression, parseDualLayerResponse } from './utils/textParser';
-import { STYLE_QUICK_TAGS, WRITING_STYLE_PRESETS } from './composables/presets';
+import { STYLE_QUICK_TAGS, WRITING_STYLE_PRESETS, createNewRoleData } from './composables/presets';
 
 // Import Components
 import ChatWindow from './components/ChatWindow.vue';
@@ -185,6 +185,49 @@ const pendingRolecard = ref(null)
 function handleRolecardDetected({ data, file }) {
   showImportModal.value = false
   pendingRolecard.value = { data, file }
+}
+
+// SillyTavern 角色卡导入
+const pendingStCard = ref(null)
+
+function handleImportSillyTavern(card) {
+  pendingStCard.value = card
+}
+
+function confirmStImport() {
+  const card = pendingStCard.value
+  if (!card) return
+
+  // 字段映射：酒馆字段 → 本站字段
+  const parts = [card.description || '']
+  if (card.personality) parts.push(`\n\n【性格】${card.personality}`)
+  if (card.scenario) parts.push(`\n\n【场景】${card.scenario}`)
+  if (card.mes_example) parts.push(`\n\n【对话示例】\n${card.mes_example}`)
+  const systemPrompt = parts.join('').trim()
+
+  const incoming = {
+    name: card.name || '酒馆角色',
+    systemPrompt,
+    firstMessage: card.first_mes || '你好！',
+    styleGuide: card.personality ? card.personality.slice(0, 100) : '',
+  }
+
+  const newRole = { ...createNewRoleData(), ...incoming, id: crypto.randomUUID(), createdAt: Date.now() }
+
+  // 不兼容字段提示
+  const unsupported = []
+  if (card.creator_notes) unsupported.push('creator_notes（作者备注）')
+  if (card.tags?.length) unsupported.push('tags（标签）')
+
+  roleList.value.push(newRole)
+  saveData()
+  switchRole(newRole.id)
+  showSidebar.value = false
+  pendingStCard.value = null
+
+  let msg = `✅ 酒馆角色卡「${incoming.name}」导入成功！`
+  if (unsupported.length) msg += ` （以下字段已忽略：${unsupported.join('、')}）`
+  showToast(msg)
 }
 
 function confirmRolecardImport() {
@@ -683,6 +726,7 @@ function handleAvatarError(type, roleId) {
       @export-role="exportSingleRole"
       @generate-card="(id) => { cardSavedTheme = null; cardTargetRoleId = id; showSidebar = false; }"
       @open-card-library="showCardLibrary = true"
+      @import-sillytavern="handleImportSillyTavern"
       @close="showSidebar = false"
       @avatar-error="handleAvatarError"
     />
@@ -959,6 +1003,29 @@ function handleAvatarError(type, roleId) {
         <div class="flex gap-3 justify-end">
           <button @click="pendingRolecard = null" class="px-4 py-2 rounded-lg text-sm transition" style="background:var(--brush);color:var(--ink-faint)">取消</button>
           <button @click="confirmRolecardImport" class="px-5 py-2 rounded-lg text-sm font-medium transition" style="background:var(--accent);color:white">✅ 确认导入</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SillyTavern 角色卡导入确认 -->
+    <div v-if="pendingStCard" class="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <div class="fixed inset-0" style="background:var(--overlay-bg);backdrop-filter:blur(4px)" @click="pendingStCard = null"></div>
+      <div class="relative rounded-2xl max-w-sm w-full p-6" style="background:var(--paper-card);border:1px solid var(--border);box-shadow:0 8px 32px var(--shadow-lg)">
+        <div class="flex items-center gap-4 mb-4">
+          <span class="text-3xl">🃏</span>
+          <div>
+            <h3 class="text-lg font-bold" style="color:var(--ink)">{{ pendingStCard.name || '未知角色' }}</h3>
+            <p class="text-sm mt-0.5" style="color:var(--ink-faint)">SillyTavern 角色卡</p>
+          </div>
+        </div>
+        <div class="text-xs space-y-1 mb-4 rounded-lg p-3" style="background:var(--brush);color:var(--ink-light)">
+          <div><span style="color:var(--ink-faint)">系统提示词：</span>{{ (pendingStCard.description || '').slice(0, 80) }}{{ (pendingStCard.description || '').length > 80 ? '…' : '' }}</div>
+          <div><span style="color:var(--ink-faint)">开场白：</span>{{ (pendingStCard.first_mes || '').slice(0, 60) }}{{ (pendingStCard.first_mes || '').length > 60 ? '…' : '' }}</div>
+        </div>
+        <p class="text-xs mb-5" style="color:var(--ink-faint)">personality、scenario、mes_example 将合并进系统提示词；creator_notes 和 tags 不支持，将被忽略。</p>
+        <div class="flex gap-3 justify-end">
+          <button @click="pendingStCard = null" class="px-4 py-2 rounded-lg text-sm transition" style="background:var(--brush);color:var(--ink-faint)">取消</button>
+          <button @click="confirmStImport" class="px-5 py-2 rounded-lg text-sm font-medium transition" style="background:var(--accent);color:white">✅ 确认导入</button>
         </div>
       </div>
     </div>

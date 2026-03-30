@@ -462,7 +462,7 @@ ${rawContent}`;
                 },
                 body: JSON.stringify({
                     model,
-                    max_tokens: 400,
+                    max_tokens: 800,
                     temperature: 0.3,
                     messages: [{
                         role: 'user',
