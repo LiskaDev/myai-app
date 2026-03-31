@@ -10,7 +10,7 @@
  * @param {Array}  options.styleBlocks   - P2 风格参考块
  * @param {Array}  options.memoryBlocks  - P3 剧情参考块
  * @param {Object} [options.loreBlocks]  - 📖 世界书匹配结果 { before: string[], after: string[] }
- * @param {Array}  [options.vectorMemoryBlocks] - P3.5 向量记忆块（语义检索的相关历史记忆）
+ * @param {Array}  [options.vectorMemoryBlocks] - P3.5 关键词记忆块（关键词匹配的相关历史记忆）
  * @param {Object} options.role          - 当前角色
  * @param {Array}  options.messages      - 全部消息数组（ref.value）
  * @returns {Array} 最终的 apiMessages
@@ -35,11 +35,11 @@ export function assemblePrompt({ coreBlocks, styleBlocks, memoryBlocks, loreBloc
     // ── 3. P3 剧情参考（token 紧张时优先裁剪这部分）──
     apiMessages.push(...memoryBlocks);
 
-    // ── 3.5 P3.5 向量记忆（语义检索，相关历史记忆）──
+    // ── 3.5 P3.5 关键词记忆（关键词匹配，相关历史记忆）──
     if (vectorMemoryBlocks?.length) {
         apiMessages.push({
             role: 'system',
-            content: `[相关历史记忆 — 以下是与当前对话语义相关的重要历史事件，可作为背景参考]
+            content: `[相关历史记忆 — 以下是与当前对话关键词匹配的历史事件，可作为背景参考]
 ${vectorMemoryBlocks.join('\n\n')}`,
         });
     }

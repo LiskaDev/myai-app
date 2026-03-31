@@ -149,14 +149,14 @@ function handleImportFile(event) {
     event.target.value = '';
 }
 
-// ── 语义搜索开关 ──
+// ── 关键词检索开关 ──
 function toggleSemantic() {
     if (props.globalSettings) {
         props.globalSettings.semanticSearchEnabled = !props.globalSettings.semanticSearchEnabled;
     }
 }
 
-// ── 向量记忆开关 ──
+// ── 关键词记忆开关 ──
 function toggleVectorMemory() {
     if (!props.globalSettings) return;
     props.globalSettings.enableVectorMemory = !props.globalSettings.enableVectorMemory;
@@ -182,22 +182,22 @@ function toggleVectorMemory() {
     <p class="section-desc">定义世界观设定（地点、物品、历史等），对话中提到关键词时自动注入到 AI 上下文</p>
     <input ref="importFileRef" type="file" accept=".json" class="hidden" @change="handleImportFile">
 
-    <!-- 语义搜索开关 -->
+    <!-- 关键词检索开关 -->
     <div class="wb-semantic-toggle">
       <div class="wb-semantic-info">
-        <span class="wb-semantic-label">🧠 语义搜索</span>
-        <span class="wb-semantic-desc">除关键词匹配外，还通过本地 BM25 全文搜索自动发现相关的世界书条目（无需网络）</span>
+        <span class="wb-semantic-label">🧠 关键词检索</span>
+        <span class="wb-semantic-desc">基于关键词匹配 + 本地 BM25 全文搜索，自动发现与当前对话相关的世界书条目（无需网络）</span>
       </div>
       <button @click="toggleSemantic" class="wb-toggle-switch" :class="{ on: globalSettings?.semanticSearchEnabled }">
         {{ globalSettings?.semanticSearchEnabled ? 'ON' : 'OFF' }}
       </button>
     </div>
 
-    <!-- 向量记忆开关 -->
+    <!-- 关键词记忆开关 -->
     <div class="wb-semantic-toggle">
       <div class="wb-semantic-info">
-        <span class="wb-semantic-label">💾 向量记忆</span>
-        <span class="wb-semantic-desc">章节归档后自动提取关键记忆，每次对话语义检索相关历史（需配置后端服务）</span>
+        <span class="wb-semantic-label">💾 关键词记忆</span>
+        <span class="wb-semantic-desc">基于关键词匹配，自动检索与当前对话相关的历史记忆片段注入上下文</span>
       </div>
       <button @click="toggleVectorMemory" class="wb-toggle-switch" :class="{ on: globalSettings?.enableVectorMemory }">
         {{ globalSettings?.enableVectorMemory ? 'ON' : 'OFF' }}
@@ -497,7 +497,7 @@ function toggleVectorMemory() {
 }
 .wb-delete-btn:hover { opacity: 1; }
 
-/* ── 语义搜索开关 ── */
+/* ── 关键词检索开关 ── */
 .wb-semantic-toggle {
   display: flex;
   align-items: center;

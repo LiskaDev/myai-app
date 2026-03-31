@@ -61,6 +61,7 @@ const props = defineProps({
   currentGroup: Object,
   participants: Array,
   initialTab: String,
+  promptPreviewData: Array,
 });
 
 const emit = defineEmits([
@@ -78,7 +79,8 @@ const emit = defineEmits([
   'cancel-edit-memory',
   'toggle-memory-expand',
   'refine-memory',
-  'show-toast'
+  'show-toast',
+  'request-prompt-preview'
 ]);
 
 // ===== 通用设置的状态 =====
@@ -168,6 +170,8 @@ const TABS = props.isGroupMode
       { id: 'persona', icon: '👤', label: '画像' },
       { id: 'general', icon: '⚙️', label: '通用' },
       { id: 'data',    icon: '💾', label: '数据' },
+      { id: 'memory-status', icon: '📊', label: '状态' },
+      { id: 'prompt-preview', icon: '🔍', label: 'Prompt' },
     ];
 
 // 支持从外部指定初始 Tab（如「去设置」按钮直接跳转到通用 Tab）
@@ -248,6 +252,101 @@ function cancelTimelineEdit() {
 function handleOverlayClick(e) {
   if (e.target === e.currentTarget) emit('close');
 }
+
+// ===== Spec-01: 记忆状态 Tab =====
+function formatTime(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleString('zh-CN', {
+    month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+function memoryStatusIcon(hasData, lastUpdated) {
+  if (!hasData) return '⭕';
+  if (!lastUpdated) return '✅';
+  const daysSince = (Date.now() - new Date(lastUpdated).getTime()) / (1000 * 60 * 60 * 24);
+  return daysSince > 7 ? '⚠️' : '✅';
+}
+
+const memoryStatusCards = computed(() => {
+  const role = props.currentRole || {};
+  const chapters = role.chapterSummaries || [];
+  const card = role.memoryCard || {};
+  const timeline = role.timeline || [];
+  const vectors = role.vectorMemories || [];
+
+  // 用户画像
+  let persona = null;
+  try { persona = JSON.parse(localStorage.getItem('myai_user_persona_v1') || 'null'); } catch {}
+  const personaTraits = persona?.traits || [];
+
+  return [
+    {
+      icon: '📚', label: '章节摘要',
+      status: chapters.length > 0
+        ? `共 ${chapters.length} 章 · 最近归档：${formatTime(chapters.slice(-1)[0]?.createdAt)}`
+        : '暂无归档',
+      statusIcon: memoryStatusIcon(chapters.length > 0, chapters.slice(-1)[0]?.createdAt),
+    },
+    {
+      icon: '🧠', label: '认知卡',
+      status: (card.keyEvents?.length > 0 || card.userProfile)
+        ? `已记录 ${card.keyEvents?.length || 0} 条关键事件 · 更新于 ${formatTime(card.updatedAt)}`
+        : '尚未生成',
+      statusIcon: memoryStatusIcon(card.keyEvents?.length > 0 || !!card.userProfile, card.updatedAt),
+    },
+    {
+      icon: '📅', label: '时间线',
+      status: timeline.length > 0
+        ? `共 ${timeline.length} 条事件 · 已分析 ${role.timelineAnalyzedCount || 0} 条消息`
+        : '尚未生成',
+      statusIcon: memoryStatusIcon(timeline.length > 0, timeline.slice(-1)[0]?.timestamp),
+    },
+    {
+      icon: '💾', label: '关键词记忆',
+      status: vectors.length > 0
+        ? `共 ${vectors.length} 条关键词记忆`
+        : '尚未生成',
+      statusIcon: memoryStatusIcon(vectors.length > 0, null),
+    },
+    {
+      icon: '👤', label: '用户画像',
+      status: personaTraits.length > 0
+        ? `共 ${personaTraits.length} 条用户特征 · 分析于 ${formatTime(persona?.lastAnalyzedAt)}`
+        : '尚未分析',
+      statusIcon: memoryStatusIcon(personaTraits.length > 0, persona?.lastAnalyzedAt),
+    },
+  ];
+});
+
+// ===== Spec-02: Prompt 预览 =====
+const promptExpandedMap = ref({});
+const isPromptLoading = ref(false);
+
+function togglePromptBlock(idx) {
+  promptExpandedMap.value[idx] = !promptExpandedMap.value[idx];
+}
+
+function requestPromptPreview() {
+  isPromptLoading.value = true;
+  promptExpandedMap.value = {};
+  emit('request-prompt-preview');
+  // 等 props.promptPreviewData 被父组件更新后自动渲染
+  setTimeout(() => { isPromptLoading.value = false; }, 500);
+}
+
+function promptRoleTag(role) {
+  if (role === 'system') return { label: 'system', cls: 'prompt-tag-system' };
+  if (role === 'user') return { label: 'user', cls: 'prompt-tag-user' };
+  return { label: 'assistant', cls: 'prompt-tag-assistant' };
+}
+
+const promptTokenEstimate = computed(() => {
+  if (!props.promptPreviewData?.length) return null;
+  const totalChars = props.promptPreviewData.reduce((s, m) => s + (m.content?.length || 0), 0);
+  return { count: props.promptPreviewData.length, tokens: Math.round(totalChars / 2) };
+});
 </script>
 
 <template>
@@ -961,6 +1060,63 @@ function handleOverlayClick(e) {
           </div>
         </template>
 
+        <!-- ===== 记忆状态 Tab (Spec-01) ===== -->
+        <template v-else-if="activeTab === 'memory-status' && !isGroupMode">
+          <div class="modal-content-full">
+            <div class="section-title">📊 记忆系统健康状态</div>
+            <p class="section-desc">一览当前角色各记忆模块的运行情况（只读）</p>
+            <div class="memory-status-list">
+              <div v-for="(card, idx) in memoryStatusCards" :key="idx" class="memory-status-card">
+                <div class="memory-status-left">
+                  <span class="memory-status-icon">{{ card.icon }}</span>
+                  <div>
+                    <div class="memory-status-label">{{ card.label }}</div>
+                    <div class="memory-status-value">{{ card.status }}</div>
+                  </div>
+                </div>
+                <span class="memory-status-badge">{{ card.statusIcon }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ===== Prompt 预览 Tab (Spec-02) ===== -->
+        <template v-else-if="activeTab === 'prompt-preview' && !isGroupMode">
+          <div class="modal-content-full">
+            <div class="section-title">🔍 Prompt 预览</div>
+            <p class="section-desc">查看当前发送给 AI 的完整系统 prompt，用于调试和理解</p>
+
+            <button @click="requestPromptPreview" class="prompt-generate-btn" :disabled="isPromptLoading">
+              {{ isPromptLoading ? '⏳ 生成中...' : '🔄 生成预览' }}
+            </button>
+
+            <template v-if="promptPreviewData?.length">
+              <div class="prompt-blocks">
+                <div v-for="(msg, idx) in promptPreviewData" :key="idx"
+                     class="prompt-block" @click="togglePromptBlock(idx)">
+                  <div class="prompt-block-header">
+                    <span class="prompt-role-tag" :class="promptRoleTag(msg.role).cls">
+                      {{ promptRoleTag(msg.role).label }}
+                    </span>
+                    <span class="prompt-block-preview">{{ (msg.content || '').slice(0, 40) }}{{ (msg.content || '').length > 40 ? '…' : '' }}</span>
+                    <span class="prompt-expand-icon">{{ promptExpandedMap[idx] ? '▼' : '▶' }}</span>
+                  </div>
+                  <div v-if="promptExpandedMap[idx]" class="prompt-block-body">
+                    <pre class="prompt-content-pre">{{ msg.content }}</pre>
+                  </div>
+                </div>
+              </div>
+              <div v-if="promptTokenEstimate" class="prompt-token-footer">
+                共 {{ promptTokenEstimate.count }} 条消息 · 估算约 {{ promptTokenEstimate.tokens.toLocaleString() }} tokens（字符数 ÷ 2）
+              </div>
+            </template>
+            <div v-else-if="!isPromptLoading" class="empty-state">
+              <div class="empty-state-icon">🔍</div>
+              <div class="empty-state-text">点击上方按钮生成当前 Prompt 预览</div>
+            </div>
+          </div>
+        </template>
+
         <!-- ===== 群聊 Tab ===== -->
         <template v-else-if="activeTab === 'group' && isGroupMode && currentGroup">
           <div class="modal-content-full space-y-5">
@@ -1531,5 +1687,61 @@ select.api-input option { background: var(--paper-card); color: var(--ink); }
   .modal-tab { padding: 6px 8px 8px; gap: 3px; }
   .modal-tab-icon { font-size: 11px; }
   .modal-tab-label { font-size: 10px; }
+}
+
+/* ===== Spec-01: 记忆状态 Tab ===== */
+.memory-status-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.memory-status-card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; background: var(--brush); border: 1px solid var(--border);
+  border-radius: 10px; transition: border-color 0.15s;
+}
+.memory-status-card:hover { border-color: var(--border-accent); }
+.memory-status-left { display: flex; align-items: center; gap: 12px; }
+.memory-status-icon { font-size: 22px; flex-shrink: 0; }
+.memory-status-label { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+.memory-status-value { font-size: 12px; color: var(--ink-light); line-height: 1.4; }
+.memory-status-badge { font-size: 18px; flex-shrink: 0; }
+
+/* ===== Spec-02: Prompt 预览 Tab ===== */
+.prompt-generate-btn {
+  display: block; margin: 12px 0; padding: 8px 20px; border-radius: 8px;
+  font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent); border: 1px solid var(--border-accent);
+}
+.prompt-generate-btn:hover { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+.prompt-generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.prompt-blocks { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.prompt-block {
+  background: var(--brush); border: 1px solid var(--border); border-radius: 8px;
+  cursor: pointer; transition: border-color 0.15s; overflow: hidden;
+}
+.prompt-block:hover { border-color: var(--border-accent); }
+.prompt-block-header {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+}
+.prompt-role-tag {
+  flex-shrink: 0; font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 4px; letter-spacing: 0.3px; text-transform: uppercase;
+}
+.prompt-tag-system { background: rgba(99, 102, 241, 0.18); color: var(--accent); }
+.prompt-tag-user { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.prompt-tag-assistant { background: rgba(156, 163, 175, 0.12); color: var(--ink-light); }
+.prompt-block-preview {
+  flex: 1; min-width: 0; font-size: 12px; color: var(--ink-light);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.prompt-expand-icon { flex-shrink: 0; font-size: 10px; color: var(--ink-faint); }
+.prompt-block-body { padding: 0 12px 12px; border-top: 1px solid var(--border); }
+.prompt-content-pre {
+  font-size: 12px; color: var(--ink); line-height: 1.65;
+  white-space: pre-wrap; word-break: break-all; max-height: 300px;
+  overflow-y: auto; margin: 8px 0 0; font-family: 'Menlo', 'Consolas', monospace;
+}
+.prompt-token-footer {
+  text-align: center; font-size: 12px; color: var(--ink-light);
+  margin-top: 12px; padding: 8px 0; border-top: 1px solid var(--border);
 }
 </style>

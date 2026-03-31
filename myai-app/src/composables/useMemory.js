@@ -520,6 +520,7 @@ ${dialogueText}`,
 
             saveData();
             console.log(`[ChapterSummary] ✅ 已归档 ${messagesToSummarize.length} 条消息为第 ${nextIdx} 章`);
+            showToast(`📚 第${nextIdx}章已归档`, 'info');
             return true;
         } catch (err) {
             console.warn('[ChapterSummary] 归档失败:', err.message);
@@ -636,6 +637,7 @@ ${dialogueText}
                         didUpdate = true;
                         saveData();
                         console.log('[MemoryCard] ✅ 认知卡已更新');
+                        showToast('🧠 认知卡已更新', 'info');
                     }
                 } catch (parseErr) {
                     console.warn('[MemoryCard] JSON 解析失败:', parseErr.message);

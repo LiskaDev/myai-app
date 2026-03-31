@@ -363,6 +363,15 @@ const showStylePanel = ref(false);
 const customDirective = ref('');
 const showTimePanel = ref(false);
 const storyDateDraft = ref('');
+const promptPreviewData = ref(null);
+
+async function handlePromptPreview() {
+  try {
+    promptPreviewData.value = await chatFunctions.constructPrompt();
+  } catch (e) {
+    showToast('获取 Prompt 失败: ' + e.message, 'error');
+  }
+}
 
 const TIME_PRESETS = ['故事第一天', '第二天早晨', '当天傍晚', '深夜', '数天后', '一周后'];
 
@@ -972,12 +981,14 @@ function handleAvatarError(type, roleId) {
       :global-settings="globalSettings" :current-role="currentRole"
       :initial-tab="settingsInitialTab" :available-voices="availableVoices"
       :role-list="roleList" :import-json="importJson" :memory-edit-state="memoryEditState"
+      :prompt-preview-data="promptPreviewData"
       @close="handleSettingsClose" @save-data="saveData" @clear-all-data="confirmClearAll"
       @export-data="exportData" @import-data="handleImport" @show-import-modal="showImportModal = true"
       @add-manual-memory="addManualMemory" @remove-manual-memory="removeManualMemory"
       @start-edit-memory="startEditMemory" @save-edit-memory="saveEditMemory"
       @cancel-edit-memory="cancelEditMemory" @toggle-memory-expand="toggleMemoryExpand"
-      @refine-memory="refineMemoryWithAI" @show-toast="showToast" />
+      @refine-memory="refineMemoryWithAI" @show-toast="showToast"
+      @request-prompt-preview="handlePromptPreview" />
 
     <StoryExportModal v-if="showStoryExport"
       :messages="messages"

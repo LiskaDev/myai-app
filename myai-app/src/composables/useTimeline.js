@@ -42,6 +42,7 @@ export function useTimeline(appState) {
         currentRoleId,
         messages,
         saveData,
+        showToast,
     } = appState;
 
     /**
@@ -156,6 +157,7 @@ export function useTimeline(appState) {
                 }
 
                 console.log(`[Timeline] 提取了 ${newEvents.length} 条新事件，总计 ${role.timeline.length} 条`);
+                showToast?.(`📅 时间线已更新（+${newEvents.length} 条事件）`, 'info');
             }
 
             // v5.9: 持久化计数器（保存在 role 上，刷新不丢失）
