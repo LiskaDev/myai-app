@@ -7,6 +7,7 @@ import { useBackgroundTasks } from './useBackgroundTasks';
  * 自动分析用户聊天记录，提取长期偏好/性格/事实，注入到所有角色的 prompt 中
  */
 let _instance = null;
+let _isAnalyzing = false; // 防止并发分析写入重复 traits
 
 export function useUserPersona() {
     if (_instance) return _instance;
@@ -55,11 +56,20 @@ export function useUserPersona() {
     // ==================== 分析函数 ====================
 
     async function analyzeChatHistory(messages, apiConfig) {
+        if (_isAnalyzing) {
+            console.log('[UserPersona] 上次分析尚未完成，跳过本次');
+            return;
+        }
+        _isAnalyzing = true;
+
         const recentMessages = messages
             .filter(m => m.role === 'user' || m.role === 'assistant')
             .slice(-15);
 
-        if (recentMessages.length < 3) return;
+        if (recentMessages.length < 3) {
+            _isAnalyzing = false;
+            return;
+        }
 
         const existingTraitsText =
             persona.value.traits.length > 0
@@ -173,6 +183,7 @@ category 只能是以下五种之一：preference / personality / fact / style /
         } catch {
             // 静默失败
         } finally {
+            _isAnalyzing = false;
             bgTask.done();
         }
     }

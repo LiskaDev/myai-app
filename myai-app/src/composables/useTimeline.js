@@ -185,11 +185,16 @@ export function useTimeline(appState) {
     }
 
     /**
-     * 清空时间线
+     * 清空时间线，同时重置分析计数器，使下次对话后重新触发
      */
     function clearTimeline() {
         if (currentRole.value) {
             currentRole.value.timeline = [];
+            // 重置计数器：不归零（避免立刻重分析大量旧消息），
+            // 而是退回一个触发区间，让下次发送消息后约 15 条内重新触发
+            const userMsgCount = messages.value.filter(m => m.role === 'user').length;
+            currentRole.value.timelineAnalyzedCount = Math.max(0, userMsgCount - TRIGGER_INTERVAL);
+            if (saveData) saveData();
         }
     }
 

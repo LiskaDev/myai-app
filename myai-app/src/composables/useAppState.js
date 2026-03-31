@@ -1,5 +1,6 @@
 import { ref, reactive, computed, watch } from 'vue';
 import { PRESET_ROLES, createNewRoleData, migrateRoleMemoryFields } from './presets';
+import { releaseBackgroundLock } from './useTimeline';
 import {
     STORAGE_KEYS,
     DEFAULT_GLOBAL_SETTINGS,
@@ -291,6 +292,9 @@ export function useAppState() {
                 }
             }
         }
+        // 释放后台锁：防止上一个角色的任务卡住新角色的后台任务
+        releaseBackgroundLock();
+
         currentRoleId.value = roleId;
         showSidebar.value = false;
         activeMessageIndex.value = null;
@@ -421,7 +425,8 @@ export function useAppState() {
                     role.autoSummary = '';
                     role.summarizedUpTo = 0;
                     role._lastCardMessageCount = 0;
-                    role.vectorMemories = []; // v6.1: 清空聊天时同步清除向量记忆
+                    role.timelineAnalyzedCount = 0;
+                    role.vectorMemories = [];
                 }
                 showToast('聊天记录已清空');
             }

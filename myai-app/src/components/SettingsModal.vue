@@ -207,8 +207,16 @@ const timelineSource = computed(() => {
 });
 
 function clearTimelineData() {
-  if (props.isGroupMode && props.currentGroup) props.currentGroup.timeline = [];
-  else if (props.currentRole) props.currentRole.timeline = [];
+  if (props.isGroupMode && props.currentGroup) {
+    props.currentGroup.timeline = [];
+    props.currentGroup.timelineAnalyzedCount = 0;
+  } else if (props.currentRole) {
+    props.currentRole.timeline = [];
+    // 退回一个触发区间，让下次发消息后很快重新触发分析
+    const userMsgCount = (props.currentRole.chatHistory || []).filter(m => m.role === 'user').length;
+    props.currentRole.timelineAnalyzedCount = Math.max(0, userMsgCount - 15);
+  }
+  emit('save-data');
 }
 
 function removeTimelineItem(idx) {
@@ -475,7 +483,11 @@ function handleOverlayClick(e) {
                       <span :class="ch.isCondensed ? 'text-purple-400' : 'text-emerald-400'">
                         {{ ch.isCondensed ? '🏛️ 远古回忆' : `📖 第${ch.chapterIndex}章` }}
                       </span>
-                      <span class="chapter-meta">{{ ch.messageCount }} 条消息</span>
+                      <div class="flex items-center gap-2">
+                        <span class="chapter-meta">{{ ch.messageCount }} 条消息</span>
+                        <button @click="currentRole.chapterSummaries.splice(i, 1); emit('save-data')"
+                                class="chapter-del-btn" title="删除此章节">✕</button>
+                      </div>
                     </div>
                     <p class="chapter-body">{{ ch.summary }}</p>
                   </div>
@@ -1220,6 +1232,8 @@ function handleOverlayClick(e) {
 .chapter-header { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; margin-bottom: 5px; }
 .chapter-meta { color: var(--ink-faint); font-weight: 400; }
 .chapter-body { font-size: 12px; color: var(--ink-light); line-height: 1.6; }
+.chapter-del-btn { font-size: 10px; color: var(--ink-faint); background: none; border: none; cursor: pointer; padding: 0 2px; opacity: 0.4; transition: opacity 0.15s, color 0.15s; }
+.chapter-del-btn:hover { opacity: 1; color: #f87171; }
 
 /* ===== 永久记忆 ===== */
 .add-memory-btn {
