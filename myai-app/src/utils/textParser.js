@@ -200,7 +200,9 @@ export function formatRoleplayText(text) {
         return `<span class="rp-action">${actionText}</span>`;
     });
 
-    // Step 6: 无引号的纯对话行也标记为 say（只在渲染层加引号）
+    // Step 6: 处理剩余无标记行
+    // - "> " 开头 → 环境/氛围描写 (.rp-env)
+    // - 其他纯文本 → 也视为环境描写，避免叙述文字被误判为对话
     html = html
         .split('\n')
         .map((line) => {
@@ -210,7 +212,12 @@ export function formatRoleplayText(text) {
             if (!core.includes('<span class="rp-')) {
                 const leading = line.match(/^\s*/)?.[0] || '';
                 const trailing = line.match(/\s*$/)?.[0] || '';
-                return `${leading}<span class="rp-dialogue say">${core}</span>${trailing}`;
+                // "> " 开头（HTML 转义后为 &gt; ）→ 环境描写
+                if (core.startsWith('&gt; ')) {
+                    return `${leading}<span class="rp-env">${core.slice(5)}</span>${trailing}`;
+                }
+                // 其他纯文本（叙述/环境）→ rp-env
+                return `${leading}<span class="rp-env">${core}</span>${trailing}`;
             }
             return line;
         })

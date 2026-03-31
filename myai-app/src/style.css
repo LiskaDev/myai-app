@@ -1075,9 +1075,30 @@ footer {
   margin: 4px 0;
 }
 
-.rp-dialogue::before,
+.rp-dialogue::before {
+  content: "「";
+  opacity: 0.6;
+}
 .rp-dialogue::after {
-  content: none;
+  content: "」";
+  opacity: 0.6;
+}
+
+/* 环境/氛围描写（> 开头，或无标记叙述文字） */
+.rp-env {
+  display: block;
+  font-family: var(--font-serif-sc);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 300;
+  color: var(--ink-faint);
+  opacity: 0.65;
+  line-height: 1.7;
+  margin: 4px 0;
+}
+
+[data-theme="dark"] .rp-env {
+  color: rgba(180, 175, 200, 0.6);
 }
 
 /* ============== v4.6 Immersive Mode ============== */

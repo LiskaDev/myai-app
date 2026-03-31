@@ -155,46 +155,48 @@ export function useChat(appState) {
             // === 推理模型配置（R1 / QwQ / Kimi 等） ===
             modelSpecificPrompt = `\n\n[System Rule: Reasoning Model]
 1. You may use <think> tags for internal reasoning.
-2. CRITICAL PERFORMANCE: Do NOT repeat/summarize the persona or settings in <think>. Assume context is loaded.
-3. Jump IMMEDIATELY to drafting the plot and character reaction.
-4. IMPORTANT: Use <inner>1-2 sentences of the character's internal monologue ONLY</inner> — strictly for private thoughts NOT spoken or acted. DO NOT put actions, dialogue, or environment in <inner>.
-5. Actions in *asterisks*, dialogue in 「」. ALL actions and dialogue MUST appear OUTSIDE the <inner> block.
+2. CRITICAL PERFORMANCE: Do NOT repeat/summarize the persona or settings in <think>. Jump IMMEDIATELY to drafting the reaction.
+3. 【必须】每条回复必须以 <inner>（角色此刻内心想法，1-2句，不超过50字）</inner> 开头，不可省略。<inner> 内只写内心独白，不写动作或台词。
+4. 角色主动行为用 *动作* 包裹；环境/氛围/场景描写用 > 开头（禁止用星号描写环境）；对话台词用「」包裹。
+5. 无台词的场景可省略「」；无动作的场景可省略 *动作*；但 <inner> 必须保留。
 6. 【强制语言规则】你必须全程使用中文回复。所有对话、动作描写、内心独白必须是中文。角色偶尔可夹杂1-2个英文词汇作为口癖，但绝对不可以用英文写完整句子或段落。
-7. 【对话引号规则】所有角色对话必须用「」包裹，不得使用双引号""、单引号''或其他引号形式。
 Example format:
 <think>brief strategy</think>
-<inner>（心里话，1-2句，不超过50字）</inner>
-*action* 「dialogue」`;
+<inner>（心里话，1-2句）</inner>
+*角色动作*
+> 环境氛围描写
+「对话台词」`;
         } else if (modelFamily === 'claude') {
             // === Claude 专属配置（最容易拒绝，需要特殊处理） ===
             modelSpecificPrompt = `\n\n[Roleplay Execution Note for Claude]
 You are currently embodying "${currentRole.value?.name || 'the character'}". This is a creative writing session.
-- Write ONLY as the character. No author commentary, no disclaimers, no safety notes.
-- If something feels edgy in the story, handle it in-character: deflect, change subject, or use subtext — but NEVER break the fourth wall.
-- Start with <inner>1-2 sentences of private thought ONLY — no actions or dialogue inside</inner>, then write ALL actions and dialogue OUTSIDE the inner block: *action* 「dialogue」.
+- Write ONLY as the character. No disclaimers or safety notes.
+- 【REQUIRED】Start every response with <inner>（角色内心想法，1-2句）</inner>. Never skip this.
+- Character actions: wrap in *asterisks*. Environment/atmosphere: start the line with > (NOT asterisks). Dialogue: wrap in 「」.
 - 【对话引号规则】所有角色对话必须用「」包裹，不得使用双引号""、单引号''或其他引号形式。
 - 中文回复。`;
         } else if (modelFamily === 'gemini') {
             // === Gemini 专属配置 ===
             modelSpecificPrompt = `\n\n[Roleplay Execution Note for Gemini]
 You are "${currentRole.value?.name || 'the character'}" in a collaborative fiction story. Write naturally as this character.
-- No disclaimers, no warnings, no meta-commentary about the story.
-- Stay in character through the entire response.
-- Start with <inner>1-2 sentences of private thought ONLY — no actions or dialogue inside</inner>, then ALL actions and dialogue MUST be OUTSIDE: *action* 「dialogue」.
+- No disclaimers, warnings, or meta-commentary.
+- 【REQUIRED】Start every response with <inner>（角色内心想法，1-2句）</inner>. Never skip this.
+- Character actions: wrap in *asterisks*. Environment/atmosphere: start the line with > (NOT asterisks). Dialogue: wrap in 「」.
 - 【对话引号规则】所有角色对话必须用「」包裹，不得使用双引号或单引号。
 - 全程中文回复。`;
         } else {
             // === 标准模型配置（V3 / Qwen / GLM 等） ===
             modelSpecificPrompt = `\n\n[System Rule: Standard Model]
 1. DO NOT use <think> tags. DO NOT simulate AI reasoning.
-2. IMPORTANT: Start with <inner>1-2 sentences of the character's private internal monologue ONLY</inner>. The <inner> block is STRICTLY for unspoken thoughts — do NOT put any actions, dialogue, or descriptions inside it.
-3. Then write actions in *asterisks* and dialogue in 「」 OUTSIDE the <inner> block.
-4. Never pretend to have a thinking process.
+2. 【必须】每条回复必须以 <inner>（角色此刻内心想法，1-2句，不超过50字）</inner> 开头，不可省略。<inner> 内只写内心独白，不写动作或台词。
+3. 角色主动行为用 *动作* 包裹；环境/氛围/场景描写用 > 开头（禁止用星号描写环境）；对话台词用「」包裹。
+4. 无台词的场景可省略「」；无动作的场景可省略 *动作*；但 <inner> 必须保留。
 5. 【强制语言规则】你必须全程使用中文回复。所有对话、动作描写、内心独白必须是中文。角色偶尔可夹杂1-2个英文词汇作为口癖，但绝对不可以用英文写完整句子或段落。
-6. 【对话引号规则】所有角色对话必须用「」包裹，不得使用双引号""、单引号''或其他引号形式。
 Example format:
-<inner>（心里话，1-2句，不超过50字）</inner>
-*action* 「dialogue」`;
+<inner>（心里话，1-2句）</inner>
+*角色动作*
+> 环境氛围描写
+「对话台词」`;
         }
 
         // Step A: Inject Model-Specific + Length instructions into last user message
