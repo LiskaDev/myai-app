@@ -70,7 +70,7 @@ ${vectorMemoryBlocks.join('\n\n')}`,
     }
 
     // ── 6. 对话窗口（近期全文）──
-    const windowSize = role.memoryWindow || 15;
+    const windowSize = role.memoryWindow || 12;
     const recentMessages = messages.slice(-windowSize);
     const directives = (role.styleDirectives || []).filter(d => d && d.trim());
 

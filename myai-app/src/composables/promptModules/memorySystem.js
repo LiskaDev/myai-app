@@ -41,7 +41,7 @@ export function buildChapterContext(role) {
     const chapters = role.chapterSummaries;
     if (!chapters || chapters.length === 0) return '';
 
-    const recentChapters = chapters.slice(-5);
+    const recentChapters = chapters.slice(-3);
     let text = '\n\n【🔵 剧情参考 - 过往剧情回顾，请保持剧情连贯】\n';
     recentChapters.forEach(c => {
         const prefix = c.isCondensed ? '远古回忆' : `第${c.chapterIndex}章`;
@@ -67,6 +67,17 @@ function buildDynamicStatus(role) {
     const score = role.affectionScore ?? 50;
     const affectionLevel = getAffectionLevel(score);
     const recentKeyMoment = role.keyMoments?.slice(-1)[0]?.text || null;
+
+    // 全部是初始默认值且无缺席提醒时，跳过注入（节省 token）
+    const isAllDefault =
+        !absenceNote &&
+        score === 50 &&
+        (!role.currentEmotion || role.currentEmotion === '平静') &&
+        !role.storyDate &&
+        (!role.relationshipStage || role.relationshipStage === '普通朋友') &&
+        !recentKeyMoment;
+
+    if (isAllDefault) return null;
 
     const lines = [
         `情绪：${role.currentEmotion || '平静'}${absenceNote}`,
@@ -110,8 +121,11 @@ export function buildMemoryContext(role, timelineText, personaSummary) {
         });
     }
 
-    // Step 5.1: 当前状态
-    blocks.push({ role: 'system', content: buildDynamicStatus(role) });
+    // Step 5.1: 当前状态（全为默认值时跳过，节省 token）
+    const dynamicStatus = buildDynamicStatus(role);
+    if (dynamicStatus) {
+        blocks.push({ role: 'system', content: dynamicStatus });
+    }
 
     // Step 5.5: 时间线
     if (timelineText) {
@@ -131,8 +145,8 @@ export function buildMemoryContext(role, timelineText, personaSummary) {
         const memoryText = manualMemories
             .map((m, i) => {
                 const roleLabel = m.source === 'group' ? '群聊' : (m.role === 'user' ? '用户' : '角色');
-                const contentPreview = m.content.length > 300
-                    ? m.content.substring(0, 300) + '...'
+                const contentPreview = m.content.length > 150
+                    ? m.content.substring(0, 150) + '...'
                     : m.content;
                 return `${i + 1}. [${roleLabel}] ${contentPreview}`;
             })
