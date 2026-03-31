@@ -215,7 +215,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { constructPrompt } = usePromptBuilder(appState);
 
         const messages = await constructPrompt();
-        const directiveMsg = messages.find(m => m.content.includes('写作风格偏好'));
+        const directiveMsg = messages.find(m => m.content.includes('写作规则'));
         expect(directiveMsg).toBeDefined();
         expect(directiveMsg.content).toContain('多用短句');
         expect(directiveMsg.content).toContain('增加感官描写');
@@ -227,7 +227,7 @@ describe('usePromptBuilder - constructPrompt', () => {
         const { constructPrompt } = usePromptBuilder(appState);
 
         const messages = await constructPrompt();
-        const directiveMsg = messages.find(m => m.content.includes('写作风格偏好'));
+        const directiveMsg = messages.find(m => m.content.includes('写作规则'));
         expect(directiveMsg).toBeUndefined();
     });
 });

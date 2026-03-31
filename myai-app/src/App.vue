@@ -198,26 +198,31 @@ function confirmStImport() {
   const card = pendingStCard.value
   if (!card) return
 
+  const charName = card.name || '酒馆角色'
+
+  // 替换 SillyTavern 模板变量
+  function replaceVars(text) {
+    if (!text) return text
+    return text
+      .replace(/\{\{char\}\}/gi, charName)
+      .replace(/\{\{user\}\}/gi, '用户')
+  }
+
   // 字段映射：酒馆字段 → 本站字段
-  const parts = [card.description || '']
-  if (card.personality) parts.push(`\n\n【性格】${card.personality}`)
-  if (card.scenario) parts.push(`\n\n【场景】${card.scenario}`)
-  if (card.mes_example) parts.push(`\n\n【对话示例】\n${card.mes_example}`)
+  const parts = [replaceVars(card.description) || '']
+  if (card.personality) parts.push(`\n\n【性格】${replaceVars(card.personality)}`)
+  if (card.scenario) parts.push(`\n\n【场景】${replaceVars(card.scenario)}`)
+  if (card.mes_example) parts.push(`\n\n【对话示例】\n${replaceVars(card.mes_example)}`)
   const systemPrompt = parts.join('').trim()
 
   const incoming = {
-    name: card.name || '酒馆角色',
+    name: charName,
     systemPrompt,
-    firstMessage: card.first_mes || '你好！',
-    styleGuide: card.personality ? card.personality.slice(0, 100) : '',
+    firstMessage: replaceVars(card.first_mes) || '你好！',
+    styleGuide: card.personality ? replaceVars(card.personality).slice(0, 100) : '',
   }
 
   const newRole = { ...createNewRoleData(), ...incoming, id: crypto.randomUUID(), createdAt: Date.now() }
-
-  // 不兼容字段提示
-  const unsupported = []
-  if (card.creator_notes) unsupported.push('creator_notes（作者备注）')
-  if (card.tags?.length) unsupported.push('tags（标签）')
 
   roleList.value.push(newRole)
   saveData()
@@ -225,8 +230,7 @@ function confirmStImport() {
   showSidebar.value = false
   pendingStCard.value = null
 
-  let msg = `✅ 酒馆角色卡「${incoming.name}」导入成功！`
-  if (unsupported.length) msg += ` （以下字段已忽略：${unsupported.join('、')}）`
+  const msg = `✅ 酒馆角色卡「${incoming.name}」导入成功！`
   showToast(msg)
 }
 

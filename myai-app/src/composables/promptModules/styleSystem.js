@@ -72,12 +72,12 @@ export function buildStyleInstructions(role, allMessages) {
         });
     }
 
-    // Step 6.5: 动态风格指令
+    // Step 6.5: 动态风格指令（早期注入，提供全局上下文）
     const directives = (role.styleDirectives || []).filter(d => d && d.trim());
     if (directives.length > 0) {
         blocks.push({
             role: 'system',
-            content: `【🟡 风格参考 - 用户实时指令】[用户写作风格偏好 — 从下一条回复开始严格遵循]\n${directives.map((d, i) => `${i + 1}. ${d}`).join('\n')}`,
+            content: `【🔴 写作规则 — 必须严格执行，不得忽略】\n以下是用户设定的强制写作规则，每一条都必须在每次回复中体现：\n${directives.map((d, i) => `${i + 1}. ${d}`).join('\n')}`,
         });
     }
 

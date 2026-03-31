@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/ALan/Desktop/MyAI_RolePlay/**)",
+      "Bash(done)",
+      "Bash(@tailwind\" \"C:UsersALanDesktopMyAI_RolePlaymyai-appsrcstyle.css \")",
+      "Bash(head -20 grep -n \"media\\\\|safe-area\\\\|dvh\" /c/Users/ALan/Desktop/MyAI_RolePlay/myai-app/src/components/DiaryModal.vue)",
+      "Bash(npm run:*)"
+    ]
+  }
+}

@@ -76,7 +76,12 @@ async function onStFileSelected(e) {
   e.target.value = '';
   if (!file) return;
   try {
-    const cardData = await parseSillyTavernPng(file);
+    let cardData;
+    if (file.name.endsWith('.json') || file.type === 'application/json') {
+      cardData = await parseStJson(file);
+    } else {
+      cardData = await parseSillyTavernPng(file);
+    }
     emit('import-sillytavern', cardData);
   } catch (err) {
     alert('角色卡解析失败：' + err.message);
@@ -84,9 +89,23 @@ async function onStFileSelected(e) {
 }
 
 /**
+ * 解析 SillyTavern JSON 角色卡
+ */
+async function parseStJson(file) {
+  const text = await file.text();
+  const parsed = JSON.parse(text);
+  const card = parsed.spec === 'chara_card_v2' ? parsed.data : parsed;
+  if (!card?.name) throw new Error('JSON 中未找到角色名，请确认格式正确');
+  return card;
+}
+
+/**
  * 解析 SillyTavern PNG 角色卡
- * PNG tEXt chunk: 4字节长度 + 4字节类型 + data(key\0value) + 4字节CRC
- * key="chara"，value 是 base64 编码的 JSON
+ * tEXt chunk: 4字节长度 + 4字节类型 + (key\0value) + 4字节CRC
+ * key="chara"，value 是 base64 编码的 UTF-8 JSON
+ *
+ * 乱码根因：atob() 返回 Latin-1 二进制字符串，非 ASCII 字符（如韩文）
+ * 需要将该二进制串转为 Uint8Array 再以 UTF-8 解码。
  */
 async function parseSillyTavernPng(file) {
   const buf = await file.arrayBuffer();
@@ -107,19 +126,33 @@ async function parseSillyTavernPng(file) {
     const dataStart = offset + 8;
 
     if (type === 'tEXt' || type === 'iTXt') {
-      // 找 null byte 分隔符
+      // 找关键字后的第一个 null byte
       let nullIdx = dataStart;
       while (nullIdx < dataStart + length && bytes[nullIdx] !== 0) nullIdx++;
-      const key = new TextDecoder().decode(bytes.slice(dataStart, nullIdx));
+      const key = new TextDecoder('latin1').decode(bytes.slice(dataStart, nullIdx));
 
       if (key === 'chara') {
-        // iTXt 需要跳过额外的元数据字节
-        const valueStart = type === 'iTXt' ? nullIdx + 3 : nullIdx + 1;
-        const rawValue = new TextDecoder().decode(bytes.slice(valueStart, dataStart + length));
-        const jsonStr = atob(rawValue.trim());
-        const parsed = JSON.parse(jsonStr);
+        let valueStart = nullIdx + 1;
 
-        // 支持 V1 和 V2 格式
+        if (type === 'iTXt') {
+          // 跳过：compression_flag(1) + compression_method(1) + language_tag(\0) + translated_keyword(\0)
+          valueStart += 2; // skip compression_flag + compression_method
+          while (valueStart < dataStart + length && bytes[valueStart] !== 0) valueStart++;
+          valueStart++; // skip language_tag null
+          while (valueStart < dataStart + length && bytes[valueStart] !== 0) valueStart++;
+          valueStart++; // skip translated_keyword null
+        }
+
+        // base64 值本身是 ASCII，用 latin1 读取不会有问题
+        const b64 = new TextDecoder('latin1').decode(bytes.slice(valueStart, dataStart + length)).trim();
+
+        // atob 返回 Latin-1 二进制串 → 转 Uint8Array → UTF-8 解码
+        const binaryStr = atob(b64);
+        const utf8Bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) utf8Bytes[i] = binaryStr.charCodeAt(i);
+        const jsonStr = new TextDecoder('utf-8').decode(utf8Bytes);
+
+        const parsed = JSON.parse(jsonStr);
         const card = parsed.spec === 'chara_card_v2' ? parsed.data : parsed;
         return card;
       }
@@ -205,7 +238,7 @@ const libraryCount = computed(() => {
           <button class="create-btn" @click="$emit('create-role')">➕ 创建新角色</button>
           <button class="create-btn ai-btn" @click="$emit('ai-create-role')">✨ AI 生成角色</button>
           <button class="create-btn st-btn" @click="triggerStImport" title="导入 SillyTavern 角色卡 PNG">🃏 导入酒馆角色卡</button>
-          <input ref="stFileInput" type="file" accept="image/png" class="hidden" @change="onStFileSelected" />
+          <input ref="stFileInput" type="file" accept="image/png,.json,application/json" class="hidden" @change="onStFileSelected" />
         </div>
       </div>
 

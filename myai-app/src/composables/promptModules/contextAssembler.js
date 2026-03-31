@@ -72,9 +72,21 @@ ${vectorMemoryBlocks.join('\n\n')}`,
     // ── 6. 对话窗口（近期全文）──
     const windowSize = role.memoryWindow || 15;
     const recentMessages = messages.slice(-windowSize);
-    for (const msg of recentMessages) {
+    const directives = (role.styleDirectives || []).filter(d => d && d.trim());
+
+    for (let i = 0; i < recentMessages.length; i++) {
+        const msg = recentMessages[i];
         if (msg.type === 'day-separator') continue;
         if (!['user', 'assistant', 'system'].includes(msg.role)) continue;
+
+        // 紧贴最后一条 user 消息之前，再次强制提醒（提升遵循率）
+        if (directives.length > 0 && msg.role === 'user' && i === recentMessages.length - 1) {
+            apiMessages.push({
+                role: 'system',
+                content: `[⚠️ 立即执行 — 本次回复必须严格遵守以下每一条规则]\n${directives.map((d, j) => `${j + 1}. ${d}`).join('\n')}`,
+            });
+        }
+
         apiMessages.push({ role: msg.role, content: msg.content });
     }
 

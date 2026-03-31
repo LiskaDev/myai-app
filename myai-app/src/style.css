@@ -463,10 +463,11 @@ footer {
 /* ============== 🌟 欢迎屏 ============== */
 .welcome-screen {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 60vh;
   padding: 2rem 1rem;
+  overflow-y: auto;
 }
 
 .welcome-card {
@@ -566,6 +567,8 @@ footer {
   line-height: 1.6;
   max-width: 360px;
   text-align: left;
+  max-height: min(45vh, 400px);
+  overflow-y: auto;
 }
 
 /* 快捷对话建议 */
