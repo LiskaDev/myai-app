@@ -20,22 +20,15 @@ function _extractNgrams(text, sizes = [2, 3, 4]) {
 
 /**
  * 🧠 记忆检索（n-gram 子串匹配评分）
- * 从角色的 vectorMemories[] 中检索与当前消息最相关的记忆
+ * 从传入的 vectorMemories 数组中检索与当前消息最相关的记忆
  * 原理：提取查询的 2-4 字 n-gram，统计每条记忆命中了多少个，按命中率排序
- * @param {string} characterId
+ * @param {Array} memories - 角色的 vectorMemories 数组（由调用方传入，不再读 localStorage）
  * @param {string} currentMessage
- * @returns {Promise<string[]>}
+ * @returns {string[]}
  */
-export async function retrieveRelevantMemories(characterId, currentMessage) {
-    if (!characterId || !currentMessage) return [];
+export function retrieveRelevantMemories(memories, currentMessage) {
+    if (!memories || !currentMessage || memories.length === 0) return [];
     try {
-        const rolesJson = localStorage.getItem('myai_roles_v1');
-        if (!rolesJson) return [];
-        const roles = JSON.parse(rolesJson);
-        const role = roles.find(r => r.id === characterId);
-        const memories = role?.vectorMemories || [];
-        if (memories.length === 0) return [];
-
         // 从用户消息中提取 n-gram 特征
         const queryNgrams = _extractNgrams(currentMessage.slice(0, 500));
         if (queryNgrams.size === 0) return [];

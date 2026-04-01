@@ -11,6 +11,7 @@ import { useDiary } from './composables/useDiary';
 import { useActiveMessage } from './composables/useActiveMessage';
 import { useBackgroundTasks } from './composables/useBackgroundTasks';
 import { extractExpression, parseDualLayerResponse } from './utils/textParser';
+import { idbClearAll } from './utils/indexeddb';
 import { STYLE_QUICK_TAGS, WRITING_STYLE_PRESETS, createNewRoleData } from './composables/presets';
 
 // Import Components
@@ -348,7 +349,8 @@ const {
   ttsState, availableVoices, memoryEditState, isUserNearBottom,
   showToast, showConfirmModal, handleConfirm, handleCancel, saveData, loadData,
   switchRole, createNewRole, confirmDeleteRole, clearChat, saveAndCloseSettings,
-  setupWatchers, confirmModal, cleanupTimers, cleanupStorageListener
+  setupWatchers, confirmModal, cleanupTimers,
+  isLoadingData,
 } = appState;
 
 const { sendMessage, stopGeneration, regenerateMessage, continueGeneration, deleteMessage, handleShiftEnter } = chatFunctions;
@@ -464,7 +466,7 @@ function onChatScroll() { isUserNearBottom.value = checkIfNearBottom(); }
 watch(() => messages.value.length, () => { if (isUserNearBottom.value) scrollToBottom(); });
 watch(() => currentRoleId.value, () => { nextTick(() => setTimeout(() => scrollToBottom(true), 50)); });
 
-onUnmounted(() => { cleanupTimers(); cleanupStorageListener(); });
+onUnmounted(() => { cleanupTimers(); });
 
 onMounted(() => {
   const sessionRaw = sessionStorage.getItem(NOVEL_SESSION_KEY);
@@ -540,8 +542,8 @@ async function exportData() {
   showToast('✅ 完整备份已生成（含群聊、日记、画像、世界书、小说书库）');
 }
 
-onMounted(() => {
-  loadData(); setupWatchers(); loadVoices(); diary.loadDiaries();
+onMounted(async () => {
+  await loadData(); setupWatchers(); loadVoices(); diary.loadDiaries();
   if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = loadVoices;
   nextTick(() => { const msgs = messages.value; if (msgs && msgs.length > 0) showHomePage.value = false; });
   setTimeout(() => scrollToBottom(true), 100);
@@ -614,6 +616,7 @@ function exportSingleRole(roleId) {
 
 function confirmClearAll() {
   showConfirmModal({ title: '清除所有数据', message: '确定要清除所有数据吗？\n\n这将删除所有角色、聊天记录和设置！此操作无法恢复！', isDangerous: true, onConfirm: async () => {
+    await idbClearAll();
     localStorage.clear();
     const cleanupTasks = [];
     if ('serviceWorker' in navigator) cleanupTasks.push(navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(reg => reg.unregister()))));
@@ -630,9 +633,14 @@ function handleAvatarError(type, roleId) {
 </script>
 
 <template>
+  <!-- ⏳ 初始加载遮罩（IDB 异步读取期间显示） -->
+  <div v-if="isLoadingData" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg-base);z-index:9999;font-size:14px;color:var(--text-faint);">
+    载入中…
+  </div>
+
   <!-- 🏠 角色选择主页 -->
   <CharacterHome
-    v-if="showHomePage && !showNovelMode"
+    v-if="!isLoadingData && showHomePage && !showNovelMode"
     :role-list="roleList"
     :global-settings="globalSettings"
     @select-role="handleSelectRole"

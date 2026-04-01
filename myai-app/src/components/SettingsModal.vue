@@ -86,11 +86,7 @@ const emit = defineEmits([
 // ===== 通用设置的状态 =====
 const appState = useAppState();
 const storageUsage = computed(() => appState.storageUsage);
-const storageColor = computed(() => {
-  if (storageUsage.value.percent >= 80) return 'red';
-  if (storageUsage.value.percent >= 60) return 'yellow';
-  return 'green';
-});
+const storageColor = computed(() => 'green');
 const useCustomModel = ref(false);
 const useCustomBaseUrl = ref(false);
 
@@ -755,8 +751,8 @@ const promptTokenEstimate = computed(() => {
               <!-- 存储用量 -->
               <div>
                 <div class="flex justify-between text-xs text-gray-400 mb-1">
-                  <span>💾 存储用量</span>
-                  <span>{{ (storageUsage.usedKB / 1024).toFixed(1) }} MB / {{ (storageUsage.totalKB / 1024).toFixed(0) }} MB</span>
+                  <span>💾 辅助数据(localStorage)</span>
+                  <span>{{ storageUsage.usedKB }} KB（角色/设置已存 IndexedDB，无上限）</span>
                 </div>
                 <div class="storage-bar-track">
                   <div class="storage-bar-fill" :class="storageColor" :style="{ width: Math.min(storageUsage.percent, 100) + '%' }"></div>

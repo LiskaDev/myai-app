@@ -152,7 +152,7 @@ const props = defineProps({
   globalSettings: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(['select-role', 'start-novel', 'open-settings']);
+const emit = defineEmits(['select-role', 'start-novel', 'open-settings', 'open-assistant']);
 
 // ── Tab / 世界子导航 ──
 const activeTab      = ref('role');

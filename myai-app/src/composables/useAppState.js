@@ -72,6 +72,9 @@ export function useAppState() {
     // 存储用量追踪
     const storageUsage = reactive({ usedKB: 0, totalKB: 5120, percent: 0, breakdown: [] });
 
+    // 初始加载状态（IDB 是异步的，加载完成前显示 loading）
+    const isLoadingData = ref(true);
+
     function refreshStorageUsage() {
         const usage = getStorageUsage();
         Object.assign(storageUsage, usage);
@@ -172,20 +175,17 @@ export function useAppState() {
         confirmModal.show = false;
     }
 
+    // saveData 保持同步签名（调用方无需修改），内部 fire-and-forget 异步写 IDB
     function saveData() {
-        const success = saveToStorage(globalSettings, roleList.value, (msg) => showToast(msg, 'error'));
-        if (!success) {
-            showToast('⚠️ 数据保存失败！请导出备份后清理旧对话', 'error');
-        }
-        // 保存后刷新用量，超过 80% 提醒
-        refreshStorageUsage();
-        if (storageUsage.percent >= 80) {
-            showToast(`⚠️ 存储空间已用 ${storageUsage.percent}%，建议导出备份后清理旧对话`, 'error');
-        }
+        // onError 在 saveToStorage 内部触发，这里只处理未预期的 reject
+        saveToStorage(globalSettings, roleList.value, (msg) => showToast(msg, 'error'))
+            .then(() => { refreshStorageUsage(); })
+            .catch(() => showToast('⚠️ 数据保存异常，请刷新重试', 'error'));
     }
 
-    function loadData() {
-        const { globalSettings: savedGlobal, roleList: savedRoles, error } = loadFromStorage(
+    async function loadData() {
+        isLoadingData.value = true;
+        const { globalSettings: savedGlobal, roleList: savedRoles, error } = await loadFromStorage(
             (msg) => showToast(msg, 'error')
         );
 
@@ -193,6 +193,7 @@ export function useAppState() {
             roleList.value = [...PRESET_ROLES];
             currentRoleId.value = roleList.value[0].id;
             showToast('数据加载失败，已恢复默认设置', 'error');
+            isLoadingData.value = false;
             return;
         }
 
@@ -269,6 +270,7 @@ export function useAppState() {
             currentRoleId.value = roleList.value[0].id;
             saveData();
         }
+        isLoadingData.value = false;
     }
 
     function switchRole(roleId) {
@@ -452,35 +454,9 @@ export function useAppState() {
     // 设置 watchers - 使用 debounce 减少频繁写入
     const debouncedSave = debounce(saveData, 500);
 
-    // 🛡️ 多标签页同步：监听其他标签页的存储变化
-    let storageListener = null;
-
     function setupWatchers() {
         watch(() => roleList.value, debouncedSave, { deep: true });
         watch(globalSettings, debouncedSave, { deep: true });
-
-        // 🛡️ 监听 storage 事件（只在其他标签页修改时触发）
-        storageListener = (event) => {
-            if (event.key === 'myai_roles_v1' || event.key === 'myai_global_v1') {
-                // 🛡️ 冲突保护：流式输出或正在编辑时不同步，避免覆盖
-                if (isStreaming.value || isThinking.value || showSettings.value) {
-                    console.warn('[Sync] 检测到其他标签页修改，但当前正在流式输出或编辑设置，跳过同步');
-                    return;
-                }
-                console.log('[Sync] 检测到其他标签页修改，重新加载数据');
-                loadData();
-                showToast('数据已从其他标签页同步', 'info');
-            }
-        };
-        window.addEventListener('storage', storageListener);
-    }
-
-    // 🛡️ 清理存储监听器
-    function cleanupStorageListener() {
-        if (storageListener) {
-            window.removeEventListener('storage', storageListener);
-            storageListener = null;
-        }
     }
 
     const appStateObj = {
@@ -490,6 +466,7 @@ export function useAppState() {
         currentRoleId,
         currentRole,
         messages,
+        isLoadingData,
         showSidebar,
         showSettings,
         settingsInitialTab,
@@ -524,7 +501,6 @@ export function useAppState() {
         saveAndCloseSettings,
         setupWatchers,
         cleanupTimers,
-        cleanupStorageListener,
         refreshStorageUsage,
     };
 

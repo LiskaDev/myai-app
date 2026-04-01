@@ -1,8 +1,14 @@
-// localStorage 键名
-export const STORAGE_KEYS = {
+import { idbGet, idbPut, migrateFromLocalStorage } from './indexeddb.js';
+
+// IndexedDB 键名（原 localStorage 主数据键，已迁移到 IDB）
+const IDB_KEYS = {
     GLOBAL: 'myai_global_v1',
-    ROLES: 'myai_roles_v1',
-    GROUPS: 'myai_groups_v1',
+    ROLES:  'myai_roles_v1',
+};
+
+// localStorage 键名（小型辅助数据，继续用 localStorage）
+export const STORAGE_KEYS = {
+    GROUPS:  'myai_groups_v1',
     SESSION: 'myai_session_v1',
     DIARIES: 'myai_diaries_v1',
 };
@@ -55,39 +61,37 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     enableVectorMemory: false,
 };
 
-// 保存数据到 localStorage
-export function saveToStorage(globalSettings, roleList, onError) {
+// 保存数据到 IndexedDB（异步，调用方无需 await）
+export async function saveToStorage(globalSettings, roleList, onError) {
     try {
-        localStorage.setItem(STORAGE_KEYS.GLOBAL, JSON.stringify(globalSettings));
-        localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(roleList));
+        await Promise.all([
+            idbPut(IDB_KEYS.GLOBAL, globalSettings),
+            idbPut(IDB_KEYS.ROLES, roleList),
+        ]);
         return true;
     } catch (e) {
-        const msg = (e.name === 'QuotaExceededError' || e.code === 22)
-            ? '存储空间已满，请删除旧角色或清空长对话'
-            : '保存数据失败';
-        if (onError) onError(msg, e);
+        console.error('[Storage] IDB 保存失败:', e);
+        if (onError) onError('保存数据失败', e);
         return false;
     }
 }
 
-// 从 localStorage 加载数据
-export function loadFromStorage(onError) {
-    const result = {
-        globalSettings: null,
-        roleList: null,
-        error: null,
-    };
+// 从 IndexedDB 加载数据（异步）
+// 首次调用时自动将 localStorage 旧数据迁移到 IDB
+export async function loadFromStorage(onError) {
+    const result = { globalSettings: null, roleList: null, error: null };
 
     try {
-        const savedGlobal = localStorage.getItem(STORAGE_KEYS.GLOBAL);
-        if (savedGlobal) {
-            result.globalSettings = JSON.parse(savedGlobal);
-        }
+        // 一次性迁移旧 localStorage 数据
+        await migrateFromLocalStorage([IDB_KEYS.GLOBAL, IDB_KEYS.ROLES]);
 
-        const savedRoles = localStorage.getItem(STORAGE_KEYS.ROLES);
-        if (savedRoles) {
-            result.roleList = JSON.parse(savedRoles);
-        }
+        const [globalSettings, roleList] = await Promise.all([
+            idbGet(IDB_KEYS.GLOBAL),
+            idbGet(IDB_KEYS.ROLES),
+        ]);
+
+        result.globalSettings = globalSettings;
+        result.roleList = roleList;
     } catch (e) {
         if (onError) onError('加载数据失败，数据可能已损坏', e);
         result.error = e;
@@ -157,19 +161,19 @@ export function saveUserPersona(persona) {
 }
 
 // ===== 存储用量检测 =====
-const STORAGE_TOTAL_KB = 5120; // 大多数浏览器 localStorage 限额 5MB
+// 角色数据和全局设置已迁移到 IndexedDB（无容量上限）
+// localStorage 仅存放辅助小数据，总量通常远低于 5MB
+const STORAGE_TOTAL_KB = 5120;
 
 /**
- * 计算 localStorage 当前用量
+ * 计算当前 localStorage 用量（角色/设置数据已在 IDB，此处仅统计剩余 localStorage）
  * @returns {{ usedKB: number, totalKB: number, percent: number, breakdown: Array<{key: string, label: string, sizeKB: number}> }}
  */
 export function getStorageUsage() {
     const labels = {
-        [STORAGE_KEYS.ROLES]: '角色数据',
-        [STORAGE_KEYS.GLOBAL]: '全局设置',
-        [STORAGE_KEYS.GROUPS]: '群聊数据',
+        [STORAGE_KEYS.GROUPS]:  '群聊数据',
         [STORAGE_KEYS.DIARIES]: '日记',
-        [PERSONA_KEY]: '用户画像',
+        [PERSONA_KEY]:          '用户画像',
         [STORAGE_KEYS.SESSION]: '会话状态',
     };
 

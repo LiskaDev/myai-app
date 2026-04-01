@@ -11,13 +11,19 @@ import {
     loadFromStorage,
     importData,
 } from '../src/utils/storage';
+import { idbGet, idbPut, migrateFromLocalStorage } from '../src/utils/indexeddb';
+
+vi.mock('../src/utils/indexeddb', () => ({
+    idbGet: vi.fn(),
+    idbPut: vi.fn(),
+    migrateFromLocalStorage: vi.fn(),
+}));
 
 describe('STORAGE_KEYS', () => {
     it('应该包含所有必要的键名', () => {
-        expect(STORAGE_KEYS.GLOBAL).toBe('myai_global_v1');
-        expect(STORAGE_KEYS.ROLES).toBe('myai_roles_v1');
         expect(STORAGE_KEYS.GROUPS).toBe('myai_groups_v1');
         expect(STORAGE_KEYS.SESSION).toBe('myai_session_v1');
+        expect(STORAGE_KEYS.DIARIES).toBe('myai_diaries_v1');
     });
 });
 
@@ -41,48 +47,28 @@ describe('DEFAULT_GLOBAL_SETTINGS', () => {
 });
 
 describe('saveToStorage', () => {
-    it('应该成功保存数据', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('应该成功保存数据', async () => {
         const settings = { apiKey: 'test-key', model: 'test-model' };
         const roles = [{ id: '1', name: 'Role1' }];
 
-        const result = saveToStorage(settings, roles);
+        idbPut.mockResolvedValue(true);
+
+        const result = await saveToStorage(settings, roles);
 
         expect(result).toBe(true);
-        expect(localStorage.setItem).toHaveBeenCalledWith(
-            STORAGE_KEYS.GLOBAL,
-            JSON.stringify(settings)
-        );
-        expect(localStorage.setItem).toHaveBeenCalledWith(
-            STORAGE_KEYS.ROLES,
-            JSON.stringify(roles)
-        );
+        expect(idbPut).toHaveBeenCalledWith('myai_global_v1', settings);
+        expect(idbPut).toHaveBeenCalledWith('myai_roles_v1', roles);
     });
 
-    it('存储空间满时应该调用 onError', () => {
+    it('保存失败时应该调用 onError 并返回 false', async () => {
         const onError = vi.fn();
-        // 模拟 QuotaExceededError
-        localStorage.setItem.mockImplementationOnce(() => {
-            const err = new Error('Quota exceeded');
-            err.name = 'QuotaExceededError';
-            throw err;
-        });
+        idbPut.mockRejectedValue(new Error('IDB Write Error'));
 
-        const result = saveToStorage({}, [], onError);
-
-        expect(result).toBe(false);
-        expect(onError).toHaveBeenCalledWith(
-            expect.stringContaining('存储空间'),
-            expect.any(Error)
-        );
-    });
-
-    it('其他错误时应该调用 onError', () => {
-        const onError = vi.fn();
-        localStorage.setItem.mockImplementationOnce(() => {
-            throw new Error('Unknown error');
-        });
-
-        const result = saveToStorage({}, [], onError);
+        const result = await saveToStorage({}, [], onError);
 
         expect(result).toBe(false);
         expect(onError).toHaveBeenCalledWith(
@@ -93,34 +79,43 @@ describe('saveToStorage', () => {
 });
 
 describe('loadFromStorage', () => {
-    it('无数据时应该返回 null', () => {
-        const result = loadFromStorage();
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('无数据时应该返回 null', async () => {
+        idbGet.mockResolvedValue(null);
+        migrateFromLocalStorage.mockResolvedValue(true);
+
+        const result = await loadFromStorage();
         expect(result.globalSettings).toBeNull();
         expect(result.roleList).toBeNull();
         expect(result.error).toBeNull();
     });
 
-    it('应该成功加载已保存的数据', () => {
+    it('应该成功加载已保存的数据', async () => {
         const settings = { apiKey: 'saved-key' };
         const roles = [{ id: '1', name: 'SavedRole' }];
 
-        localStorage.getItem.mockImplementation((key) => {
-            if (key === STORAGE_KEYS.GLOBAL) return JSON.stringify(settings);
-            if (key === STORAGE_KEYS.ROLES) return JSON.stringify(roles);
+        migrateFromLocalStorage.mockResolvedValue(true);
+        idbGet.mockImplementation(async (key) => {
+            if (key === 'myai_global_v1') return settings;
+            if (key === 'myai_roles_v1') return roles;
             return null;
         });
 
-        const result = loadFromStorage();
+        const result = await loadFromStorage();
 
         expect(result.globalSettings).toEqual(settings);
         expect(result.roleList).toEqual(roles);
     });
 
-    it('JSON 解析失败时应该调用 onError', () => {
+    it('IDB 读取失败时应该调用 onError', async () => {
         const onError = vi.fn();
-        localStorage.getItem.mockReturnValue('{ invalid json');
+        migrateFromLocalStorage.mockResolvedValue(true);
+        idbGet.mockRejectedValue(new Error('IDB Read Error'));
 
-        const result = loadFromStorage(onError);
+        const result = await loadFromStorage(onError);
 
         expect(result.error).toBeDefined();
         expect(onError).toHaveBeenCalledWith(

@@ -103,27 +103,23 @@ describe('[迁移1] getActiveLoreEntriesHybrid — 本地 BM25', () => {
 // ═══════════════════════════════════════════════════════════════════════
 // 3. 记忆检索 — 不调用 /api/memory-search
 // ═══════════════════════════════════════════════════════════════════════
-describe('[迁移2] retrieveRelevantMemories — Orama BM25，不发网络请求', () => {
+describe('[迁移2] retrieveRelevantMemories — 不发网络请求', () => {
     beforeEach(() => localStorage.clear());
 
-    it('有记忆时不调用 fetch', async () => {
+    it('有记忆时不调用 fetch', () => {
         const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({});
-        localStorage.setItem('myai_roles_v1', JSON.stringify([{
-            id: 'role-1',
-            vectorMemories: [
-                { content: '她讨厌下雨天', importance: 4 },
-                { content: '她喜欢草莓大福', importance: 3 },
-            ],
-        }]));
-        await retrieveRelevantMemories('role-1', '今天下雨了');
+        const memories = [
+            { content: '她讨厌下雨天', importance: 4 },
+            { content: '她喜欢草莓大福', importance: 3 },
+        ];
+        retrieveRelevantMemories(memories, '今天下雨了');
         expect(spy).not.toHaveBeenCalled();
         spy.mockRestore();
     });
 
-    it('无记忆时不调用 fetch', async () => {
+    it('无记忆时不调用 fetch', () => {
         const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({});
-        localStorage.setItem('myai_roles_v1', JSON.stringify([{ id: 'role-1' }]));
-        await retrieveRelevantMemories('role-1', '今天下雨了');
+        retrieveRelevantMemories([], '今天下雨了');
         expect(spy).not.toHaveBeenCalled();
         spy.mockRestore();
     });
