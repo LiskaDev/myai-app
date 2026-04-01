@@ -216,8 +216,11 @@ function clearTimelineData() {
     props.currentGroup.timelineAnalyzedCount = 0;
   } else if (props.currentRole) {
     props.currentRole.timeline = [];
+    // 读取活跃分支消息（消息存在 branch.chatHistory，不在 role 根级）
+    const activeBranch = (props.currentRole.branches || []).find(b => b.id === props.currentRole.activeBranchId);
+    const msgs = activeBranch?.chatHistory || props.currentRole.chatHistory || [];
+    const userMsgCount = msgs.filter(m => m.role === 'user').length;
     // 退回一个触发区间，让下次发消息后很快重新触发分析
-    const userMsgCount = (props.currentRole.chatHistory || []).filter(m => m.role === 'user').length;
     props.currentRole.timelineAnalyzedCount = Math.max(0, userMsgCount - 15);
   }
   emit('save-data');

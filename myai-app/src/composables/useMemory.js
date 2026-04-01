@@ -442,7 +442,7 @@ ${rawContent}`;
                 .filter(m => m.role === 'user' || m.role === 'assistant')
                 .map(m => {
                     const name = m.role === 'user' ? '用户' : (role.name || '角色');
-                    const content = (m.rawContent || m.content || '').slice(0, 500);
+                    const content = (m.rawContent || m.content || '').slice(0, 800);
                     return `${name}: ${content}`;
                 })
                 .join('\n');
@@ -497,25 +497,53 @@ ${dialogueText}`,
                 summary,
             });
 
-            // 超过 MAX_CHAPTERS 章时，把最早的几章合并为「远古摘要」
+            // 超过 MAX_CHAPTERS 章时，把最早的几章用 AI 提炼为「远古摘要」
             if (role.chapterSummaries.length > MAX_CHAPTERS) {
                 const overflow = role.chapterSummaries.length - MAX_CHAPTERS;
                 const oldChapters = role.chapterSummaries.slice(0, overflow + 1);
                 // 移除原有的[远古回忆]前缀，防止无限套娃叠加
-                const condensed = oldChapters.map(c => c.summary.replace(/^\[?远古回忆\]?\s*/g, '')).join(' ');
-                // 替换为一条合并摘要
+                const rawText = oldChapters.map(c => c.summary.replace(/^\[?远古回忆\]?\s*/g, '')).join('\n\n');
+                const totalMsgCount = oldChapters.reduce((s, c) => s + c.messageCount, 0);
+
+                // 用 AI 提炼，避免纯拼接导致截断
+                let condensedSummary = rawText.slice(0, 500); // 兜底：AI 失败时用截断文本
+                try {
+                    const condenseResponse = await fetch(`${baseUrl}/chat/completions`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`,
+                        },
+                        body: JSON.stringify({
+                            model,
+                            max_tokens: 400,
+                            temperature: 0.3,
+                            messages: [{
+                                role: 'user',
+                                content: `请将以下多章剧情摘要提炼为一段100字以内的远古回忆，保留最关键的关系变化和重大事件，去掉细节。只返回提炼后的文字，不要任何前缀说明。\n\n${rawText}`,
+                            }],
+                        }),
+                        signal: AbortSignal.timeout(20000),
+                    });
+                    if (condenseResponse.ok) {
+                        const condenseData = await condenseResponse.json();
+                        const refined = condenseData.choices?.[0]?.message?.content?.trim();
+                        if (refined) condensedSummary = refined;
+                    }
+                } catch {
+                    // AI 提炼失败，使用兜底截断文本
+                }
+
                 role.chapterSummaries = [
                     {
                         chapterIndex: 0,
                         createdAt: Date.now(),
-                        messageCount: oldChapters.reduce((s, c) => s + c.messageCount, 0),
-                        // 放宽截断限制到2000字，避免内容丢失
-                        summary: `[远古回忆] ${condensed.slice(0, 2000)}`,
+                        messageCount: totalMsgCount,
+                        summary: `[远古回忆] ${condensedSummary}`,
                         isCondensed: true,
                     },
                     ...role.chapterSummaries.slice(overflow + 1),
                 ];
-                // 不再重新编号，以保留最新章节号
             }
 
             saveData();
@@ -770,14 +798,27 @@ ${latestChapter.summary}`,
 
     /**
      * 🗂️ 章节摘要追赶调度：锁忙时 10 秒后重试，归档完一批后检查是否还有积压
+     *
+     * 起始位置改用时间戳定位（_lastArchivedMsgTimestamp），
+     * 避免消息被删除时 messageCount 求和偏移导致归档错位。
      */
     function scheduleChapterCatchUp(role, allMessages, windowSize) {
         const totalMessages = allMessages.length;
-        const archivedCount = (role.chapterSummaries || [])
-            .reduce((sum, c) => sum + c.messageCount, 0);
         const outsideWindow = Math.max(0, totalMessages - windowSize);
-        const unarchived = outsideWindow - archivedCount;
 
+        // 用时间戳找起始位置，兜底才用 messageCount 求和
+        let startIndex;
+        const lastTs = role._lastArchivedMsgTimestamp;
+        if (lastTs) {
+            const idx = allMessages.findIndex(m => m.timestamp === lastTs);
+            startIndex = idx >= 0
+                ? idx + 1
+                : (role.chapterSummaries || []).reduce((s, c) => s + c.messageCount, 0);
+        } else {
+            startIndex = (role.chapterSummaries || []).reduce((s, c) => s + c.messageCount, 0);
+        }
+
+        const unarchived = outsideWindow - startIndex;
         if (unarchived < CHAPTER_TRIGGER_COUNT) return; // 无积压
 
         if (isBackgroundLocked()) {
@@ -786,23 +827,26 @@ ${latestChapter.summary}`,
             return;
         }
 
-        const start = archivedCount;
-        const end = start + CHAPTER_TRIGGER_COUNT;
-        const messagesToArchive = allMessages.slice(start, end);
+        const messagesToArchive = allMessages.slice(startIndex, startIndex + CHAPTER_TRIGGER_COUNT);
 
         triggerChapterSummary(role, messagesToArchive)
             .then((didArchive) => {
                 if (!didArchive) return;
 
-                // 同步最新章节到向量记忆（语义搜索功能）
+                // 记录本次归档的最后一条消息时间戳，作为下次的起始锚点
+                const lastMsg = messagesToArchive[messagesToArchive.length - 1];
+                if (lastMsg?.timestamp) {
+                    role._lastArchivedMsgTimestamp = lastMsg.timestamp;
+                    saveData();
+                }
+
+                // 同步最新章节到关键词记忆
                 syncMemoriesToVector(role, role.id).catch(() => {});
 
-                // 归档成功后检查是否还有积压，继续追赶
-                const newArchived = (role.chapterSummaries || [])
-                    .reduce((sum, c) => sum + c.messageCount, 0);
-                const stillUnarchived = outsideWindow - newArchived;
-                if (stillUnarchived >= CHAPTER_TRIGGER_COUNT) {
-                    console.log(`[ChapterSummary] 还有 ${stillUnarchived} 条积压，5秒后继续归档...`);
+                // 继续追赶：直接递归，内部会重新计算是否还有积压
+                const nextStart = startIndex + messagesToArchive.length;
+                if (outsideWindow - nextStart >= CHAPTER_TRIGGER_COUNT) {
+                    console.log(`[ChapterSummary] 还有积压，5秒后继续归档...`);
                     setTimeout(() => scheduleChapterCatchUp(role, allMessages, windowSize), 5000);
                 }
             })
