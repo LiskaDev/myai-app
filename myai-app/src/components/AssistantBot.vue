@@ -65,8 +65,6 @@ function buildSystemPrompt() {
 
 API Key 配置：右上角⚙设置图标 → 第一个"模型"Tab → 填写Base URL / API Key / 模型名称。推荐 DeepSeek (platform.deepseek.com) 或 SiliconFlow。
 
-群聊模式：可同时和多个AI角色在同一对话中聊天，在角色设置里配置群聊参与者。
-
 【当前用户数据】
 API配置：${cfg?.baseUrl || '未配置'} / ${cfg?.model || '未配置'}
 已有角色：${roleNames}

@@ -9,7 +9,8 @@
       "Bash(@tailwind\" \"C:UsersALanDesktopMyAI_RolePlaymyai-appsrcstyle.css \")",
       "Bash(head -20 grep -n \"media\\\\|safe-area\\\\|dvh\" /c/Users/ALan/Desktop/MyAI_RolePlay/myai-app/src/components/DiaryModal.vue)",
       "Bash(npm run:*)",
-      "Bash(git -C \"C:/Users/ALan/Desktop/MyAI_RolePlay\" log --oneline --follow -- myai-app/src/App.vue)"
+      "Bash(git -C \"C:/Users/ALan/Desktop/MyAI_RolePlay\" log --oneline --follow -- myai-app/src/App.vue)",
+      "Bash(npm test:*)"
     ]
   }
 }
