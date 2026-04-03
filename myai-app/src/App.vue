@@ -213,14 +213,19 @@ function confirmStImport() {
   const parts = [replaceVars(card.description) || '']
   if (card.personality) parts.push(`\n\n【性格】${replaceVars(card.personality)}`)
   if (card.scenario) parts.push(`\n\n【场景】${replaceVars(card.scenario)}`)
-  if (card.mes_example) parts.push(`\n\n【对话示例】\n${replaceVars(card.mes_example)}`)
   const systemPrompt = parts.join('').trim()
+
+  // post_history_instructions 是语义正确的补充指令字段（进阶卡常用）
+  // creator_notes 是作者说明，大多数卡把指令写在这里，作为 fallback
+  const rawAuthorNote = card.post_history_instructions || card.creator_notes || ''
 
   const incoming = {
     name: charName,
     systemPrompt,
     firstMessage: replaceVars(card.first_mes) || '你好！',
     styleGuide: card.personality ? replaceVars(card.personality).slice(0, 100) : '',
+    mesExample: card.mes_example ? replaceVars(card.mes_example) : '',
+    authorNote: rawAuthorNote ? replaceVars(rawAuthorNote) : '',
   }
 
   const newRole = { ...createNewRoleData(), ...incoming, id: crypto.randomUUID(), createdAt: Date.now() }
@@ -1045,7 +1050,7 @@ function handleAvatarError(type, roleId) {
           <div><span style="color:var(--ink-faint)">系统提示词：</span>{{ (pendingStCard.description || '').slice(0, 80) }}{{ (pendingStCard.description || '').length > 80 ? '…' : '' }}</div>
           <div><span style="color:var(--ink-faint)">开场白：</span>{{ (pendingStCard.first_mes || '').slice(0, 60) }}{{ (pendingStCard.first_mes || '').length > 60 ? '…' : '' }}</div>
         </div>
-        <p class="text-xs mb-5" style="color:var(--ink-faint)">personality、scenario、mes_example 将合并进系统提示词；creator_notes 和 tags 不支持，将被忽略。</p>
+        <p class="text-xs mb-5" style="color:var(--ink-faint)">personality、scenario 将合并进系统提示词；mes_example 映射到「对话示例」；post_history_instructions / creator_notes 映射到「补充指令」；tags 忽略。</p>
         <div class="flex gap-3 justify-end">
           <button @click="pendingStCard = null" class="px-4 py-2 rounded-lg text-sm transition" style="background:var(--brush);color:var(--ink-faint)">取消</button>
           <button @click="confirmStImport" class="px-5 py-2 rounded-lg text-sm font-medium transition" style="background:var(--accent);color:white">✅ 确认导入</button>

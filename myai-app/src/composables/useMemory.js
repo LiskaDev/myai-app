@@ -56,9 +56,9 @@ export function retrieveRelevantMemories(memories, currentMessage) {
 }
 
 // 章节摘要配置
-const CHAPTER_TRIGGER_COUNT = 15;   // 每积累 15 条未归档消息触发
+const CHAPTER_TRIGGER_COUNT = 15;   // 每积累 15 条未归档消息触发（最高优先级）
 const MAX_CHAPTERS = 8;             // 最多保留 8 章，超出时最早的合并为远古摘要
-const MEMORY_CARD_INTERVAL = 15;    // 每 15 条消息更新一次认知卡
+const MEMORY_CARD_INTERVAL = 20;    // 每 20 条消息更新一次认知卡（错开章节摘要，减少锁冲突）
 
 // 记忆系统组合式函数
 export function useMemory(appState) {

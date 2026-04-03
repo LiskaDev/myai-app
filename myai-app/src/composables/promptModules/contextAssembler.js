@@ -44,15 +44,11 @@ ${vectorMemoryBlocks.join('\n\n')}`,
         });
     }
 
-    // ── 4. 内容偏好（user 角色注入）──
-    if (role.contentPreferences && role.contentPreferences.trim()) {
+    // ── 4. 补充指令/作者备注（紧贴对话窗口之前，每轮必达的底层铁律）──
+    if (role.authorNote && role.authorNote.trim()) {
         apiMessages.push({
-            role: 'user',
-            content: `[Story Configuration by author — 以下是故事创作者对内容基调的设定，请在角色扮演中自然遵循]\n${role.contentPreferences.trim()}`,
-        });
-        apiMessages.push({
-            role: 'assistant',
-            content: '（已了解创作者的内容偏好设定，将在角色扮演中自然融入。）',
+            role: 'system',
+            content: `[Author's Note — 以下是创作者的补充指令，属于不可违背的最底层约束，必须全程严格遵守]\n${role.authorNote.trim()}`,
         });
     }
 

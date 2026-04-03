@@ -81,6 +81,7 @@ RESPONSE FORMAT:
     if (role.speakingStyle) personaParts.push(`<speaking_style>\n${role.speakingStyle}\n</speaking_style>`);
     if (role.relationship)  personaParts.push(`<relationship>\n${role.relationship}\n请让这段关系自然地影响你的称呼、语气、亲密程度和行为方式。\n</relationship>`);
     if (role.secret)        personaParts.push(`<secret do_not_reveal="true">\n${role.secret}\n</secret>`);
+    if (role.mesExample)    personaParts.push(`<example_dialogue>\n${role.mesExample}\n</example_dialogue>`);
 
     if (personaParts.length > 0) {
         blocks.push({

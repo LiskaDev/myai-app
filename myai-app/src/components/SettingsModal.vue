@@ -130,7 +130,7 @@ function triggerUserFilePicker() { userFileInputRef.value?.click(); }
 async function handleUserFileSelect(event) {
   const file = event.target.files?.[0];
   if (!file) return;
-  if (file.size > 10 * 1024 * 1024) { emit('show-toast', '图片不能超过 10MB', 'error'); return; }
+  if (file.size > 10 * 1024 * 1024) { showLocalToast('图片不能超过 10MB', 'error'); return; }
   isUserAvatarProcessing.value = true;
   try {
     userCropperSrc.value = await new Promise((resolve, reject) => {
@@ -223,8 +223,23 @@ function clearTimelineData() {
 }
 
 function removeTimelineItem(idx) {
-  if (props.isGroupMode && props.currentGroup?.timeline) props.currentGroup.timeline.splice(idx, 1);
-  else if (props.currentRole?.timeline) props.currentRole.timeline.splice(idx, 1);
+  if (props.isGroupMode && props.currentGroup?.timeline) {
+    props.currentGroup.timeline.splice(idx, 1);
+    // 删完最后一条时重置计数器，使下次快速重新触发分析
+    if (props.currentGroup.timeline.length === 0) {
+      props.currentGroup.timelineAnalyzedCount = 0;
+    }
+  } else if (props.currentRole?.timeline) {
+    props.currentRole.timeline.splice(idx, 1);
+    // 删完最后一条时重置计数器（让下次对话后 ~15 条内重新触发分析）
+    if (props.currentRole.timeline.length === 0) {
+      const activeBranch = (props.currentRole.branches || []).find(b => b.id === props.currentRole.activeBranchId);
+      const msgs = activeBranch?.chatHistory || props.currentRole.chatHistory || [];
+      const userMsgCount = msgs.filter(m => m.role === 'user').length;
+      props.currentRole.timelineAnalyzedCount = Math.max(0, userMsgCount - 15);
+    }
+  }
+  emit('save-data');
 }
 
 const editingTimelineIdx = ref(-1);
@@ -346,13 +361,29 @@ const promptTokenEstimate = computed(() => {
   const totalChars = props.promptPreviewData.reduce((s, m) => s + (m.content?.length || 0), 0);
   return { count: props.promptPreviewData.length, tokens: Math.round(totalChars / 2) };
 });
+
+// ===== 局部 Toast (用于弹窗内部操作反馈) =====
+const localToast = ref(null);
+let localToastTimer = null;
+function showLocalToast(msg, type = 'info') {
+  localToast.value = { msg, type };
+  if (localToastTimer) clearTimeout(localToastTimer);
+  localToastTimer = setTimeout(() => { localToast.value = null; }, 3000);
+}
 </script>
 
 <template>
   <!-- 遮罩层 -->
   <div class="modal-overlay" @click="handleOverlayClick">
     <!-- 弹窗主体 -->
-    <div class="modal-container">
+    <div class="modal-container" style="position: relative;">
+
+      <!-- 弹窗内部 Local Toast -->
+      <Transition name="local-toast">
+        <div v-if="localToast" class="settings-local-toast" :class="{'error': localToast.type === 'error'}">
+          {{ localToast.msg }}
+        </div>
+      </Transition>
 
       <!-- 弹窗头部 -->
       <header class="modal-header">
@@ -657,10 +688,13 @@ const promptTokenEstimate = computed(() => {
                     📅 剧情时间线
                     <span v-if="timelineSource?.length" class="badge-count">{{ timelineSource.length }} 条</span>
                   </div>
-                  <button v-if="timelineSource?.length" @click="clearTimelineData(); emit('show-toast', '时间线已清空', 'info')"
-                          class="text-xs text-red-400/60 hover:text-red-400 transition">清空</button>
+                  <button @click="clearTimelineData(); showLocalToast(timelineSource?.length ? '时间线已清空，下轮对话将重新分析' : '分析计数已重置，下轮对话将触发重新分析', 'info')"
+                          class="text-xs transition"
+                          :class="timelineSource?.length ? 'text-red-400/60 hover:text-red-400' : 'text-gray-500 hover:text-gray-300'">
+                    {{ timelineSource?.length ? '清空' : '重置分析' }}
+                  </button>
                 </div>
-                <p class="section-desc mb-3">每 15 轮对话后，AI 自动提取关键剧情事件</p>
+                <p class="section-desc mb-3">每 25 轮对话后，AI 自动提取关键剧情事件</p>
 
                 <div v-if="timelineSource?.length" class="space-y-2">
                   <div v-for="(event, idx) in timelineSource" :key="idx"
@@ -1423,6 +1457,18 @@ const promptTokenEstimate = computed(() => {
 .mem-btn.cancel:hover { background: var(--border); }
 .mem-btn.delete { background: rgba(239,68,68,0.15); color: #f87171; }
 .mem-btn.delete:hover { background: rgba(239,68,68,0.3); }
+
+/* ===== 局部 Toast ===== */
+.settings-local-toast {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: var(--paper);
+  padding: 8px 18px; border-radius: 20px; font-size: 12.5px; z-index: 300;
+  white-space: nowrap; box-shadow: 0 4px 16px var(--shadow-lg);
+  display: flex; align-items: center; justify-content: center; font-weight: 500;
+}
+.settings-local-toast.error { background: #c07070; color: white; }
+.local-toast-enter-active, .local-toast-leave-active { transition: all 0.3s ease; }
+.local-toast-enter-from, .local-toast-leave-to { opacity: 0; transform: translate(-50%, -10px); }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinning { animation: spin 1s linear infinite; display: inline-block; }

@@ -30,7 +30,7 @@ export function isBackgroundLocked() {
 }
 
 // ========== Timeline 常量 ==========
-const TRIGGER_INTERVAL = 15; // 每 15 条用户消息触发一次
+const TRIGGER_INTERVAL = 25; // 每 25 条用户消息触发一次（错开章节摘要15/认知卡20，减少锁冲突）
 const MAX_TIMELINE_EVENTS = 30; // 最多保留 30 条事件
 const TIMELINE_STORAGE_PREFIX = 'myai_timeline_';
 

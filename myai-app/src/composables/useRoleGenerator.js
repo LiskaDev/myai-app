@@ -32,7 +32,9 @@ JSON 格式：
   "worldLogic": "故事发生的世界观设定（30字内）",
   "relationship": "与用户的初始关系（20字内）",
   "firstMessage": "角色的开场白，要符合角色性格（50字内）",
-  "styleGuide": "AI 写作风格指导（30字内）"
+  "styleGuide": "AI 写作风格指导（30字内）",
+  "mesExample": "1-2段示例对话，用<START>分隔，展示角色典型说话方式（每段50字内）",
+  "authorNote": "1-2条底层铁律或绝对约束，精简到30字内，分号分隔"
 }`;
 }
 
@@ -91,7 +93,8 @@ export function extractJSON(text) {
 export function sanitizeRoleData(data) {
     const fields = [
         'name', 'systemPrompt', 'speakingStyle', 'appearance',
-        'secret', 'worldLogic', 'relationship', 'firstMessage', 'styleGuide'
+        'secret', 'worldLogic', 'relationship', 'firstMessage', 'styleGuide',
+        'mesExample', 'authorNote',
     ];
 
     const result = {};

@@ -29,7 +29,7 @@ async function handleGenerate() {
   isGenerating.value = false;
   if (controller.signal.aborted) return;
   if (result.success) {
-    const fields = ['name', 'systemPrompt', 'speakingStyle', 'appearance', 'secret', 'worldLogic', 'relationship', 'firstMessage', 'styleGuide'];
+    const fields = ['name', 'systemPrompt', 'speakingStyle', 'appearance', 'secret', 'worldLogic', 'relationship', 'firstMessage', 'styleGuide', 'mesExample', 'authorNote'];
     for (const field of fields) {
       if (result.data[field]) props.currentRole[field] = result.data[field];
     }
@@ -196,20 +196,36 @@ function clearAvatar() {
                   class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-secondary transition resize-none text-shadow-light"></textarea>
       </div>
 
-      <!-- 📜 内容偏好 -->
-      <div class="basic-field content-pref-field">
+      <!-- 📝 对话示例 -->
+      <div class="basic-field">
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-base">📜</span>
-          <label class="text-sm text-gray-200 font-medium">内容偏好</label>
+          <span class="text-base">📝</span>
+          <label class="text-sm text-gray-200 font-medium">对话示例</label>
           <div class="tooltip-trigger relative group ml-auto">
             <span class="cursor-help text-gray-500 hover:text-gray-300 text-xs">❓</span>
-            <div class="tooltip-content">独立于角色人设的故事基调设定。以「创作者备注」方式注入，不与角色身份混淆，降低 AI 拒绝率。</div>
+            <div class="tooltip-content">直接粘贴 1-3 段对话示例，格式自由。AI 会模仿这些示例的语调和说话风格来回复。✨ AI 一键生成时会自动补全此字段。</div>
           </div>
         </div>
-        <textarea v-model="currentRole.contentPreferences" rows="2"
-                  placeholder="例如：故事可包含适度的冲突和紧张情节，允许描写战斗场景..."
+        <textarea v-model="currentRole.mesExample" rows="4"
+                  placeholder="我：*轻轻推了推她的肩膀*&#10;角色：*猛地抬头，眼眶有些红* 「……你干嘛突然吓我」&#10;&#10;我：算了，走吧。&#10;角色：*跟上来，保持着半步的距离* 「去哪？」"
+                  class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-secondary transition resize-none text-shadow-light text-sm"></textarea>
+        <p class="text-xs text-gray-500 mt-1">直接粘贴对话内容即可，格式自由，空行分隔不同段落</p>
+      </div>
+
+      <!-- 📋 补充指令/作者备注 -->
+      <div class="basic-field">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-base">📋</span>
+          <label class="text-sm text-gray-200 font-medium">补充指令 / 作者备注</label>
+          <div class="tooltip-trigger relative group ml-auto">
+            <span class="cursor-help text-gray-500 hover:text-gray-300 text-xs">❓</span>
+            <div class="tooltip-content">每轮对话末尾都会注入，承载绝对不能被 AI 遗忘的底层铁律。字数越精简越有效。✨ AI 一键生成时会自动补全。</div>
+          </div>
+        </div>
+        <textarea v-model="currentRole.authorNote" rows="3"
+                  placeholder="例如：禁止主动提出分别；战斗场景必须描写实际伤亡；永远不主动提及过去的恋情。"
                   class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-amber-500/40 transition resize-none text-shadow-light"></textarea>
-        <p class="text-xs text-gray-500 mt-1">此处不会进入角色人设，而是以创作者备注形式单独注入</p>
+        <p class="text-xs text-gray-500 mt-1">此处内容以最高优先级注入每轮对话末尾，用于不可妥协的行为约束</p>
       </div>
 
       <!-- 💬 开场白 -->

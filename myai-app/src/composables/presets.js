@@ -307,8 +307,9 @@ export function createNewRoleData() {
         // v6.1: 写作风格系统
         writingStyle: '',        // 写作风格模板 ID（adventure/emotion/healing/suspense）
         styleDirectives: [],     // 动态风格指令数组（用户在聊天中添加的）
-        // v7.0: 内容偏好（独立于角色人设）
-        contentPreferences: '',  // 故事内容基调和边界设定
+        // v8.5: 对话示例 & 补充指令
+        mesExample: '',          // 对话示例（1-3段，<START>分隔），精准锚定语调风格
+        authorNote: '',          // 补充指令/作者备注，每轮注入在对话末尾的底层铁律
         // v8.x: 故事时间锚点
         storyDate: '',           // 当前故事时间节点（自由文本，如"第3天，周三下午"）
         // v6.0: 三层记忆系统
@@ -353,9 +354,13 @@ export function migrateRoleMemoryFields(role) {
             role.memoryCard[key] = val;
         }
     }
-    // v7.0: 确保 contentPreferences 字段存在
-    if (role.contentPreferences === undefined) {
-        role.contentPreferences = '';
+    // v8.5: 确保 mesExample / authorNote 字段存在，迁移旧 contentPreferences
+    if (role.mesExample === undefined) {
+        role.mesExample = '';
+    }
+    if (role.authorNote === undefined) {
+        // 旧 contentPreferences 有内容时自动搬过来，否则初始化为空
+        role.authorNote = (role.contentPreferences && role.contentPreferences.trim()) ? role.contentPreferences : '';
     }
     return role;
 }

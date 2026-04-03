@@ -70,6 +70,8 @@ describe('sanitizeRoleData - 数据验证与补全', () => {
             relationship: '陌生人',
             firstMessage: '你好。',
             styleGuide: '冷硬派',
+            mesExample: '<START>...\n<START>...',
+            authorNote: '始终保持冷酷',
         };
         const result = sanitizeRoleData(data);
         expect(result).toEqual(data);
@@ -118,7 +120,7 @@ describe('sanitizeRoleData - 数据验证与补全', () => {
         const data = { name: '小夜', extraField: '不应出现' };
         const result = sanitizeRoleData(data);
         expect(result.extraField).toBeUndefined();
-        expect(Object.keys(result)).toHaveLength(9);
+        expect(Object.keys(result)).toHaveLength(11);
     });
 });
 

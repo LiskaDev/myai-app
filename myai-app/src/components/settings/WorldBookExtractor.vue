@@ -91,7 +91,7 @@ const roleContextPreview = computed(() => {
         r.appearance && `外貌：${r.appearance}`,
         r.speakingStyle && `说话方式：${r.speakingStyle}`,
         r.relationship && `关系：${r.relationship}`,
-        r.contentPreferences && `内容偏好：${r.contentPreferences}`,
+        r.authorNote && `补充指令：${r.authorNote}`,
         r.secret && `隐藏设定：${r.secret}`,
         r.systemPrompt && `角色完整设定（节选）：${r.systemPrompt.slice(0, 2000)}${r.systemPrompt.length > 2000 ? '……（已截取）' : ''}`,
     ].filter(Boolean);
