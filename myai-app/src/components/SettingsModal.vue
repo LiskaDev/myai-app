@@ -981,6 +981,7 @@ function showLocalToast(msg, type = 'info') {
                   { label: '✍️ 文字深浅',     key: 'chatTextBrightness', min: 50, max: 150, step: 5, default: 100, unit: '%', left: '淡', right: '深' },
                   { label: '𝐁 文字粗细',      key: 'chatFontWeight', min: -2, max: 3, step: 1, default: 0, unit: '', left: '细', right: '粗' },
                   { label: '🔤 字体大小',     key: 'chatFontSize', min: 0.8, max: 1.4, step: 0.05, default: 1.0, unit: '%', left: 'A', right: 'A' },
+                  { label: '↕️ 行间距',       key: 'chatLineHeight', min: 1.0, max: 2.2, step: 0.1, default: 1.6, unit: '', left: '紧', right: '松' },
                 ]" :key="slider.key">
                   <div class="flex justify-between items-center mb-0.5">
                     <label class="text-xs text-gray-400">{{ slider.label }}</label>
@@ -988,6 +989,8 @@ function showLocalToast(msg, type = 'info') {
                       <span class="text-xs text-gray-500">
                         {{ slider.key === 'chatFontSize'
                           ? Math.round((globalSettings[slider.key] || slider.default) * 100) + '%'
+                          : slider.key === 'chatLineHeight'
+                            ? (globalSettings[slider.key] || slider.default).toFixed(1)
                           : slider.key === 'chatFontWeight'
                             ? ((globalSettings[slider.key] || 0) === 0 ? '默认' : ((globalSettings[slider.key] > 0 ? '+' : '') + globalSettings[slider.key]))
                             : (globalSettings[slider.key] || slider.default) + slider.unit }}
@@ -1001,7 +1004,7 @@ function showLocalToast(msg, type = 'info') {
                     <span class="text-[10px] text-gray-600">{{ slider.left }}</span>
                     <input type="range" :min="slider.min" :max="slider.max" :step="slider.step"
                            :value="globalSettings[slider.key] || slider.default"
-                           @input="globalSettings[slider.key] = slider.key === 'chatFontSize' ? parseFloat($event.target.value) : parseInt($event.target.value)"
+                           @input="globalSettings[slider.key] = (slider.key === 'chatFontSize' || slider.key === 'chatLineHeight') ? parseFloat($event.target.value) : parseInt($event.target.value)"
                            class="flex-1 accent-purple-500">
                     <span class="text-[10px] text-gray-600" :class="{ 'font-bold': slider.key === 'chatFontWeight' }">{{ slider.right }}</span>
                   </div>

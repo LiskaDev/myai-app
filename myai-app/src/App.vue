@@ -62,6 +62,14 @@ function applyChatFontSize() {
 watch(() => appState.globalSettings.chatFontSize, applyChatFontSize);
 applyChatFontSize();
 
+// 📏 聊天行间距
+function applyChatLineHeight() {
+    const lh = appState.globalSettings.chatLineHeight || 1.6;
+    document.documentElement.style.setProperty('--chat-line-height', lh);
+}
+watch(() => appState.globalSettings.chatLineHeight, applyChatLineHeight);
+applyChatLineHeight();
+
 // 🌟 新手引导
 const showOnboarding = ref(!localStorage.getItem('myai_onboarding_done'));
 

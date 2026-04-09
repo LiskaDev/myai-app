@@ -2322,15 +2322,17 @@ details.reasoning-block[open]>summary {
   color: rgba(239, 68, 68, 1);
 }
 
-/* ============== 聊天字体大小控制 ============== */
+/* ============== 聊天字体大小 & 行间距控制 ============== */
 :root {
   --chat-font-size: 1;
+  --chat-line-height: 1.6;
 }
 
 .message-content,
 .inner-bubble,
 .reasoning-content {
   font-size: calc(var(--chat-font-size, 1) * 1em) !important;
+  line-height: var(--chat-line-height, 1.6) !important;
 }
 
 /* ============== 🃏 角色卡 Modal Overlay ============== */

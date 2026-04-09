@@ -48,6 +48,8 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     enableSmartAnalysis: true,
     // v6.1: 聊天字体大小
     chatFontSize: 1.0,
+    // v6.x: 聊天行间距（1.2=紧凑, 1.6=默认, 2.2=宽松）
+    chatLineHeight: 1.6,
     // v6.3: 聊天区亮度 & 文字深浅（50-150，100=无调整）
     chatBgBrightness: 100,
     chatTextBrightness: 100,
