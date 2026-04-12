@@ -654,6 +654,64 @@ function toggleSection(key) {
   collapsedSections.value = { ...collapsedSections.value, [key]: !collapsedSections.value[key] };
 }
 
+// ── STATE 手动编辑 ──
+const editMode    = ref(false);
+const newItemForm = ref({ show: false, name: '', rarity: 'common', count: 1 });
+
+function toggleEditMode() {
+  if (editMode.value) {
+    newItemForm.value.show = false;
+    editMode.value = false;
+    autoSave();
+    showToast('✅ 状态已保存');
+  } else {
+    editMode.value = true;
+  }
+}
+
+// 更新单个 stat 字段（兼容裸字符串、对象两种数据格式）
+function updateStat(key, field, rawValue) {
+  const stats = currentState.value.stats;
+  if (!stats) return;
+  const old = stats[key];
+  if (field === null) {
+    stats[key] = rawValue;                                // 裸字符串/数字直接替换
+  } else if (typeof old === 'object' && old !== null) {
+    stats[key] = { ...old, [field]: rawValue };           // 对象：只改指定字段
+  } else {
+    stats[key] = { value: rawValue };                    // 降级为对象
+  }
+}
+
+// 删除物品
+function removeItem(idx) {
+  const items = currentState.value.items;
+  if (!items) return;
+  currentState.value.items = items.filter((_, i) => i !== idx);
+}
+
+// 确认新增物品
+function confirmAddItem() {
+  const { name, rarity, count } = newItemForm.value;
+  if (!name.trim()) return;
+  if (!currentState.value.items) currentState.value.items = [];
+  currentState.value.items.push({
+    name:   name.trim(),
+    rarity: rarity || 'common',
+    count:  parseInt(count) || 1,
+  });
+  newItemForm.value = { show: false, name: '', rarity: 'common', count: 1 };
+}
+
+// 更新 NPC 好感度
+function updateNpcRelation(npcIdx, val) {
+  const npcs = currentState.value.npcs;
+  if (!npcs?.[npcIdx]) return;
+  const updated = [...npcs];
+  updated[npcIdx] = { ...updated[npcIdx], relation: parseInt(val) || 0 };
+  currentState.value.npcs = updated;
+}
+
 // ── 自动存档（每轮 AI 回复后静默触发）──
 async function autoSave() {
   if (!messages.value.length) return;
@@ -707,44 +765,102 @@ async function autoSave() {
     <div class="layout">
       <!-- 侧边栏 -->
       <aside class="sidebar" :class="{ open: showSidebar }">
+
+        <!-- 编辑模式切换 -->
+        <div v-if="Object.keys(stateStats).length || stateItems.length || stateNpcs.length" class="sidebar-editbar">
+          <button :class="['edit-mode-btn', editMode && 'active']" @click="toggleEditMode">
+            {{ editMode ? '✅ 完成编辑' : '✏️ 编辑状态' }}
+          </button>
+        </div>
+
         <!-- 修为/通用 stats -->
         <div class="s-section" v-if="Object.keys(stateStats).length">
           <div class="s-title">状态 <span :class="['fold-btn', !collapsedSections['stats'] && 'open']" @click="toggleSection('stats')">&#9654;</span></div>
           <div :class="['s-content', collapsedSections['stats'] && 'collapsed']">
             <template v-for="(stat, key) in stateStats" :key="key">
-              <!-- has progress bar -->
+              <!-- card 类型（境界/修为等，有 progress） -->
               <div v-if="renderStatField(key, stat).type === 'card'" :class="['realm-card', realmGlow && 'glow']">
-                <div class="realm-name">{{ renderStatField(key, stat).value }}</div>
-                <div class="realm-sub">{{ key }}</div>
-                <div class="exp-bar">
-                  <div class="exp-fill" :style="{ width: renderStatField(key, stat).progress + '%' }"></div>
-                </div>
+                <template v-if="!editMode">
+                  <div class="realm-name">{{ renderStatField(key, stat).value }}</div>
+                  <div class="realm-sub">{{ key }}</div>
+                  <div class="exp-bar"><div class="exp-fill" :style="{ width: renderStatField(key, stat).progress + '%' }"></div></div>
+                </template>
+                <template v-else>
+                  <div class="realm-sub" style="margin-bottom:4px">{{ key }}</div>
+                  <input class="edit-input" type="text" :value="stat.value ?? ''" @input="updateStat(key, 'value', $event.target.value)" placeholder="境界名" />
+                  <div class="edit-row" style="margin-top:5px">
+                    <span class="edit-label">进度</span>
+                    <input class="edit-input-sm" type="number" min="0" max="100" :value="stat.progress ?? 0" @input="updateStat(key, 'progress', Math.max(0, Math.min(100, parseInt($event.target.value)||0)))" />
+                    <span class="edit-label">%</span>
+                  </div>
+                </template>
               </div>
-              <!-- has max (fraction) -->
+
+              <!-- bar 类型（血量/灵力，有 max） -->
               <div v-else-if="renderStatField(key, stat).type === 'bar'" class="stat-row">
                 <span class="sl">{{ key }}</span>
-                <span :class="['sv', changedStatKeys.has(key) && 'changed']">{{ renderStatField(key, stat).value }} / {{ renderStatField(key, stat).max }}</span>
+                <template v-if="!editMode">
+                  <span :class="['sv', changedStatKeys.has(key) && 'changed']">{{ renderStatField(key, stat).value }} / {{ renderStatField(key, stat).max }}</span>
+                </template>
+                <template v-else>
+                  <div class="edit-row">
+                    <input class="edit-input-sm" type="number" :value="stat.value ?? 0" @input="updateStat(key, 'value', parseFloat($event.target.value)||0)" style="width:38px" />
+                    <span class="edit-label">/</span>
+                    <input class="edit-input-sm" type="number" :value="stat.max ?? 0" @input="updateStat(key, 'max', parseFloat($event.target.value)||0)" style="width:38px" />
+                  </div>
+                </template>
               </div>
-              <!-- plain value -->
+
+              <!-- 纯文字类型 -->
               <div v-else class="stat-row">
                 <span class="sl">{{ key }}</span>
-                <span :class="['sv', changedStatKeys.has(key) && 'changed']">{{ renderStatField(key, stat).value }}</span>
+                <template v-if="!editMode">
+                  <span :class="['sv', changedStatKeys.has(key) && 'changed']">{{ renderStatField(key, stat).value }}</span>
+                </template>
+                <template v-else>
+                  <input class="edit-input" type="text"
+                    :value="renderStatField(key, stat).value"
+                    @input="updateStat(key, typeof stat === 'object' ? 'value' : null, $event.target.value)"
+                    style="width:80px;text-align:right" />
+                </template>
               </div>
             </template>
           </div>
         </div>
 
         <!-- 持有物品 -->
-        <div class="s-section" v-if="stateItems.length">
+        <div class="s-section" v-if="stateItems.length || editMode">
           <div class="s-title">持有 <span :class="['fold-btn', !collapsedSections['items'] && 'open']" @click="toggleSection('items')">&#9654;</span></div>
           <div :class="['s-content', collapsedSections['items'] && 'collapsed']">
             <div class="items-wrap">
               <span
-                v-for="item in stateItems"
+                v-for="(item, idx) in stateItems"
                 :key="item.name"
                 :class="['item-chip', item.rarity, changedItemKeys.has(item.name) && 'new']"
-              >{{ item.name }}{{ item.count && item.count > 1 ? ` ×${item.count}` : '' }}</span>
+              >{{ item.name }}{{ item.count && item.count > 1 ? ` ×${item.count}` : '' }}<button v-if="editMode" class="item-del-btn" @click="removeItem(idx)">×</button></span>
             </div>
+            <!-- 编辑模式：新增物品 -->
+            <template v-if="editMode">
+              <div v-if="!newItemForm.show">
+                <button class="add-item-btn" @click="newItemForm.show = true">＋ 新增物品</button>
+              </div>
+              <div v-else class="new-item-form">
+                <input class="edit-input" v-model="newItemForm.name" placeholder="物品名称" />
+                <div class="edit-row" style="margin-top:4px">
+                  <button
+                    v-for="r in [{v:'common',label:'普通'},{v:'rare',label:'稀有'},{v:'epic',label:'史诗'}]"
+                    :key="r.v"
+                    :class="['rarity-btn', r.v, newItemForm.rarity === r.v && 'selected']"
+                    @click="newItemForm.rarity = r.v"
+                  >{{ r.label }}</button>
+                  <input class="edit-input-sm" type="number" min="1" v-model.number="newItemForm.count" placeholder="数量" style="width:46px" />
+                </div>
+                <div class="edit-row" style="margin-top:5px">
+                  <button class="add-item-ok-btn" @click="confirmAddItem">确认</button>
+                  <button class="add-item-cancel-btn" @click="newItemForm.show = false">取消</button>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
 
@@ -752,18 +868,24 @@ async function autoSave() {
         <div class="s-section" v-if="stateNpcs.length">
           <div class="s-title">关系 <span :class="['fold-btn', !collapsedSections['npcs'] && 'open']" @click="toggleSection('npcs')">&#9654;</span></div>
           <div :class="['s-content', collapsedSections['npcs'] && 'collapsed']">
-            <div v-for="npc in stateNpcs" :key="npc.name" class="npc-item">
+            <div v-for="(npc, npcIdx) in stateNpcs" :key="npc.name" class="npc-item">
               <div class="npc-info">
                 <span class="npc-name">{{ npc.name }}</span>
                 <span class="npc-role">{{ npc.role }}</span>
               </div>
-              <div class="rel-dots">
-                <div
-                  v-for="(dot, di) in npcDots(npc)"
-                  :key="di"
-                  :class="['rdot', dot.filled && dot.type]"
-                ></div>
-              </div>
+              <template v-if="!editMode">
+                <div class="rel-dots">
+                  <div v-for="(dot, di) in npcDots(npc)" :key="di" :class="['rdot', dot.filled && dot.type]"></div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="rel-edit">
+                  <input class="rel-slider" type="range" min="-5" max="5" step="1"
+                    :value="npc.relation || 0"
+                    @input="updateNpcRelation(npcIdx, $event.target.value)" />
+                  <span class="rel-val" :class="npc.relation > 0 ? 'ally' : npc.relation < 0 ? 'enemy' : ''">{{ npc.relation > 0 ? '+' : '' }}{{ npc.relation || 0 }}</span>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -795,11 +917,7 @@ async function autoSave() {
         <div class="s-section" v-if="stateQuests.length">
           <div class="s-title">任务 <span :class="['fold-btn', !collapsedSections['quests'] && 'open']" @click="toggleSection('quests')">&#9654;</span></div>
           <div :class="['s-content', collapsedSections['quests'] && 'collapsed']">
-            <div
-              v-for="quest in stateQuests"
-              :key="quest.text"
-              :class="['quest-item', quest.active && 'active', quest.completed && 'completed']"
-            >
+            <div v-for="quest in stateQuests" :key="quest.text" :class="['quest-item', quest.active && 'active', quest.completed && 'completed']">
               <div class="quest-dot"></div>
               <span>{{ quest.text }}</span>
             </div>
@@ -811,6 +929,7 @@ async function autoSave() {
           <span>冒险开始后状态将显示在这里</span>
         </div>
       </aside>
+
 
       <!-- ── 中央内容 ── -->
       <main class="center">
@@ -1427,4 +1546,84 @@ async function autoSave() {
   background: rgba(200,168,74,0.2); color: var(--gold);
   border: 1px solid rgba(200,168,74,0.3); cursor: pointer; font-size: 14px;
 }
+
+/* ── STATE 手动编辑 ── */
+.sidebar-editbar {
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(200,168,74,0.1);
+}
+.edit-mode-btn {
+  width: 100%; padding: 5px 0; border-radius: 6px;
+  background: rgba(200,168,74,0.06); border: 1px solid rgba(200,168,74,0.15);
+  color: var(--ink-dim); font-size: 10px; letter-spacing: 1px;
+  cursor: pointer; transition: all 0.2s; font-family: inherit;
+}
+.edit-mode-btn:hover { background: rgba(200,168,74,0.12); color: var(--ink-mid); }
+.edit-mode-btn.active {
+  background: rgba(58,138,104,0.12); border-color: rgba(58,138,104,0.3);
+  color: #5aaa84;
+}
+.edit-input {
+  width: 100%; padding: 3px 6px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(200,168,74,0.2);
+  border-radius: 4px; color: var(--ink); font-size: 11px;
+  font-family: inherit; outline: none; box-sizing: border-box;
+}
+.edit-input:focus { border-color: rgba(200,168,74,0.45); }
+.edit-input-sm {
+  padding: 3px 5px; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(200,168,74,0.2); border-radius: 4px;
+  color: var(--ink); font-size: 11px; font-family: inherit;
+  outline: none; width: 52px; text-align: center;
+}
+.edit-input-sm:focus { border-color: rgba(200,168,74,0.45); }
+.edit-row { display: flex; align-items: center; gap: 4px; }
+.edit-label { font-size: 9px; color: var(--ink-dim); white-space: nowrap; }
+.rarity-btn {
+  flex: 1; padding: 4px 0; border-radius: 4px; font-size: 10px;
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04); color: var(--ink-dim);
+  letter-spacing: 0.5px;
+}
+.rarity-btn.selected               { font-weight: bold; }
+.rarity-btn.common.selected        { border-color: rgba(200,168,74,0.45); color: var(--gold);   background: rgba(200,168,74,0.10); }
+.rarity-btn.rare.selected          { border-color: rgba(58,138,104,0.5);  color: var(--jade);   background: rgba(58,138,104,0.10); }
+.rarity-btn.epic.selected          { border-color: rgba(112,96,160,0.5);  color: #a090d0;       background: rgba(112,96,160,0.10); }
+.item-del-btn {
+  margin-left: 3px; display: inline-flex; align-items: center; justify-content: center;
+  width: 13px; height: 13px; border-radius: 50%; padding: 0;
+  background: rgba(176,56,40,0.3); border: none;
+  color: #d06050; font-size: 9px; cursor: pointer;
+  vertical-align: middle; transition: background 0.2s; line-height: 1;
+}
+.item-del-btn:hover { background: rgba(176,56,40,0.55); }
+.add-item-btn {
+  width: 100%; margin-top: 5px; padding: 5px 0; border-radius: 5px;
+  background: rgba(58,138,104,0.08); border: 1px dashed rgba(58,138,104,0.28);
+  color: #5aaa84; font-size: 10px; cursor: pointer; letter-spacing: 1px;
+  transition: all 0.2s; font-family: inherit;
+}
+.add-item-btn:hover { background: rgba(58,138,104,0.16); }
+.new-item-form { margin-top: 5px; display: flex; flex-direction: column; gap: 0; }
+.add-item-ok-btn {
+  flex: 1; padding: 4px 8px; border-radius: 5px;
+  background: rgba(58,138,104,0.15); border: 1px solid rgba(58,138,104,0.3);
+  color: #5aaa84; font-size: 10px; cursor: pointer; font-family: inherit;
+  transition: background 0.2s;
+}
+.add-item-ok-btn:hover { background: rgba(58,138,104,0.28); }
+.add-item-cancel-btn {
+  flex: 1; padding: 4px 8px; border-radius: 5px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  color: var(--ink-dim); font-size: 10px; cursor: pointer; font-family: inherit;
+}
+.rel-edit { display: flex; align-items: center; gap: 4px; }
+.rel-slider {
+  width: 64px; accent-color: var(--gold-dim); cursor: pointer;
+  height: 3px; background: rgba(255,255,255,0.06);
+}
+.rel-val { font-size: 10px; color: var(--ink-dim); min-width: 18px; text-align: right; }
+.rel-val.ally  { color: var(--jade); }
+.rel-val.enemy { color: var(--red); }
 </style>
