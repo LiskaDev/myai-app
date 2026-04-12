@@ -654,6 +654,31 @@ function toggleSection(key) {
   collapsedSections.value = { ...collapsedSections.value, [key]: !collapsedSections.value[key] };
 }
 
+// ── 建议按鈕区拖拽滚动 ──
+const suggDrag = { active: false, startX: 0, scrollLeft: 0, moved: false };
+
+function onSuggDown(e) {
+  const el = e.currentTarget;
+  suggDrag.active   = true;
+  suggDrag.moved    = false;
+  suggDrag.startX   = e.pageX - el.getBoundingClientRect().left;
+  suggDrag.scrollLeft = el.scrollLeft;
+}
+function onSuggMove(e) {
+  if (!suggDrag.active) return;
+  const el = e.currentTarget;
+  const x    = e.pageX - el.getBoundingClientRect().left;
+  const walk = (x - suggDrag.startX) * 1.2;
+  if (Math.abs(walk) > 3) suggDrag.moved = true;
+  el.scrollLeft = suggDrag.scrollLeft - walk;
+}
+function onSuggUp(e) {
+  // 拖动超过阈値，屌蔽子元素的 click （防止拖后意外触发建议）
+  if (suggDrag.moved) e.preventDefault();
+  suggDrag.active = false;
+}
+function onSuggLeave() { suggDrag.active = false; }
+
 // ── STATE 手动编辑 ──
 const editMode    = ref(false);
 const newItemForm = ref({ show: false, name: '', rarity: 'common', count: 1 });
@@ -1000,7 +1025,14 @@ async function autoSave() {
         <div class="input-zone">
           <div class="input-inner">
             <!-- Action suggestions -->
-            <div v-if="suggestions.length && !isStreaming" class="action-sugg" :key="suggestionKey">
+            <div v-if="suggestions.length && !isStreaming"
+              :class="['action-sugg', suggDrag.active && suggDrag.moved && 'dragging']"
+              :key="suggestionKey"
+              @mousedown="onSuggDown"
+              @mousemove="onSuggMove"
+              @mouseup="onSuggUp"
+              @mouseleave="onSuggLeave"
+            >
               <button
                 v-for="sugg in suggestions"
                 :key="sugg"
@@ -1312,8 +1344,10 @@ async function autoSave() {
 .input-zone { border-top: 1px solid rgba(200,168,74,0.08); background: rgba(8,6,4,0.97); padding: 10px 0 12px; flex-shrink: 0; }
 .input-inner { max-width: 660px; margin: 0 auto; padding: 0 24px; }
 
-.action-sugg { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin-bottom: 9px; padding-bottom: 4px; scrollbar-width: none; }
+.action-sugg { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin-bottom: 9px; padding-bottom: 4px; scrollbar-width: none; cursor: grab; user-select: none; }
 .action-sugg::-webkit-scrollbar { display: none; }
+.action-sugg.dragging { cursor: grabbing; }
+.action-sugg.dragging .sugg-btn { pointer-events: none; }
 .sugg-btn { flex-shrink: 0; max-width: 210px; font-size: 11px; padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(200,168,74,0.2); background: rgba(200,168,74,0.04); color: var(--ink-dim); cursor: pointer; font-family: inherit; letter-spacing: 0.5px; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sugg-btn:hover { border-color: var(--gold-dim); color: var(--ink-mid); background: rgba(200,168,74,0.08); }
 .sugg-btn.random { border-color: rgba(112,96,160,0.3); color: #a090d0; background: rgba(112,96,160,0.04); }
