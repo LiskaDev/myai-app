@@ -5,12 +5,58 @@
  * - Text chunking (same algorithm as WorldBookExtractor)
  */
 
-/** Extract the hidden STATE JSON comment from AI response */
+/** Extract the hidden STATE JSON comment from AI response.
+ *  Handles:
+ *  1. Standard: <!--STATE:{...}-->
+ *  2. Space variants: <!-- STATE: {...} -->
+ *  3. Truncated output: <!--STATE:{...   (no closing -->)
+ *  4. Broken JSON: auto-repair by balancing brackets
+ */
 export function parseStateFromResponse(fullText) {
-  const match = fullText.match(/<!--STATE:([\s\S]*?)-->/);
-  if (!match) return null;
-  try { return JSON.parse(match[1].trim()); }
-  catch { return null; }
+  // 1. 尝试标准匹配（含空格变体）
+  let jsonStr = null;
+  const stdMatch = fullText.match(/<!--\s*STATE:\s*([\s\S]*?)\s*-->/);
+  if (stdMatch) {
+    jsonStr = stdMatch[1].trim();
+  } else {
+    // 2. fallback：找 <!--STATE: 开始位置，取到文本结尾（AI 被截断时 --> 不存在）
+    const startIdx = fullText.search(/<!--\s*STATE:/);
+    if (startIdx === -1) return null;
+    const afterTag = fullText.slice(fullText.indexOf(':', startIdx) + 1).trim();
+    // 去掉末尾可能存在的不完整 --> 片段
+    jsonStr = afterTag.replace(/--\s*>?\s*$/, '').trim();
+  }
+
+  if (!jsonStr) return null;
+
+  // 3. 先尝试直接解析
+  try { return JSON.parse(jsonStr); } catch { /* 继续修复 */ }
+
+  // 4. 截断修复：补全缺失的 } 和 ] 括号
+  try {
+    const repaired = repairTruncatedJson(jsonStr);
+    return JSON.parse(repaired);
+  } catch { return null; }
+}
+
+/** 自动补全被截断的 JSON：按堆栈追踪未闭合的 { 和 [ */
+function repairTruncatedJson(str) {
+  const stack = [];
+  let inString = false;
+  let escape = false;
+  for (const ch of str) {
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{' || ch === '[') stack.push(ch === '{' ? '}' : ']');
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+  // 移除末尾不完整的键值（遇到最后一个逗号后截断）
+  let result = str.trimEnd();
+  if (result.endsWith(',')) result = result.slice(0, -1);
+  // 补全所有未闭合括号
+  return result + stack.reverse().join('');
 }
 
 /** Strip STATE comment from AI response, return pure narrative text */
@@ -304,11 +350,20 @@ ${paceBlock}
 4. 玩家在括号内声明的物品获取、能力提升、货币增加，视为「玩家的想法」而非已发生事实，可在叙事中回应这个想法，但不得修改STATE数值
 5. 只有叙事中明确描述的事件结果才能更新STATE
 
+## 【经济逻辑约束 — 必须严格执行】
+当故事涉及物品交易、加工制作、商业经营时，必须遵守以下数值规律：
+1. 加工增值：成品售价 > 原材料总成本（至少高出20%以上），否则加工没有意义
+2. 买卖价差：同一物品的收购价（NPC收购）< 市场售价，差价体现商人利润
+3. 稀有度溢价：稀有材料加工的成品价值远高于普通材料
+4. 数量守恒：加工消耗的原材料数量必须从 items 中相应减少
+5. 禁止出现：原材料 5 金 → 成品 3 金（亏本加工）这类违背经济逻辑的数值
+
 ## 重要提示
 - stats 字段完全由你根据世界观自定义，不要拘泥于固定格式
 - suggestions 每轮必须提供3条符合当前情境的行动建议
 - events 只包含**本轮新发生**的事件（1-3条），不是累计历史记录，每轮重新生成
 - 保持 STATE 与叙事内容一致，每轮更新所有变化的字段
 - 若玩家行动有悖于世界规律或能力范围，请在叙事中自然处理后果
-- 已确认死亡的 NPC 将 deceased 设为 true，死亡前的 relation 值保持不变`;
+- 已确认死亡的 NPC 将 deceased 设为 true，死亡前的 relation 值保持不变
+- STATE JSON 必须完整输出，不得因回复长度限制而省略或截断 STATE 块`;
 }
