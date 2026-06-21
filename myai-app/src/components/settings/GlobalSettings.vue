@@ -7,6 +7,8 @@ const MODEL_PRESETS = [
   { group: '🔥 DeepSeek 官方', models: [
     { value: 'deepseek-reasoner', label: 'DeepSeek R1 (推理)', desc: '深度思考，适合复杂剧情' },
     { value: 'deepseek-chat', label: 'DeepSeek V3 (对话)', desc: '快速轻量，日常聊天' },
+    { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (对话)', desc: '极速响应，日常聊天' },
+    { value: 'deepseek-chat-v4', label: 'DeepSeek V4 Pro (对话)', desc: '高质量输出，复杂场景' },
   ]},
   { group: '🚀 硅基流动 · Qwen', models: [
     { value: 'Qwen/QwQ-32B', label: 'QwQ-32B (推理)', desc: '阿里推理模型，深度思考' },

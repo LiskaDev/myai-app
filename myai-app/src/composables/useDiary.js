@@ -12,6 +12,34 @@ function generatePlaceholderDiary(roleName) {
     return `今天……有些事情让我一时不知道该怎么说。\n也许明天会好一些。\n——${roleName}`;
 }
 
+/**
+ * 将日记正文首行的AI假日期替换为真实日期，保留天气/心情描述
+ * 例："11月8日 阴转小雨 ☁️🌧️" → "6月21日 阴转小雨 ☁️🌧️"
+ * 只处理第一行，不影响正文其他内容
+ * @param {string} content - 日记正文
+ * @param {string} isoDateString - 真实创建时间的 ISO 字符串
+ */
+function replaceFakeDateWithReal(content, isoDateString) {
+    if (!content || !isoDateString) return content;
+    const lines = content.split('\n');
+
+    // Bug 2: 先去除第一行中的 Markdown 粗体/斜体标记（** 或 *）
+    // 否则 "**7月16日 晴**" 无法被后续正则匹配到日期
+    let firstLine = lines[0].trim().replace(/\*/g, '');
+
+    const match = firstLine.match(/^(\d{1,2}月\d{1,2}日)(.*)/);
+    if (match) {
+        // match[1] = AI假日期, match[2] = 天气/心情描述（含前导空格）
+        const realDate = new Date(isoDateString);
+        const realDateStr = `${realDate.getMonth() + 1}月${realDate.getDate()}日`;
+        lines[0] = realDateStr + match[2];
+    } else {
+        // 不匹配日期格式时，也保留去星号后的首行
+        lines[0] = firstLine;
+    }
+    return lines.join('\n');
+}
+
 export function useDiary(appState) {
     const { globalSettings, showToast } = appState;
     const isGenerating = ref(false);
@@ -181,13 +209,17 @@ ${chatContext}${prevDiaryContext}
                 diaryContent = rawDiary.replace(/\n*【摘要】.+/s, '').trim();
             }
 
+            // 将 AI 生成的假日期替换为真实日期（保留天气/心情描述）
+            const now = new Date().toISOString();
+            diaryContent = replaceFakeDateWithReal(diaryContent, now);
+
             // 保存日记
             const entry = {
                 id: `diary_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
                 roleId: role.id,
                 roleName: role.name,
                 roleAvatar: role.avatar || null,
-                date: new Date().toISOString(),
+                date: now,
                 content: diaryContent,
                 summary: summary, // 📜 滚动摘要
                 read: false,
@@ -313,12 +345,16 @@ ${prevContext}
                 diaryContent = rawDiary.replace(/\n*\[摘要\][\s\S]+/, '').trim();
             }
 
+            // 将 AI 生成的假日期替换为真实日期（保留天气/心情描述）
+            const now = new Date().toISOString();
+            diaryContent = replaceFakeDateWithReal(diaryContent, now);
+
             const entry = {
                 id: `diary_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
                 roleId: role.id,
                 roleName: role.name,
                 roleAvatar: role.avatar || null,
-                date: new Date().toISOString(),
+                date: now,
                 content: diaryContent,
                 summary,
                 read: false,
