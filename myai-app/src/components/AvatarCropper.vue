@@ -7,16 +7,19 @@
  * - 输出 256×256 正方形 JPEG（覆盖在圆形区域内）
  */
 import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { useAppState } from '../composables/useAppState';
 
 const props = defineProps({
   imageSrc: { type: String, required: true }, // base64 或 URL
 });
 
 const emit = defineEmits(['confirm', 'cancel']);
+const { showToast } = useAppState();
 
 const canvasRef = ref(null);
 const CANVAS_SIZE = 300;   // 预览 canvas 像素
 const OUTPUT_SIZE = 256;   // 最终输出像素
+const MAX_DIM = 4096;      // Canvas 安全处理的最长边上限
 
 // 图片状态
 let img = null;
@@ -33,17 +36,43 @@ let dragStartY = 0;
 let lastPinchDist = 0;
 
 // ------- 初始化 -------
+function fitAndCenter() {
+  const fit = Math.max(CANVAS_SIZE / img.width, CANVAS_SIZE / img.height);
+  scale = fit;
+  offsetX = (CANVAS_SIZE - img.width * scale) / 2;
+  offsetY = (CANVAS_SIZE - img.height * scale) / 2;
+  draw();
+}
+
 function initImage() {
   img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = () => {
-    // 初始缩放：让图片短边 = CANVAS_SIZE（填满裁剪框）
-    const fit = Math.max(CANVAS_SIZE / img.width, CANVAS_SIZE / img.height);
-    scale = fit;
-    // 居中
-    offsetX = (CANVAS_SIZE - img.width * scale) / 2;
-    offsetY = (CANVAS_SIZE - img.height * scale) / 2;
-    draw();
+    // 文件过大时提示（base64 字符串长度估算原始字节数）
+    if (props.imageSrc.startsWith('data:')) {
+      const commaIdx = props.imageSrc.indexOf(',');
+      const approxBytes = (props.imageSrc.length - commaIdx - 1) * 0.75;
+      if (approxBytes > 20 * 1024 * 1024) {
+        showToast('图片过大，已自动压缩处理', 'info');
+      }
+    }
+    // 超大尺寸图片降采样，防止 Canvas 内存溢出
+    if (img.width > MAX_DIM || img.height > MAX_DIM) {
+      const ratio = MAX_DIM / Math.max(img.width, img.height);
+      const w = Math.round(img.width * ratio);
+      const h = Math.round(img.height * ratio);
+      const tmp = document.createElement('canvas');
+      tmp.width = w;
+      tmp.height = h;
+      tmp.getContext('2d').drawImage(img, 0, 0, w, h);
+      const smallSrc = tmp.toDataURL('image/jpeg', 0.92);
+      const smallImg = new Image();
+      smallImg.onload = () => { img = smallImg; fitAndCenter(); };
+      smallImg.onerror = () => emit('cancel');
+      smallImg.src = smallSrc;
+    } else {
+      fitAndCenter();
+    }
   };
   img.onerror = () => emit('cancel');
   img.src = props.imageSrc;
