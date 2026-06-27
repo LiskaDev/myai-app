@@ -2,36 +2,9 @@
 import { ref, computed, onMounted } from 'vue';
 import { useAppState } from '../../composables/useAppState';
 import AvatarCropper from '../AvatarCropper.vue';
+import { MODEL_PRESETS } from '../../composables/presets';
 
-const MODEL_PRESETS = [
-  { group: '🔥 DeepSeek 官方', models: [
-    { value: 'deepseek-reasoner', label: 'DeepSeek R1 (推理)', desc: '深度思考，适合复杂剧情' },
-    { value: 'deepseek-chat', label: 'DeepSeek V3 (对话)', desc: '快速轻量，日常聊天' },
-    { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (对话)', desc: '极速响应，日常聊天' },
-    { value: 'deepseek-chat-v4', label: 'DeepSeek V4 Pro (对话)', desc: '高质量输出，复杂场景' },
-  ]},
-  { group: '🚀 硅基流动 · Qwen', models: [
-    { value: 'Qwen/QwQ-32B', label: 'QwQ-32B (推理)', desc: '阿里推理模型，深度思考' },
-    { value: 'Qwen/Qwen2.5-72B-Instruct', label: 'Qwen2.5-72B', desc: '大参数，高质量输出' },
-    { value: 'Qwen/Qwen2.5-32B-Instruct', label: 'Qwen2.5-32B', desc: '均衡性价比' },
-    { value: 'Qwen/Qwen2.5-7B-Instruct', label: 'Qwen2.5-7B', desc: '轻量快速，适合群聊' },
-  ]},
-  { group: '🚀 硅基流动 · DeepSeek', models: [
-    { value: 'deepseek-ai/DeepSeek-R1', label: 'DeepSeek R1', desc: '经硅基流动加速' },
-    { value: 'deepseek-ai/DeepSeek-V3', label: 'DeepSeek V3', desc: '经硅基流动加速' },
-    { value: 'deepseek-ai/DeepSeek-R1-0528', label: 'DeepSeek R1-0528', desc: '最新版推理模型' },
-  ]},
-  { group: '🌙 硅基流动 · Kimi', models: [
-    { value: 'Pro/moonshotai/Kimi-K2.5', label: 'Kimi K2.5 Pro (推理)', desc: '旗舰最强，深度思考' },
-    { value: 'moonshotai/Kimi-K2-Thinking', label: 'Kimi K2 Thinking', desc: '标准推理，速度均衡' },
-  ]},
-  { group: '🚀 硅基流动 · 其他', models: [
-    { value: 'Pro/zai-org/GLM-5', label: 'GLM-5', desc: '智谱最新旗舰' },
-    { value: 'THUDM/GLM-4-32B-0414', label: 'GLM-4-32B', desc: '智谱清言' },
-    { value: 'google/gemma-3-27b-it', label: 'Gemma 3 27B', desc: 'Google 开源' },
-    { value: 'meta-llama/Llama-3.3-70B-Instruct', label: 'Llama 3.3 70B', desc: 'Meta 开源' },
-  ]},
-];
+// ===== 通用设置所需的模型列表（从 presets.js 导入） =====
 
 const props = defineProps({ globalSettings: Object });
 const emit = defineEmits(['show-toast']);
