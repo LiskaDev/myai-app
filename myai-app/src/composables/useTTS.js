@@ -28,6 +28,33 @@ export function useTTS(appState) {
             .trim();
     }
 
+    // 清洗文本用于 TTS 朗读：去除 Markdown / 角色扮演标记符号，避免符号被读出来
+    function cleanTextForTTS(text) {
+        if (!text) return '';
+        return text
+            // 表情标签 <expr:xxx> / </expr:xxx> 整个去掉，不朗读
+            .replace(/<\/?expr:\w+>/gi, '')
+            // 代码标记 `code` → code
+            .replace(/`([^`]+)`/g, '$1')
+            // 标题符号 # ## ### ...（行首）
+            .replace(/^#{1,6}\s*/gm, '')
+            // 引用符号 >（行首）
+            .replace(/^>\s?/gm, '')
+            // 粗体 **text** / 下划线粗体 __text__（须在单个 * _ 之前处理，避免拆散配对）
+            .replace(/\*\*([^*]+)\*\*/g, '$1')
+            .replace(/__([^_]+)__/g, '$1')
+            // 删除线 ~~text~~
+            .replace(/~~([^~]+)~~/g, '$1')
+            // 斜体 *text* / _text_（含角色扮演的 *动作描述*）
+            .replace(/\*([^*]+)\*/g, '$1')
+            .replace(/_([^_]+)_/g, '$1')
+            // [状态描述] 方括号去掉，保留文字（（内心独白）的括号本身保留，不处理）
+            .replace(/\[([^\]]+)\]/g, '$1')
+            // 多余空行/空格合并为单个空格
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
     // 播放 TTS
     function playTTS(index, content) {
         if (!window.speechSynthesis) {
@@ -44,7 +71,7 @@ export function useTTS(appState) {
         // 停止之前的播放
         stopTTS();
 
-        const cleanContent = stripThinkingTags(content);
+        const cleanContent = cleanTextForTTS(stripThinkingTags(content));
         if (!cleanContent) {
             showToast('没有可朗读的内容', 'error');
             return;
