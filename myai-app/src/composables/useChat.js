@@ -4,6 +4,7 @@ import { useAutoSummary } from './useAutoSummary';
 import { useUserPersona } from './useUserPersona';
 import { useTimeline } from './useTimeline';
 import { useMemory } from './useMemory';
+import { useTTS } from './useTTS';
 import { getFriendlyError, getRechargeUrl } from '../utils/apiError.js';
 import {
     callWithRetry,
@@ -49,6 +50,7 @@ export function useChat(appState) {
     const { checkAndTriggerSummary } = useAutoSummary(appState);
     const { checkAndTriggerTimeline } = useTimeline(appState);
     const { checkAndCompressMemories, checkAndTriggerMemorySystems } = useMemory(appState);
+    const { autoPlayTTSIfEnabled } = useTTS(appState);
 
     // 发送消息
     async function sendMessage() {
@@ -504,7 +506,11 @@ Example format:
             }
         }
 
-
+        // 🔊 自动朗读：AI 回复完成后按用户设置自动播放语音
+        const lastMsg = messages.value[messages.value.length - 1];
+        if (lastMsg?.role === 'assistant') {
+            autoPlayTTSIfEnabled(lastMsg.rawContent || lastMsg.content || '');
+        }
 
         saveData();
     }

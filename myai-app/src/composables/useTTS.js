@@ -93,14 +93,26 @@ export function useTTS(appState) {
 
     // 自动播放 TTS
     function autoPlayTTSIfEnabled(content) {
-        if (globalSettings.autoPlayTTS && content) {
+        if (!globalSettings.autoPlayTTS || !content) return;
+        if (!window.speechSynthesis) return;
+
+        setTimeout(() => {
+            const lastIndex = appState.messages.value.length - 1;
+            if (lastIndex < 0) return;
+
+            playTTS(lastIndex, content);
+
+            // 🛡️ 部分浏览器（尤其移动端 Safari/WebView）要求近期有用户交互才允许
+            // speechSynthesis.speak() 生效。自动朗读发生在流式输出结束的异步回调里，
+            // 可能已脱离"用户手势"窗口而被静默拦截——拦截时既不触发 onstart 也不触发
+            // onerror，因此用轮询兜底检测，并给出用户可感知的提示（而非静默失败）。
             setTimeout(() => {
-                const lastIndex = appState.messages.value.length - 1;
-                if (lastIndex >= 0) {
-                    playTTS(lastIndex, content);
+                if (ttsState.playingIndex === lastIndex && !window.speechSynthesis.speaking) {
+                    stopTTS();
+                    showToast('🔇 浏览器拦截了自动朗读，请点击页面任意处后重试', 'info');
                 }
-            }, 100);
-        }
+            }, 500);
+        }, 100);
     }
 
     return {
