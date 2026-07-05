@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { STORAGE_KEYS } from '../utils/storage';
 import { detectRejection } from './modelAdapter.js';
+import { useUserPersona } from './useUserPersona.js';
 
 /**
  * 角色私密日记 composable
@@ -40,8 +41,34 @@ function replaceFakeDateWithReal(content, isoDateString) {
     return lines.join('\n');
 }
 
+/**
+ * 组装角色自身的人设信息（性格/外貌/说话风格/关系，含性别等线索），
+ * 供日记生成时注入 system prompt，避免 AI 凭空猜测角色/用户性别
+ */
+function buildRolePersonaBlock(role) {
+    const parts = [];
+    if (role.systemPrompt) parts.push(`【${role.name}的性格与设定】\n${role.systemPrompt}`);
+    if (role.appearance) parts.push(`【外貌】\n${role.appearance}`);
+    if (role.speakingStyle) parts.push(`【说话风格】\n${role.speakingStyle}`);
+    if (role.relationship) parts.push(`【与用户的关系】\n${role.relationship}`);
+    return parts.length > 0 ? '\n\n' + parts.join('\n\n') : '';
+}
+
+/**
+ * 将最近的对话记录格式化为日记素材，供 AI 参考真实剧情
+ */
+function buildChatContext(role, messages, limit) {
+    if (!messages || messages.length === 0) return '';
+    return messages.slice(-limit).map(m => {
+        const speaker = m.role === 'user' ? '用户' : (m.roleName || role.name);
+        const content = (m.rawContent || m.content || '').substring(0, 300);
+        return `[${speaker}]: ${content}`;
+    }).join('\n');
+}
+
 export function useDiary(appState) {
     const { globalSettings, showToast } = appState;
+    const { personaSummaryForPrompt } = useUserPersona();
     const isGenerating = ref(false);
     const diaries = ref([]);
 
@@ -103,12 +130,7 @@ export function useDiary(appState) {
 
         try {
             // 取最近 30 条消息作为日记素材
-            const recentMessages = messages.slice(-30);
-            const chatContext = recentMessages.map(m => {
-                const speaker = m.role === 'user' ? '用户' : (m.roleName || role.name);
-                const content = (m.rawContent || m.content || '').substring(0, 300);
-                return `[${speaker}]: ${content}`;
-            }).join('\n');
+            const chatContext = buildChatContext(role, messages, 30);
 
             const userName = options.userName || '用户';
             const isGroup = options.isGroup || false;
@@ -166,6 +188,8 @@ ${chatContext}${prevDiaryContext}
                 ? 'deepseek-chat'
                 : (globalSettings.model || 'deepseek-chat');
 
+            const systemPrompt = `你是一个角色扮演大师。请以"${role.name}"的身份写一篇私密日记。${buildRolePersonaBlock(role)}${personaSummaryForPrompt.value || ''}`;
+
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
@@ -175,7 +199,7 @@ ${chatContext}${prevDiaryContext}
                 body: JSON.stringify({
                     model,
                     messages: [
-                        { role: 'system', content: `你是一个角色扮演大师。请以"${role.name}"的身份写一篇私密日记。` },
+                        { role: 'system', content: systemPrompt },
                         { role: 'user', content: prompt }
                     ],
                     temperature: 0.9,
@@ -267,7 +291,7 @@ ${chatContext}${prevDiaryContext}
      * 💭 生成思念日记（用户长时间不在线时自动触发）
      * 不需要对话素材，基于角色性格和等待情绪生成
      */
-    async function generateAbsenceDiary(role, hoursAway) {
+    async function generateAbsenceDiary(role, hoursAway, messages = []) {
         if (isGenerating.value) return null;
         if (!globalSettings.apiKey) return null;
 
@@ -288,10 +312,13 @@ ${chatContext}${prevDiaryContext}
 「${ctx}」`;
         }
 
-        const prompt = `你是“${role.name}”。${role.systemPrompt ? '你的性格：' + role.systemPrompt.slice(0, 200) : ''}
-${role.speakingStyle ? '说话风格：' + role.speakingStyle : ''}
-${role.relationship ? '与用户的关系：' + role.relationship : ''}
-${prevContext}
+        // 最近 20 条对话记录，避免日记内容与已发生剧情脱节/矛盾（如角色已学会的事又被写成没学会）
+        const chatContext = buildChatContext(role, messages, 20);
+        const chatContextBlock = chatContext
+            ? `\n\n[最近发生的真实剧情，日记内容不能与此矛盾]\n${chatContext}`
+            : '';
+
+        const prompt = `你是“${role.name}”。${chatContextBlock}${prevContext}
 
 用户已经 ${timeDesc} 没有来找你了。请用第一人称写一篇私密日记，记录这段时间一个人等待的心情。
 要求：
@@ -310,6 +337,8 @@ ${prevContext}
                 ? 'deepseek-chat'
                 : (globalSettings.model || 'deepseek-chat');
 
+            const systemPrompt = `你是一个角色扮演大师。请以“${role.name}”的身份写一篇私密日记，用户已经 ${timeDesc} 没有来找 ta 了。${buildRolePersonaBlock(role)}${personaSummaryForPrompt.value || ''}`;
+
             const response = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -319,7 +348,7 @@ ${prevContext}
                 body: JSON.stringify({
                     model,
                     messages: [
-                        { role: 'system', content: `你是一个角色扮演大师。请以“${role.name}”的身份写一篇私密日记，用户已经 ${timeDesc} 没有来找 ta 了。` },
+                        { role: 'system', content: systemPrompt },
                         { role: 'user', content: prompt }
                     ],
                     temperature: 0.9,

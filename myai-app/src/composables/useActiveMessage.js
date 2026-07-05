@@ -75,7 +75,7 @@ export function useActiveMessage(appState) {
         if (hoursAway >= absenceThreshold && diary && globalSettings.apiKey) {
             const absenceKey = `myai_absenceDiary_${roleId}_${dedupeKey}`;
             if (!localStorage.getItem(absenceKey)) {
-                const absenceEntry = await diary.generateAbsenceDiary(currentRole.value, hoursAway);
+                const absenceEntry = await diary.generateAbsenceDiary(currentRole.value, hoursAway, msgs);
                 if (absenceEntry) {
                     localStorage.setItem(absenceKey, '1');
                     console.log(`[思念日记] 已为 ${currentRole.value.name} 生成思念日记`);
