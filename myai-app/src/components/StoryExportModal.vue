@@ -70,13 +70,65 @@ const remainingSeconds = computed(() => {
     return Math.max(0, ESTIMATED_SECONDS - countdown.value);
 });
 
-const messageCount = computed(() => {
-    return props.messages.filter(m =>
-        m.role !== 'system' && m.type !== 'day-separator' && m.role !== 'pass'
-    ).length;
+// 可导出的消息判定：与 useStoryExporter.js 里跳过 system/day-separator/pass 的逻辑保持一致
+function isExportableMsg(m) {
+    return m.role !== 'system' && m.type !== 'day-separator' && m.role !== 'pass';
+}
+
+// 每条可导出消息在原始 messages 数组中的下标，用于按"第几条"截取范围时
+// 能连同其间的日期分隔线一起保留（分隔线本身不计入"条数"）
+const exportableIndices = computed(() => {
+    const arr = [];
+    props.messages.forEach((m, i) => { if (isExportableMsg(m)) arr.push(i); });
+    return arr;
 });
 
+const messageCount = computed(() => exportableIndices.value.length);
+
 const hasMessages = computed(() => messageCount.value > 0);
+
+// ============== 导出范围选择 ==============
+const rangeMode = ref('all'); // 'all' | 'recent' | 'custom'
+const recentPreset = ref(20); // 10 | 20 | 50 | 100 | 'custom'
+const recentCustomN = ref(20);
+const rangeStart = ref(1);
+const rangeEnd = ref(0); // 0 = 尚未初始化，随 messageCount 就绪后自动填满
+
+watch(messageCount, (n) => {
+    if (rangeEnd.value === 0 || rangeEnd.value > n) rangeEnd.value = n;
+    if (rangeStart.value > n) rangeStart.value = Math.max(1, n);
+}, { immediate: true });
+
+const effectiveRecentN = computed(() => {
+    const n = recentPreset.value === 'custom' ? (recentCustomN.value || 1) : recentPreset.value;
+    return Math.max(1, Math.min(n, messageCount.value));
+});
+
+// 根据选择的范围，从原始 messages 数组中截取对应片段
+// （直接切片保留区间内的日期分隔线，"全部导出"分支原样返回 props.messages，行为与之前完全一致）
+const selectedMessages = computed(() => {
+    const indices = exportableIndices.value;
+    if (indices.length === 0) return props.messages;
+
+    if (rangeMode.value === 'recent') {
+        const n = effectiveRecentN.value;
+        const rawStart = indices[Math.max(0, indices.length - n)];
+        return props.messages.slice(rawStart);
+    }
+    if (rangeMode.value === 'custom') {
+        const start = Math.max(1, Math.min(rangeStart.value || 1, messageCount.value));
+        const end = Math.max(start, Math.min(rangeEnd.value || messageCount.value, messageCount.value));
+        const rawStart = indices[start - 1];
+        const rawEnd = indices[end - 1];
+        return props.messages.slice(rawStart, rawEnd + 1);
+    }
+    return props.messages;
+});
+
+const selectedCount = computed(() => {
+    if (rangeMode.value === 'all') return messageCount.value;
+    return selectedMessages.value.filter(isExportableMsg).length;
+});
 
 function getFileName(suffix = '') {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -87,7 +139,7 @@ function getFileName(suffix = '') {
 // 直接导出
 function handleDirectExport() {
     polishError.value = '';
-    const html = buildStoryHTML(props.messages, {
+    const html = buildStoryHTML(selectedMessages.value, {
         title: `与${props.roleName}的故事`,
         roleName: props.roleName,
         roleColor: props.roleColor,
@@ -111,7 +163,7 @@ async function handlePolishedExport() {
     startCountdown();
 
     try {
-        const storyContent = await polishStory(props.messages, props.roleName, {
+        const storyContent = await polishStory(selectedMessages.value, props.roleName, {
             baseUrl: props.globalSettings.baseUrl,
             apiKey: props.globalSettings.apiKey,
         });
@@ -120,7 +172,7 @@ async function handlePolishedExport() {
             throw new Error('AI 润色返回空内容');
         }
 
-        const html = buildStoryHTML(props.messages, {
+        const html = buildStoryHTML(selectedMessages.value, {
             title: `与${props.roleName}的故事`,
             roleName: props.roleName,
             roleColor: props.roleColor,
@@ -156,8 +208,14 @@ async function handlePolishedExport() {
                 <!-- 统计信息 -->
                 <div class="stats-bar">
                     <div class="stat-item">
-                        <span class="stat-num">{{ messageCount }}</span>
-                        <span class="stat-label">条消息</span>
+                        <template v-if="rangeMode === 'all'">
+                            <span class="stat-num">{{ messageCount }}</span>
+                            <span class="stat-label">条消息</span>
+                        </template>
+                        <template v-else>
+                            <span class="stat-num">将导出 {{ selectedCount }}</span>
+                            <span class="stat-label">条消息</span>
+                        </template>
                     </div>
                     <div class="stat-item">
                         <span class="stat-num">{{ roleName }}</span>
@@ -166,6 +224,40 @@ async function handlePolishedExport() {
                     <div class="stat-item" v-if="isGroup">
                         <span class="stat-num">{{ participants.length }}</span>
                         <span class="stat-label">角色</span>
+                    </div>
+                </div>
+
+                <!-- 消息范围选择 -->
+                <div v-if="hasMessages" class="range-section">
+                    <div class="range-tabs">
+                        <button type="button" class="range-tab" :class="{ active: rangeMode === 'all' }"
+                                @click="rangeMode = 'all'">全部导出</button>
+                        <button type="button" class="range-tab" :class="{ active: rangeMode === 'recent' }"
+                                @click="rangeMode = 'recent'">最近 N 条</button>
+                        <button type="button" class="range-tab" :class="{ active: rangeMode === 'custom' }"
+                                @click="rangeMode = 'custom'">自定义范围</button>
+                    </div>
+
+                    <div v-if="rangeMode === 'recent'" class="range-detail">
+                        <select v-model="recentPreset" class="range-select">
+                            <option :value="10">最近 10 条</option>
+                            <option :value="20">最近 20 条</option>
+                            <option :value="50">最近 50 条</option>
+                            <option :value="100">最近 100 条</option>
+                            <option value="custom">自定义数量</option>
+                        </select>
+                        <input v-if="recentPreset === 'custom'" type="number" v-model.number="recentCustomN"
+                               min="1" :max="messageCount" class="range-input" placeholder="条数" />
+                    </div>
+
+                    <div v-if="rangeMode === 'custom'" class="range-detail">
+                        <span class="range-text">从第</span>
+                        <input type="number" v-model.number="rangeStart" min="1" :max="messageCount"
+                               class="range-input range-input--sm" />
+                        <span class="range-text">条到第</span>
+                        <input type="number" v-model.number="rangeEnd" min="1" :max="messageCount"
+                               class="range-input range-input--sm" />
+                        <span class="range-text">条</span>
                     </div>
                 </div>
 
@@ -329,6 +421,65 @@ async function handlePolishedExport() {
     font-size: 0.65rem; color: var(--ink-faint);
     margin-top: 2px;
 }
+
+/* ── 消息范围选择 ── */
+.range-section {
+    margin: 10px 0 6px;
+    padding: 12px 14px;
+    background: var(--bg-glass-light, var(--brush));
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+.range-tabs {
+    display: flex;
+    gap: 6px;
+}
+.range-tab {
+    flex: 1;
+    padding: 7px 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--ink-faint);
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+.range-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+.range-detail {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+.range-text {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+    color: var(--ink-faint);
+    white-space: nowrap;
+}
+.range-select,
+.range-input {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    outline: none;
+}
+.range-select:focus,
+.range-input:focus { border-color: var(--accent); }
+.range-input { width: 64px; }
+.range-input--sm { width: 56px; }
 
 /* ── 菜单行 ── */
 .menu-list { margin-top: 4px; }
