@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue';
-import { buildStoryHTML, polishStory, downloadHTML } from '../composables/useStoryExporter';
+import { buildStoryHTML, polishStory, downloadHTML, extractCleanContent } from '../composables/useStoryExporter';
 
 const props = defineProps({
     messages: { type: Array, required: true },
@@ -130,6 +130,77 @@ const selectedCount = computed(() => {
     return selectedMessages.value.filter(isExportableMsg).length;
 });
 
+// 自定义范围下点选起点后等待点选终点（null = 尚未选起点 / 一次选择已完成）
+const selectionAnchor = ref(null);
+watch(rangeMode, () => { selectionAnchor.value = null; });
+
+function clearSelectionAnchor() {
+    selectionAnchor.value = null;
+}
+
+// 用临时 DOM 节点剥离 HTML 标签（如 msg.content 里已渲染的 <span class="rp-action">），只保留文字
+// 仅用于预览展示，不影响 selectedMessages/实际导出内容
+function stripHtmlTags(text) {
+    if (!text || !/<[a-z][\s\S]*>/i.test(text)) return text || '';
+    const div = document.createElement('div');
+    div.innerHTML = text;
+    return div.textContent || div.innerText || '';
+}
+
+// 去掉 Markdown 格式符号（预览用，保留文字内容）
+function stripMarkdownForPreview(text) {
+    if (!text) return '';
+    return text
+        .replace(/```[\s\S]*?```/g, ' ')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/__([^_]+)__/g, '$1')
+        .replace(/~~([^~]+)~~/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/_([^_]+)_/g, '$1')
+        .replace(/^#{1,6}\s*/gm, '')
+        .replace(/^>\s?/gm, '');
+}
+
+// 提取消息的预览摘要文字：先取干净原文（extractCleanContent 已优先用 rawContent，
+// 避免拿到 msg.content 里已经渲染成 <span class="rp-*"> 的 HTML），
+// 再剥离残留 HTML 标签和 Markdown 符号，最后截断到 30 字
+function getPreviewText(m) {
+    const clean = stripMarkdownForPreview(stripHtmlTags(extractCleanContent(m)))
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!clean) return '（空）';
+    return clean.length > 30 ? clean.slice(0, 30) + '…' : clean;
+}
+
+// 自定义范围模式下的消息列表预览：序号 + 发言者 + 内容摘要，供用户直接点选范围
+const previewMessages = computed(() => {
+    if (rangeMode.value !== 'custom') return [];
+    return exportableIndices.value.map((rawIndex, i) => {
+        const m = props.messages[rawIndex];
+        let speaker;
+        if (m.role === 'user') speaker = '我';
+        else if (m.role === 'director') speaker = '旁白';
+        else if (m.role === 'assistant') speaker = (props.isGroup && m.roleName) ? m.roleName : props.roleName;
+        else speaker = m.roleName || m.role;
+
+        return { num: i + 1, speaker, preview: getPreviewText(m) };
+    });
+});
+
+// 点击预览列表中的消息：第一次点选起点，第二次点选终点；再次点击则重新开始一次新的选择
+function handlePreviewClick(num) {
+    if (selectionAnchor.value === null) {
+        selectionAnchor.value = num;
+        rangeStart.value = num;
+        rangeEnd.value = num;
+    } else {
+        rangeStart.value = Math.min(selectionAnchor.value, num);
+        rangeEnd.value = Math.max(selectionAnchor.value, num);
+        selectionAnchor.value = null;
+    }
+}
+
 function getFileName(suffix = '') {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const name = props.roleName.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '');
@@ -250,14 +321,37 @@ async function handlePolishedExport() {
                                min="1" :max="messageCount" class="range-input" placeholder="条数" />
                     </div>
 
-                    <div v-if="rangeMode === 'custom'" class="range-detail">
-                        <span class="range-text">从第</span>
-                        <input type="number" v-model.number="rangeStart" min="1" :max="messageCount"
-                               class="range-input range-input--sm" />
-                        <span class="range-text">条到第</span>
-                        <input type="number" v-model.number="rangeEnd" min="1" :max="messageCount"
-                               class="range-input range-input--sm" />
-                        <span class="range-text">条</span>
+                    <div v-if="rangeMode === 'custom'">
+                        <div class="range-detail">
+                            <span class="range-text">从第</span>
+                            <input type="number" v-model.number="rangeStart" min="1" :max="messageCount"
+                                   class="range-input range-input--sm" @input="clearSelectionAnchor" />
+                            <span class="range-text">条到第</span>
+                            <input type="number" v-model.number="rangeEnd" min="1" :max="messageCount"
+                                   class="range-input range-input--sm" @input="clearSelectionAnchor" />
+                            <span class="range-text">条 · 已选 {{ selectedCount }} 条</span>
+                        </div>
+
+                        <div class="range-preview-hint" v-if="selectionAnchor !== null">
+                            已选起点 #{{ selectionAnchor }}，点击另一条消息作为终点
+                        </div>
+                        <div class="range-preview-hint" v-else>
+                            点击下方消息选起点，再点一次选终点
+                        </div>
+
+                        <div class="range-preview-list">
+                            <div v-for="item in previewMessages" :key="item.num"
+                                 class="range-preview-item"
+                                 :class="{
+                                     'in-range': item.num >= rangeStart && item.num <= rangeEnd,
+                                     'is-anchor': selectionAnchor === item.num,
+                                 }"
+                                 @click="handlePreviewClick(item.num)">
+                                <span class="range-preview-num">#{{ item.num }}</span>
+                                <span class="range-preview-speaker">{{ item.speaker }}</span>
+                                <span class="range-preview-text">{{ item.preview }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -480,6 +574,61 @@ async function handlePolishedExport() {
 .range-input:focus { border-color: var(--accent); }
 .range-input { width: 64px; }
 .range-input--sm { width: 56px; }
+
+.range-preview-hint {
+    margin-top: 8px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 11px;
+    color: var(--ink-faint);
+}
+
+.range-preview-list {
+    margin-top: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--paper-card);
+}
+.range-preview-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.range-preview-item:last-child { border-bottom: none; }
+.range-preview-item:active { background: var(--brush); }
+.range-preview-item.in-range {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.range-preview-item.is-anchor {
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.range-preview-num {
+    flex-shrink: 0;
+    width: 30px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 10px;
+    color: var(--ink-faint);
+}
+.range-preview-speaker {
+    flex-shrink: 0;
+    max-width: 64px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 11px; font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.range-preview-text {
+    flex: 1; min-width: 0;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+    color: var(--ink-faint);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
 /* ── 菜单行 ── */
 .menu-list { margin-top: 4px; }
