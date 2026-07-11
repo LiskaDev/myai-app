@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
+import { buildDiaryHTML, downloadHTML, getDiaryExportFileName } from '../composables/useDiaryExporter.js';
 
 const props = defineProps({
     show: Boolean,
@@ -58,6 +59,25 @@ function handleClose() {
     }
     emit('close');
 }
+
+// ============== 导出单篇日记为 HTML ==============
+const exportingId = ref(null); // 正在导出的日记 id（用于按钮 loading 态，防止重复点击）
+const exportError = ref('');
+
+async function handleExportDiary(diary) {
+    if (!diary || exportingId.value) return;
+    exportingId.value = diary.id;
+    exportError.value = '';
+    try {
+        const html = await buildDiaryHTML(diary);
+        downloadHTML(html, getDiaryExportFileName(diary));
+    } catch (e) {
+        exportError.value = '导出失败，请重试';
+        setTimeout(() => exportError.value = '', 3000);
+    } finally {
+        exportingId.value = null;
+    }
+}
 </script>
 
 <template>
@@ -73,14 +93,27 @@ function handleClose() {
                 <div class="diary-card-list">
                     <div v-for="(diary, idx) in diaries" :key="diary.id"
                          class="diary-card" @click="openCard(idx)">
-                        <div class="diary-card-date">
-                            {{ formatDate(diary.date) }}
-                            <span v-if="diary.isAbsenceDiary" class="absence-tag">💭 写于你不在的时候</span>
+                        <div class="diary-card-main">
+                            <div class="diary-card-date">
+                                {{ formatDate(diary.date) }}
+                                <span v-if="diary.isAbsenceDiary" class="absence-tag">💭 写于你不在的时候</span>
+                            </div>
+                            <div class="diary-card-body">{{ previewText(diary.content) }}</div>
                         </div>
-                        <div class="diary-card-body">{{ previewText(diary.content) }}</div>
+                        <button class="diary-card-export-btn" :disabled="exportingId === diary.id"
+                                title="导出为 HTML" @click.stop="handleExportDiary(diary)">
+                            <svg v-if="exportingId !== diary.id" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 3v12"/>
+                                <path d="M7 10l5 5 5-5"/>
+                                <path d="M5 21h14"/>
+                            </svg>
+                            <span v-else class="export-spinner"></span>
+                        </button>
                     </div>
                     <div v-if="diaries.length === 0" class="card-empty">📖 还没有日记哦</div>
                 </div>
+                <div v-if="exportError" class="export-error-tip">⚠️ {{ exportError }}</div>
             </div>
         </div>
     </Transition>
@@ -93,8 +126,22 @@ function handleClose() {
                     <div class="diary-paper">
                         <div class="diary-header">
                             <div class="diary-ribbon">📔 私密日记</div>
-                            <button @click="handleClose" class="diary-close-btn">✕</button>
+                            <div class="diary-header-actions">
+                                <button v-if="currentDiary" class="diary-close-btn" :disabled="exportingId === currentDiary.id"
+                                        title="导出为 HTML" @click="handleExportDiary(currentDiary)">
+                                    <svg v-if="exportingId !== currentDiary.id" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 3v12"/>
+                                        <path d="M7 10l5 5 5-5"/>
+                                        <path d="M5 21h14"/>
+                                    </svg>
+                                    <span v-else class="export-spinner"></span>
+                                </button>
+                                <button @click="handleClose" class="diary-close-btn">✕</button>
+                            </div>
                         </div>
+
+                        <div v-if="exportError" class="export-error-tip">⚠️ {{ exportError }}</div>
 
                         <div v-if="isGenerating" class="diary-loading">
                             <div class="diary-loading-quill">🪶</div>
@@ -196,6 +243,9 @@ function handleClose() {
 .diary-card-list { display: flex; flex-direction: column; }
 
 .diary-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     background: var(--paper-warm);
     border-left: 3px solid var(--accent-gold);
     border-radius: 0 12px 12px 0;
@@ -207,6 +257,21 @@ function handleClose() {
 .diary-card:last-child { margin-bottom: 0; }
 .diary-card:hover { opacity: 0.82; }
 .diary-card:active { transform: scale(0.99); }
+
+.diary-card-main { flex: 1; min-width: 0; }
+
+.diary-card-export-btn {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    border-radius: 50%; border: none;
+    background: var(--brush);
+    color: var(--ink-faint);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+}
+.diary-card-export-btn:hover:not(:disabled) { color: var(--ink); background: rgba(0,0,0,0.08); }
+.diary-card-export-btn:disabled { opacity: 0.5; cursor: wait; }
 
 .diary-card-date {
     font-family: 'Noto Sans SC', sans-serif;
@@ -234,6 +299,29 @@ function handleClose() {
     font-family: 'Noto Serif SC', serif;
     font-size: 15px;
     color: var(--ink-faint);
+}
+
+.export-error-tip {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(192, 112, 112, 0.1);
+    border: 1px solid rgba(192, 112, 112, 0.25);
+    color: #c07070;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.export-spinner {
+    width: 12px; height: 12px;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: export-spin 0.7s linear infinite;
+}
+@keyframes export-spin {
+    to { transform: rotate(360deg); }
 }
 
 /* 面板滑入动画 */
@@ -307,6 +395,12 @@ function handleClose() {
     margin-bottom: 20px;
 }
 
+.diary-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .diary-ribbon {
     font-family: 'Ma Shan Zheng', cursive, serif;
     font-size: 1.4rem;
@@ -323,10 +417,11 @@ function handleClose() {
     transition: all 0.2s;
     display: flex; align-items: center; justify-content: center;
 }
-.diary-close-btn:hover {
+.diary-close-btn:hover:not(:disabled) {
     background: rgba(90, 62, 43, 0.2);
     transform: scale(1.1);
 }
+.diary-close-btn:disabled { opacity: 0.5; cursor: wait; }
 
 .diary-loading { text-align: center; padding: 40px 0; }
 .diary-loading-quill {
