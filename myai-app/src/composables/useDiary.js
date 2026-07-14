@@ -17,6 +17,14 @@ function generatePlaceholderDiary(roleName) {
  * 将日记正文首行的AI假日期替换为真实日期，保留天气/心情描述
  * 例："11月8日 阴转小雨 ☁️🌧️" → "6月21日 阴转小雨 ☁️🌧️"
  * 只处理第一行，不影响正文其他内容
+ *
+ * 🛡️ 排查记录：曾出现日记显示"6月X日"——不是 isoDateString 格式问题
+ * （这里的入参永远是本地生成的 new Date().toISOString()，格式固定可靠）。
+ * 真正原因是 prompt 里给 AI 的示例"X月X日 晴"有时会被 AI 部分/整体照抄，
+ * 而旧正则要求月、日都必须是 \d{1,2}，遇到"6月X日"这种半替换的占位符就
+ * 匹配失败、整行原样保留，把占位符漏到了正文里。现在改成不要求具体是不是
+ * 数字，只要"月"前后各 1-4 个字符（数字/占位符/中文数字皆可）就整体替换成
+ * 真实日期，从根源上兜底 AI 输出的各种畸形日期。
  * @param {string} content - 日记正文
  * @param {string} isoDateString - 真实创建时间的 ISO 字符串
  */
@@ -28,9 +36,10 @@ function replaceFakeDateWithReal(content, isoDateString) {
     // 否则 "**7月16日 晴**" 无法被后续正则匹配到日期
     let firstLine = lines[0].trim().replace(/\*/g, '');
 
-    const match = firstLine.match(/^(\d{1,2}月\d{1,2}日)(.*)/);
+    // 不锚定"必须是数字"——AI 有时只替换了月份，日期仍留着示例里的占位符（如"6月X日"）
+    const match = firstLine.match(/^([^月日\n]{1,4}月[^月日\n]{1,4}日)(.*)/);
     if (match) {
-        // match[1] = AI假日期, match[2] = 天气/心情描述（含前导空格）
+        // match[1] = AI假日期（可能是占位符、部分替换、甚至中文数字）, match[2] = 天气/心情描述（含前导空格）
         const realDate = new Date(isoDateString);
         const realDateStr = `${realDate.getMonth() + 1}月${realDate.getDate()}日`;
         lines[0] = realDateStr + match[2];
@@ -161,7 +170,7 @@ ${chatContext}${prevDiaryContext}
 - 可以吐槽、暗恋、吃醋、开心等真实情绪
 - 如果上一篇日记中有未完成的目标或计划，请提及进展
 - 不要用"作为AI"这类破坏沉浸的词
-- 以日期开头，如"X月X日 晴"
+- 开头必须是具体的数字日期+天气，格式"数字月数字日 天气"（如"6月21日 晴"），禁止用 X 或任何占位符代替数字
 - 最后另起一行写 【摘要】从第一天到今天的整体故事线概括（不超过50字，用于下次日记延续）`;
             } else {
                 prompt = `你是"${role.name}"。以下是今天你和"${userName}"之间的对话：
@@ -175,7 +184,7 @@ ${chatContext}${prevDiaryContext}
 - 可以吐槽、暗恋、害羞、开心等真实情绪
 - 如果上一篇日记中有未完成的目标或计划，请提及进展
 - 不要用"作为AI"这类破坏沉浸的词
-- 以日期开头，如"X月X日 晴"
+- 开头必须是具体的数字日期+天气，格式"数字月数字日 天气"（如"6月21日 晴"），禁止用 X 或任何占位符代替数字
 - 最后另起一行写 【摘要】从第一天到今天的整体故事线概括（不超过50字，用于下次日记延续）`;
             }
 
@@ -326,7 +335,7 @@ ${chatContext}${prevDiaryContext}
 - 写得像真正的私密日记，有情感波动
 - 可以带着小小的埋怨，但最终是期待对方回来
 - 就象真的在独处时会写的日记，自言自语、发呼、小想象
-- 以日期开头，如“X月X日 晴”
+- 开头必须是具体的数字日期+天气，格式"数字月数字日 天气"（如"6月21日 晴"），禁止用 X 或任何占位符代替数字
 - 最后另起一行写 [摘要]从第一天到现在的整体故事线概括（不超过50字）`;
 
         isGenerating.value = true;
