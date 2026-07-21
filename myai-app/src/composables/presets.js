@@ -355,8 +355,6 @@ export function createNewRoleData() {
         // v8.5: 对话示例 & 补充指令
         mesExample: '',          // 对话示例（1-3段，<START>分隔），精准锚定语调风格
         authorNote: '',          // 补充指令/作者备注，每轮注入在对话末尾的底层铁律
-        // v8.x: 故事时间锚点
-        storyDate: '',           // 当前故事时间节点（自由文本，如"第3天，周三下午"）
         // v6.0: 三层记忆系统
         memoryCard: {
             updatedAt: 0,          // 上次更新时的时间戳

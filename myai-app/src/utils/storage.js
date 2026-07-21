@@ -163,18 +163,17 @@ export function saveUserPersona(persona) {
 }
 
 // ===== 存储用量检测 =====
-// 角色数据和全局设置已迁移到 IndexedDB（无容量上限）
+// 角色数据、全局设置、日记已迁移到 IndexedDB（无容量上限）
 // localStorage 仅存放辅助小数据，总量通常远低于 5MB
 const STORAGE_TOTAL_KB = 5120;
 
 /**
- * 计算当前 localStorage 用量（角色/设置数据已在 IDB，此处仅统计剩余 localStorage）
+ * 计算当前 localStorage 用量（角色/设置/日记数据已在 IDB，此处仅统计剩余 localStorage）
  * @returns {{ usedKB: number, totalKB: number, percent: number, breakdown: Array<{key: string, label: string, sizeKB: number}> }}
  */
 export function getStorageUsage() {
     const labels = {
         [STORAGE_KEYS.GROUPS]:  '群聊数据',
-        [STORAGE_KEYS.DIARIES]: '日记',
         [PERSONA_KEY]:          '用户画像',
         [STORAGE_KEYS.SESSION]: '会话状态',
     };

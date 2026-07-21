@@ -1,7 +1,16 @@
 import { ref } from 'vue';
 import { STORAGE_KEYS } from '../utils/storage';
+import { idbGet, idbPut } from '../utils/indexeddb.js';
 import { detectRejection } from './modelAdapter.js';
 import { useUserPersona } from './useUserPersona.js';
+
+// 🛡️ 日记曾经存在 localStorage（配额通常只有 5-10MB，日记里还带着角色头像 base64，
+// 攒到几十条就可能撑爆配额报"存储空间已满"）。现在改存 IndexedDB（无实际容量上限），
+// 用独立的迁移标记（不复用 GLOBAL/ROLES 那个 myai_idb_migrated_v1，避免因为那个标记
+// 早已写过而导致日记数据被跳过、永远迁移不到 IDB）一次性把旧数据搬过去。
+const DIARY_MIGRATION_FLAG = 'myai_diary_idb_migrated_v1';
+// 日记条数超过此值时提醒用户导出/清理，不强制删除
+const DIARY_COUNT_WARN_THRESHOLD = 200;
 
 /**
  * 角色私密日记 composable
@@ -82,20 +91,46 @@ export function useDiary(appState) {
     const diaries = ref([]);
 
     // ============== 存储 ==============
-    function loadDiaries() {
+    async function loadDiaries() {
         try {
-            const saved = localStorage.getItem(STORAGE_KEYS.DIARIES);
-            if (saved) diaries.value = JSON.parse(saved);
+            // 一次性迁移：把旧 localStorage 里的日记搬到 IndexedDB
+            if (!localStorage.getItem(DIARY_MIGRATION_FLAG)) {
+                try {
+                    const legacyRaw = localStorage.getItem(STORAGE_KEYS.DIARIES);
+                    if (legacyRaw) {
+                        const legacyDiaries = JSON.parse(legacyRaw);
+                        if (Array.isArray(legacyDiaries) && legacyDiaries.length > 0) {
+                            await idbPut(STORAGE_KEYS.DIARIES, legacyDiaries);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[Diary] 旧日记数据损坏，跳过迁移:', e);
+                }
+                // 无论迁移是否成功都打标记，避免每次启动都重试；
+                // 迁移完成后清掉 localStorage 里的旧数据，释放配额空间
+                localStorage.setItem(DIARY_MIGRATION_FLAG, '1');
+                localStorage.removeItem(STORAGE_KEYS.DIARIES);
+            }
+
+            const saved = await idbGet(STORAGE_KEYS.DIARIES);
+            diaries.value = Array.isArray(saved) ? saved : [];
         } catch (e) {
             console.warn('加载日记失败', e);
         }
     }
 
-    function saveDiaries() {
+    async function saveDiaries() {
         try {
-            localStorage.setItem(STORAGE_KEYS.DIARIES, JSON.stringify(diaries.value));
+            await idbPut(STORAGE_KEYS.DIARIES, diaries.value);
         } catch (e) {
-            showToast?.('存储空间已满，无法保存日记');
+            showToast?.('保存日记失败，请稍后重试');
+        }
+    }
+
+    // 日记条数超过阈值时提醒用户导出/清理（不强制删除，只是提示）
+    function checkDiaryCountWarning(roleId) {
+        if (getDiariesForRole(roleId).length > DIARY_COUNT_WARN_THRESHOLD) {
+            showToast?.('日记已超过200篇，建议导出旧日记后删除以释放空间', 'info');
         }
     }
 
@@ -262,6 +297,7 @@ ${chatContext}${prevDiaryContext}
 
             diaries.value.push(entry);
             saveDiaries();
+            checkDiaryCountWarning(role.id);
             showToast?.(`📔 ${role.name}的日记已生成`);
             return entry;
 
@@ -279,6 +315,7 @@ ${chatContext}${prevDiaryContext}
                 };
                 diaries.value.push(entry);
                 saveDiaries();
+                checkDiaryCountWarning(role.id);
                 showToast?.(`📔 ${role.name}今天的日记有些短`);
                 return entry;
             }
@@ -293,6 +330,12 @@ ${chatContext}${prevDiaryContext}
     // 删除日记
     function deleteDiary(diaryId) {
         diaries.value = diaries.value.filter(d => d.id !== diaryId);
+        saveDiaries();
+    }
+
+    // 从备份 JSON 导入日记（整体替换），供"导入数据"功能调用
+    function importDiaries(list) {
+        diaries.value = Array.isArray(list) ? list : [];
         saveDiaries();
     }
 
@@ -403,6 +446,7 @@ ${chatContext}${prevDiaryContext}
 
             diaries.value.push(entry);
             saveDiaries();
+            checkDiaryCountWarning(role.id);
             return entry;
         } catch (e) {
             if (e.message?.includes('拒绝')) {
@@ -417,6 +461,7 @@ ${chatContext}${prevDiaryContext}
                 };
                 diaries.value.push(entry);
                 saveDiaries();
+                checkDiaryCountWarning(role.id);
                 return entry;
             }
             console.warn('[思念日记] 生成失败:', e.message);
@@ -437,5 +482,6 @@ ${chatContext}${prevDiaryContext}
         markAsRead,
         markAllAsRead,
         deleteDiary,
+        importDiaries,
     };
 }

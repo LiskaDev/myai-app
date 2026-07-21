@@ -376,8 +376,6 @@ const currentMatchIndex = ref(0);
 const pendingAiRoleId = ref(null);
 const showStylePanel = ref(false);
 const customDirective = ref('');
-const showTimePanel = ref(false);
-const storyDateDraft = ref('');
 const promptPreviewData = ref(null);
 
 async function handlePromptPreview() {
@@ -386,20 +384,6 @@ async function handlePromptPreview() {
   } catch (e) {
     showToast('获取 Prompt 失败: ' + e.message, 'error');
   }
-}
-
-const TIME_PRESETS = ['故事第一天', '第二天早晨', '当天傍晚', '深夜', '数天后', '一周后'];
-
-function openTimePanel() {
-  storyDateDraft.value = currentRole.value?.storyDate || '';
-  showTimePanel.value = true;
-}
-function confirmStoryTime() {
-  if (!currentRole.value) return;
-  currentRole.value.storyDate = storyDateDraft.value.trim();
-  saveData();
-  showTimePanel.value = false;
-  if (currentRole.value.storyDate) showToast(`故事时间：${currentRole.value.storyDate}`, 'success');
 }
 
 function addStyleDirective(directive) {
@@ -543,7 +527,7 @@ async function collectBackupData() {
   const novelBooks = JSON.parse(localStorage.getItem('myai_bookList_v1') || '[]');
   const novelMessages = {};
   for (const book of novelBooks) { const slots = await exportAllBookMessages(book.id); if (slots.length > 0) novelMessages[book.id] = slots; }
-  return { version: '6.1', exportTime: new Date().toISOString(), globalSettings, roleList: roleList.value, currentRoleId: currentRoleId.value, diaries: JSON.parse(localStorage.getItem('myai_diaries_v1') || '[]'), persona: JSON.parse(localStorage.getItem('myai_user_persona_v1') || 'null'), worldbooks, novelBooks, novelMessages };
+  return { version: '6.1', exportTime: new Date().toISOString(), globalSettings, roleList: roleList.value, currentRoleId: currentRoleId.value, diaries: diary.diaries.value, persona: JSON.parse(localStorage.getItem('myai_user_persona_v1') || 'null'), worldbooks, novelBooks, novelMessages };
 }
 
 async function exportData() {
@@ -556,7 +540,7 @@ async function exportData() {
 }
 
 onMounted(async () => {
-  await loadData(); setupWatchers(); loadVoices(); diary.loadDiaries();
+  await loadData(); setupWatchers(); loadVoices(); await diary.loadDiaries();
   if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = loadVoices;
   nextTick(() => { const msgs = messages.value; if (msgs && msgs.length > 0) showHomePage.value = false; });
   setTimeout(() => scrollToBottom(true), 100);
@@ -604,7 +588,7 @@ async function executeImport(data, stats) {
     if (globalSettings.customStyle && !data.globalSettings.customStyle) safeSettings.customStyle = globalSettings.customStyle;
     Object.assign(globalSettings, safeSettings);
     roleList.value = data.roleList; currentRoleId.value = data.currentRoleId || data.roleList[0]?.id; saveData();
-    if (Array.isArray(data.diaries)) { localStorage.setItem('myai_diaries_v1', JSON.stringify(data.diaries)); diary.loadDiaries(); }
+    if (Array.isArray(data.diaries)) { diary.importDiaries(data.diaries); }
     if (data.persona) localStorage.setItem('myai_user_persona_v1', JSON.stringify(data.persona));
     if (data.worldbooks && typeof data.worldbooks === 'object') { for (const [roleId, entries] of Object.entries(data.worldbooks)) localStorage.setItem('myai_worldbook_' + roleId, JSON.stringify(entries)); }
     if (Array.isArray(data.novelBooks) && data.novelBooks.length > 0) localStorage.setItem('myai_bookList_v1', JSON.stringify(data.novelBooks));
@@ -716,12 +700,6 @@ function handleAvatarError(type, roleId) {
           <div class="char-status">
             <span class="status-dot"></span>
             {{ isThinking ? '正在思考...' : isStreaming ? '正在输入...' : chatMilestone }}
-          </div>
-          <div v-if="currentRole.storyDate"
-               class="story-time-badge"
-               @click="openTimePanel()"
-               title="点击修改故事时间">
-            📅 {{ currentRole.storyDate }}
           </div>
         </div>
       </div>
@@ -852,40 +830,6 @@ function handleAvatarError(type, roleId) {
           <div v-if="showStylePanel" class="fixed inset-0 z-30" @click="showStylePanel = false"></div>
         </div>
 
-        <!-- 故事时间面板 -->
-        <div class="relative">
-          <Transition name="cmd-pop">
-            <div v-if="showTimePanel" class="story-time-panel">
-              <div class="flex items-center justify-between mb-3">
-                <span style="color:var(--ink);font-size:14px;font-weight:500">📅 故事时间</span>
-                <button @click="showTimePanel = false" style="color:var(--ink-faint);font-size:12px">✖</button>
-              </div>
-              <p class="text-xs mb-3" style="color:var(--ink-faint)">设置当前剧情所处的时间节点，AI 会以此为基准判断"今天""昨天""几天前"</p>
-              <div class="flex gap-2 mb-3">
-                <input v-model="storyDateDraft"
-                       @keydown.enter.prevent="confirmStoryTime"
-                       placeholder="如：第3天，周三下午 / 聚会当天，傍晚"
-                       class="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
-                       style="background:var(--paper-warm);border:1px solid var(--border);color:var(--ink)" />
-                <button @click="confirmStoryTime"
-                        class="px-3 py-2 rounded-lg text-sm"
-                        style="background:var(--accent);color:white">确认</button>
-              </div>
-              <div class="flex flex-wrap gap-1.5 mb-2">
-                <button v-for="p in TIME_PRESETS" :key="p"
-                        @click="storyDateDraft = p"
-                        class="style-tag-btn text-xs">{{ p }}</button>
-              </div>
-              <div v-if="currentRole.storyDate" class="flex items-center gap-2 mt-1">
-                <span class="text-xs" style="color:var(--ink-faint)">当前：{{ currentRole.storyDate }}</span>
-                <button @click="currentRole.storyDate = ''; saveData(); showTimePanel = false"
-                        class="text-xs" style="color:#c07070">清除</button>
-              </div>
-            </div>
-          </Transition>
-          <div v-if="showTimePanel" class="fixed inset-0 z-30" @click="confirmStoryTime"></div>
-        </div>
-
         <div class="input-row">
           <div class="input-wrap">
             <textarea
@@ -947,11 +891,6 @@ function handleAvatarError(type, roleId) {
               <span class="menu-row-icon">🎨</span>
               <span class="menu-row-label">风格调整</span>
               <span class="menu-row-arrow">›</span>
-            </div>
-            <div class="menu-row" @click="showMenuPanel = false; openTimePanel()">
-              <span class="menu-row-icon">📅</span>
-              <span class="menu-row-label">故事时间</span>
-              <span class="menu-row-arrow" style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ currentRole.storyDate || '未设置' }}</span>
             </div>
             <div class="menu-row" @click="showMenuPanel = false; toggleSearch()">
               <span class="menu-row-icon">
@@ -1187,13 +1126,6 @@ function handleAvatarError(type, roleId) {
   font-size: 10px; color: var(--accent);
   display: flex; align-items: center; gap: 3px; transition: color .3s;
 }
-.story-time-badge {
-  font-family: 'Noto Sans SC', sans-serif;
-  font-size: 10px; color: var(--ink-faint);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 160px; cursor: pointer; transition: color .2s;
-}
-.story-time-badge:hover { color: var(--accent); }
 .status-dot {
   width: 5px; height: 5px; border-radius: 50%; background: #7aad6e; display: inline-block;
 }
@@ -1349,11 +1281,4 @@ function handleAvatarError(type, roleId) {
 }
 .cmd-pop-enter-active, .cmd-pop-leave-active { transition: all .2s ease; }
 .cmd-pop-enter-from, .cmd-pop-leave-to { opacity: 0; transform: translateY(8px); }
-.story-time-panel {
-  position: absolute; bottom: calc(100% + 8px); left: 0; right: 0;
-  background: var(--paper-card); border: 1px solid var(--border);
-  border-radius: 16px; padding: 14px; z-index: 40;
-  box-shadow: 0 -4px 24px var(--shadow-lg);
-  transition: background .3s;
-}
 </style>
