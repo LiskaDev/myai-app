@@ -47,8 +47,17 @@ export function getFriendlyError(error) {
   if (s.includes('timeout') || s.includes('timed out') || error?.name === 'TimeoutError') {
     return { msg: '🌐 请求超时，请检查网络后重试', isInsufficient: false };
   }
-  if (s.includes('failed to fetch') || s.includes('networkerror') || s.includes('econnrefused') || s.includes('network')) {
-    return { msg: '🌐 网络连接失败，请检查网络后重试', isInsufficient: false };
+  if (
+    s.includes('failed to fetch') ||
+    s.includes("failed to execute 'fetch'") ||
+    s.includes('networkerror') ||
+    s.includes('econnrefused') ||
+    s.includes('network')
+  ) {
+    return {
+      msg: '🌐 网络连接失败，请检查：\n1. 网络是否正常\n2. 是否开启了代理或VPN（尝试关闭后重试）\n3. API 服务是否可访问',
+      isInsufficient: false,
+    };
   }
   if (/50[0-9]/.test(raw)) {
     return { msg: '🛠️ 服务器暂时故障，请稍后重试', isInsufficient: false };

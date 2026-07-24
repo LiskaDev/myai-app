@@ -134,11 +134,13 @@ export function useAppState() {
         toast.action = action; // { label: '去设置', callback: () => {} }
         toast.show = true;
 
+        // 🛡️ 多行提示（如网络故障排查步骤）信息量更大，给更长的阅读时间
+        const isMultiline = typeof message === 'string' && message.includes('\n');
         toastTimerId = setTimeout(() => {
             toast.show = false;
             toast.action = null;
             toastTimerId = null;
-        }, action ? 5000 : 2000); // 有 action 时显示更久
+        }, action ? 5000 : (isMultiline ? 8000 : 2000));
     }
 
     // 提供清理函数

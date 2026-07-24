@@ -1230,9 +1230,10 @@ function handleAvatarError(type, roleId) {
   background: var(--ink); color: var(--paper);
   font-family: 'Noto Sans SC', sans-serif; font-size: 13px;
   padding: 8px 18px; border-radius: 20px;
-  z-index: 50; white-space: nowrap;
+  z-index: 50; white-space: pre-line;
+  max-width: min(92vw, 420px);
   box-shadow: 0 4px 12px var(--shadow-lg);
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: flex-start; gap: 8px;
   transition: background .3s, color .3s;
 }
 .toast-error { background: #c07070; color: white; }
