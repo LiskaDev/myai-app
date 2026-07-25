@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { buildDiaryHTML, downloadHTML, getDiaryExportFileName } from '../composables/useDiaryExporter.js';
 
 const props = defineProps({
@@ -22,6 +22,43 @@ watch(() => props.show, (v) => {
     if (v) {
         viewMode.value = props.mode;
         currentIndex.value = 0;
+    }
+});
+
+// ============== 手写字体（Ma Shan Zheng）就绪检测，避免 FOUT（先系统字体后手写体的闪烁） ==============
+// Ma Shan Zheng 是按 unicode-range 分片的中文字体，浏览器只在真正用到某些字时才去下载对应分片，
+// 所以没法靠一个固定的 <link rel="preload"> 文件覆盖所有可能出现的字——用 document.fonts.load()
+// 传入具体文本，让浏览器自己去按需精确加载这段文字用到的分片，比整体预加载更准更省流量。
+const FONT_SHORTHAND = '1.15rem "Ma Shan Zheng"';
+const FONT_LOAD_TIMEOUT = 1500; // 超时兜底：网络慢时最多等这么久，避免卡住不显示内容
+const fontReady = ref(false);
+
+async function ensureFontReady(diary) {
+    if (!diary || typeof document === 'undefined' || !document.fonts) {
+        fontReady.value = true;
+        return;
+    }
+    fontReady.value = false;
+    const sampleText = `${diary.roleName || ''}的日记私密日记——${diary.content || ''}`;
+    try {
+        await Promise.race([
+            document.fonts.load(FONT_SHORTHAND, sampleText),
+            new Promise((resolve) => setTimeout(resolve, FONT_LOAD_TIMEOUT)),
+        ]);
+    } catch {
+        // 字体加载失败也不阻塞显示，走 CSS 里的 cursive/serif 兜底字体
+    } finally {
+        fontReady.value = true;
+    }
+}
+
+watch(currentDiary, (d) => { ensureFontReady(d); }, { immediate: true });
+
+// 组件一挂载就用高频日记用字预热字体（不等弹窗打开），
+// 常见字大概率提前就绪，真正打开某篇日记时只需再等它独有的生僻字
+onMounted(() => {
+    if (typeof document !== 'undefined' && document.fonts) {
+        document.fonts.load(FONT_SHORTHAND, '的日记私密写了今天你我他好像可以了不没有很就在').catch(() => {});
     }
 });
 
@@ -146,6 +183,11 @@ async function handleExportDiary(diary) {
                         <div v-if="isGenerating" class="diary-loading">
                             <div class="diary-loading-quill">🪶</div>
                             <p class="diary-loading-text">正在书写日记...</p>
+                        </div>
+
+                        <div v-else-if="currentDiary && !fontReady" class="diary-loading">
+                            <div class="diary-loading-quill">🪶</div>
+                            <p class="diary-loading-text">正在展开信纸...</p>
                         </div>
 
                         <div v-else-if="currentDiary" class="diary-content-area">

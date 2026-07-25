@@ -138,7 +138,7 @@ export function useChat(appState) {
         const apiMessages = await constructPrompt();
 
         // 模型配置
-        const model = globalSettings.model || 'deepseek-reasoner';
+        const model = globalSettings.model || 'deepseek-v4-flash';
         const modelFamily = detectModelFamily(model);
         const isReasoner = modelIsReasoner(modelFamily, model);
 

@@ -94,8 +94,6 @@ export const WRITING_STYLE_BASE = `[WRITING QUALITY — BASE RULES]
 // ============== 模型预设列表（各平台可选模型） ==============
 export const MODEL_PRESETS = [
   { group: '🔥 DeepSeek 官方', models: [
-    { value: 'deepseek-reasoner', label: 'DeepSeek R1 (推理)', desc: '深度思考，适合复杂剧情' },
-    { value: 'deepseek-chat', label: 'DeepSeek V3 (对话)', desc: '快速轻量，日常聊天' },
     { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (对话)', desc: '极速响应，日常聊天' },
     { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro (对话)', desc: '高质量输出，复杂场景' },
   ]},
@@ -135,6 +133,10 @@ export const MODEL_PRESETS = [
   ]},
 ];
 
+// 已从上面下拉列表中下架的模型 ID：仅用于把用户已保存的旧选择迁移到新默认值，
+// 迁移逻辑见 useAppState.js loadData()
+export const DEPRECATED_MODEL_IDS = ['deepseek-reasoner', 'deepseek-chat'];
+export const DEPRECATED_MODEL_FALLBACK = 'deepseek-v4-flash';
 
 // 预设角色列表
 export const PRESET_ROLES = [

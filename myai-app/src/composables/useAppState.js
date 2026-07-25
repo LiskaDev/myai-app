@@ -1,5 +1,5 @@
 import { ref, reactive, computed, watch } from 'vue';
-import { PRESET_ROLES, createNewRoleData, migrateRoleMemoryFields } from './presets';
+import { PRESET_ROLES, createNewRoleData, migrateRoleMemoryFields, DEPRECATED_MODEL_IDS, DEPRECATED_MODEL_FALLBACK } from './presets';
 import { releaseBackgroundLock } from './useTimeline';
 import {
     STORAGE_KEYS,
@@ -208,6 +208,15 @@ export function useAppState() {
             const validMotionLevels = new Set(['off', 'soft', 'expressive']);
             if (!validMotionLevels.has(globalSettings.motionLevel)) {
                 globalSettings.motionLevel = 'soft';
+            }
+
+            // v8.x: 下架 DeepSeek R1/V3，已选中这两个的用户自动迁移到 V4 Flash，
+            // 避免下拉框出现"当前选中的模型不在列表里"的状态
+            if (DEPRECATED_MODEL_IDS.includes(globalSettings.model)) {
+                globalSettings.model = DEPRECATED_MODEL_FALLBACK;
+            }
+            if (DEPRECATED_MODEL_IDS.includes(globalSettings.bgModel)) {
+                globalSettings.bgModel = DEPRECATED_MODEL_FALLBACK;
             }
         }
 

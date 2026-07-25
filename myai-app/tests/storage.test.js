@@ -30,7 +30,7 @@ describe('STORAGE_KEYS', () => {
 describe('DEFAULT_GLOBAL_SETTINGS', () => {
     it('应该包含必要的默认值', () => {
         expect(DEFAULT_GLOBAL_SETTINGS.baseUrl).toBe('https://api.deepseek.com');
-        expect(DEFAULT_GLOBAL_SETTINGS.model).toBe('deepseek-reasoner');
+        expect(DEFAULT_GLOBAL_SETTINGS.model).toBe('deepseek-v4-flash');
         expect(DEFAULT_GLOBAL_SETTINGS.apiKey).toBe('');
         expect(DEFAULT_GLOBAL_SETTINGS.showLogic).toBe(true);
         expect(DEFAULT_GLOBAL_SETTINGS.showInner).toBe(true);
