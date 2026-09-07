@@ -280,7 +280,7 @@ async function handleEndDay() {
     const role = appState.currentRole.value;
     const entry = await diary.generateDiary(role, msgs);
     if (entry) { diaryDisplayList.value = [entry]; executeStartNewDay(); }
-    else { showDiaryModal.value = false; showToast('对话还不够丰富，再聊几句再来写日记吧 📝'); }
+    else { showDiaryModal.value = false; }
 }
 
 function handleMarkDiaryRead(diaryId) { diary.markAsRead(diaryId); }
@@ -1230,7 +1230,8 @@ function handleAvatarError(type, roleId) {
   background: var(--ink); color: var(--paper);
   font-family: 'Noto Sans SC', sans-serif; font-size: 13px;
   padding: 8px 18px; border-radius: 20px;
-  z-index: 50; white-space: pre-line;
+  /* 全局反馈必须浮在日记等模态遮罩之上，避免被 backdrop-filter 当作背景模糊 */
+  z-index: 2000; white-space: pre-line;
   max-width: min(92vw, 420px);
   box-shadow: 0 4px 12px var(--shadow-lg);
   display: flex; align-items: flex-start; gap: 8px;

@@ -11,6 +11,68 @@ import { useUserPersona } from './useUserPersona.js';
 const DIARY_MIGRATION_FLAG = 'myai_diary_idb_migrated_v1';
 // 日记条数超过此值时提醒用户导出/清理，不强制删除
 const DIARY_COUNT_WARN_THRESHOLD = 200;
+export const DIARY_COMPLETION_MARKER = '<DIARY_COMPLETE>';
+const DIARY_MAX_ATTEMPTS = 2;
+const DIARY_MIN_CONTENT_LENGTH = 60;
+const DIARY_DIAGNOSTIC_KEY = 'myai_diary_last_diagnostic_v1';
+
+/**
+ * 日记等短文本任务也可能被推理过程吃掉输出预算，因此不能只识别名称中带 reasoner 的模型。
+ */
+export function isDiaryReasoningModel(modelId = '') {
+    return /reasoner|(?:^|[\/_-])r1(?:[\/_-]|$)|qwq|thinking|(?:^|[\/_-])k1(?:[\/_-]|$)|k2\.5|(?:^|[\/_-])o[13](?:[\/_-]|$)/i
+        .test(modelId);
+}
+
+/**
+ * 拆分已移除完成标记的日记文本。
+ * 摘要是日记链的连续性数据，不属于展示正文。
+ */
+export function splitDiaryOutput(text = '') {
+    const cleanText = text.trim();
+    const summaryMatch = cleanText.match(/(?:【摘要】|\[摘要\])\s*([\s\S]+)$/);
+    if (!summaryMatch) {
+        return { content: cleanText, summary: null };
+    }
+
+    return {
+        content: cleanText.slice(0, summaryMatch.index).trim(),
+        summary: summaryMatch[1].trim().slice(0, 80) || null,
+    };
+}
+
+/**
+ * 判断模型响应是否足够完整，可以安全入库。
+ * 完成标记是主要依据；长度、摘要和结尾形态用于阻止模型“主动早停”的短残片。
+ */
+export function validateDiaryResponse(rawText, finishReason = null) {
+    const text = typeof rawText === 'string' ? rawText.trim() : '';
+    const normalizedFinishReason = String(finishReason || '').toLowerCase();
+
+    if (!text) return { valid: false, reason: 'empty' };
+    if (/length|max_tokens|max_output_tokens|content_filter|safety|error/.test(normalizedFinishReason)) {
+        return { valid: false, reason: `finish_reason:${normalizedFinishReason}` };
+    }
+    if (!text.endsWith(DIARY_COMPLETION_MARKER)) {
+        return { valid: false, reason: 'missing_completion_marker' };
+    }
+
+    const withoutMarker = text.slice(0, -DIARY_COMPLETION_MARKER.length).trim();
+    const parsed = splitDiaryOutput(withoutMarker);
+    const effectiveLength = parsed.content.replace(/[\s*_#>`]/g, '').length;
+
+    if (effectiveLength < DIARY_MIN_CONTENT_LENGTH) {
+        return { valid: false, reason: 'content_too_short', ...parsed };
+    }
+    if (!parsed.summary) {
+        return { valid: false, reason: 'missing_summary', ...parsed };
+    }
+    if (/[，、：；（(\[【《〈「『“‘—-]$/.test(parsed.content)) {
+        return { valid: false, reason: 'unfinished_ending', ...parsed };
+    }
+
+    return { valid: true, reason: 'complete', ...parsed };
+}
 
 /**
  * 角色私密日记 composable
@@ -119,11 +181,13 @@ export function useDiary(appState) {
         }
     }
 
-    async function saveDiaries() {
+    async function saveDiaries(notifyOnError = true) {
         try {
             await idbPut(STORAGE_KEYS.DIARIES, diaries.value);
+            return true;
         } catch (e) {
-            showToast?.('保存日记失败，请稍后重试');
+            if (notifyOnError) showToast?.('保存日记失败，请稍后重试');
+            return false;
         }
     }
 
@@ -132,6 +196,99 @@ export function useDiary(appState) {
         if (getDiariesForRole(roleId).length > DIARY_COUNT_WARN_THRESHOLD) {
             showToast?.('日记已超过200篇，建议导出旧日记后删除以释放空间', 'info');
         }
+    }
+
+    function recordDiaryDiagnostic(details) {
+        try {
+            localStorage.setItem(DIARY_DIAGNOSTIC_KEY, JSON.stringify({
+                timestamp: new Date().toISOString(),
+                ...details,
+            }));
+        } catch {
+            // 诊断信息不是核心数据，写入失败不能影响日记生成
+        }
+    }
+
+    /**
+     * 请求并验证一篇完整日记。只有通过完成标记、摘要、长度和 finish_reason
+     * 联合检查的内容才会返回；疑似截断时自动完整重写一次。
+     */
+    async function requestCompleteDiary({ apiUrl, apiKey, model, systemPrompt, prompt }) {
+        const isReasoning = isDiaryReasoningModel(model);
+        const tokenBudgets = isReasoning ? [2400, 3200] : [800, 1200];
+        const timeoutMs = isReasoning ? 120000 : 60000;
+        let lastValidationReason = 'unknown';
+
+        for (let attempt = 0; attempt < DIARY_MAX_ATTEMPTS; attempt++) {
+            const attemptPrompt = attempt === 0
+                ? prompt
+                : `${prompt}\n\n【重新生成要求】上一版内容未完整写完。请从头重写整篇，不要续写上一版；务必写完正文、摘要和最后的完成标记。`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    model,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: attemptPrompt }
+                    ],
+                    temperature: attempt === 0 ? 0.9 : 0.7,
+                    max_tokens: tokenBudgets[attempt],
+                    stream: false,
+                }),
+                signal: AbortSignal.timeout(timeoutMs),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                throw new Error(`API 错误 ${response.status}${errorText ? `: ${errorText.slice(0, 160)}` : ''}`);
+            }
+
+            const data = await response.json();
+            const choice = data.choices?.[0];
+            const rawDiary = choice?.message?.content?.trim() || '';
+            const finishReason = choice?.finish_reason ?? data.finish_reason ?? null;
+            const { rejected } = detectRejection(rawDiary);
+
+            if (rejected) {
+                recordDiaryDiagnostic({
+                    model,
+                    attempt: attempt + 1,
+                    finishReason,
+                    contentLength: rawDiary.length,
+                    completionTokens: data.usage?.completion_tokens ?? null,
+                    result: 'rejected',
+                });
+                throw new Error('AI 拒绝生成日记内容');
+            }
+
+            const validation = validateDiaryResponse(rawDiary, finishReason);
+            lastValidationReason = validation.reason;
+            recordDiaryDiagnostic({
+                model,
+                attempt: attempt + 1,
+                finishReason,
+                contentLength: rawDiary.length,
+                completionTokens: data.usage?.completion_tokens ?? null,
+                result: validation.reason,
+            });
+
+            if (validation.valid) return validation;
+
+            console.warn(
+                `[Diary] 响应不完整，准备重试 (${attempt + 1}/${DIARY_MAX_ATTEMPTS}):`,
+                validation.reason
+            );
+            if (attempt + 1 < DIARY_MAX_ATTEMPTS) {
+                showToast?.('日记似乎没有写完，正在重新生成…', 'info');
+            }
+        }
+
+        throw new Error(`日记内容不完整（${lastValidationReason}），请重试`);
     }
 
     // ============== 获取日记 ==============
@@ -200,13 +357,14 @@ ${chatContext}${prevDiaryContext}
 
 请以【${role.name}】的第一人称视角，用写私密日记的口吻，总结今天在群里发生的事情，对群里每个人的看法变化，以及你内心真实的感受。
 要求：
-- 不超过 200 字
+- 正文 100-200 字，必须写完一件完整的事情和对应感受，不能只写开头
 - 写得像真正的私密日记，有情感波动
 - 可以吐槽、暗恋、吃醋、开心等真实情绪
 - 如果上一篇日记中有未完成的目标或计划，请提及进展
 - 不要用"作为AI"这类破坏沉浸的词
 - 开头必须是具体的数字日期+天气，格式"数字月数字日 天气"（如"6月21日 晴"），禁止用 X 或任何占位符代替数字
-- 最后另起一行写 【摘要】从第一天到今天的整体故事线概括（不超过50字，用于下次日记延续）`;
+- 最后另起一行写 【摘要】从第一天到今天的整体故事线概括（不超过50字，用于下次日记延续）
+- 摘要写完后，最后单独一行原样输出 ${DIARY_COMPLETION_MARKER}，不得省略或改写`;
             } else {
                 prompt = `你是"${role.name}"。以下是今天你和"${userName}"之间的对话：
 
@@ -214,68 +372,35 @@ ${chatContext}${prevDiaryContext}
 
 请以【${role.name}】的第一人称视角，用写私密日记的口吻，总结今天发生的事情以及你对【${userName}】看法的改变。
 要求：
-- 不超过 200 字
+- 正文 100-200 字，必须写完一件完整的事情和对应感受，不能只写开头
 - 写得像真正的私密日记，有情感波动
 - 可以吐槽、暗恋、害羞、开心等真实情绪
 - 如果上一篇日记中有未完成的目标或计划，请提及进展
 - 不要用"作为AI"这类破坏沉浸的词
 - 开头必须是具体的数字日期+天气，格式"数字月数字日 天气"（如"6月21日 晴"），禁止用 X 或任何占位符代替数字
-- 最后另起一行写 【摘要】从第一天到今天的整体故事线概括（不超过50字，用于下次日记延续）`;
+- 最后另起一行写 【摘要】从第一天到今天的整体故事线概括（不超过50字，用于下次日记延续）
+- 摘要写完后，最后单独一行原样输出 ${DIARY_COMPLETION_MARKER}，不得省略或改写`;
             }
 
             const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
                 .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
             const apiUrl = `${baseUrl}/chat/completions`;
 
-            // 使用主模型生成日记（属于角色扮演互动）
-            const model = globalSettings.model?.includes('reasoner')
-                ? 'deepseek-chat'
-                : (globalSettings.model || 'deepseek-chat');
+            // 使用用户实际选择的主模型，不跨平台擅自替换模型 ID。
+            // 推理模型通过独立识别逻辑获得更高 token 预算与更长超时。
+            const model = globalSettings.model || 'deepseek-chat';
 
             const systemPrompt = `你是一个角色扮演大师。请以"${role.name}"的身份写一篇私密日记。${buildRolePersonaBlock(role)}${personaSummaryForPrompt.value || ''}`;
 
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${globalSettings.apiKey}`,
-                },
-                body: JSON.stringify({
-                    model,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: prompt }
-                    ],
-                    temperature: 0.9,
-                    max_tokens: 500,
-                    stream: false,
-                }),
-                signal: AbortSignal.timeout(30000),
+            const validatedDiary = await requestCompleteDiary({
+                apiUrl,
+                apiKey: globalSettings.apiKey,
+                model,
+                systemPrompt,
+                prompt,
             });
-
-            if (!response.ok) {
-                throw new Error(`API 错误 ${response.status}`);
-            }
-
-            const data = await response.json();
-            const rawDiary = data.choices?.[0]?.message?.content?.trim();
-
-            if (!rawDiary) {
-                throw new Error('日记内容为空');
-            }
-            const { rejected: diaryRejected } = detectRejection(rawDiary);
-            if (diaryRejected) {
-                throw new Error('AI 拒绝生成日记内容');
-            }
-
-            // 📜 解析摘要：从 AI 返回中分离日记正文和【摘要】
-            let diaryContent = rawDiary;
-            let summary = null;
-            const summaryMatch = rawDiary.match(/【摘要】(.+)/s);
-            if (summaryMatch) {
-                summary = summaryMatch[1].trim().slice(0, 80); // 限制摘要长度
-                diaryContent = rawDiary.replace(/\n*【摘要】.+/s, '').trim();
-            }
+            let diaryContent = validatedDiary.content;
+            const summary = validatedDiary.summary;
 
             // 将 AI 生成的假日期替换为真实日期（保留天气/心情描述）
             const now = new Date().toISOString();
@@ -296,7 +421,11 @@ ${chatContext}${prevDiaryContext}
             };
 
             diaries.value.push(entry);
-            saveDiaries();
+            const saved = await saveDiaries(false);
+            if (!saved) {
+                diaries.value = diaries.value.filter(d => d.id !== entry.id);
+                throw new Error('保存日记失败，请稍后重试');
+            }
             checkDiaryCountWarning(role.id);
             showToast?.(`📔 ${role.name}的日记已生成`);
             return entry;
@@ -314,7 +443,12 @@ ${chatContext}${prevDiaryContext}
                     groupId: options.groupId || null, groupName: options.groupName || null,
                 };
                 diaries.value.push(entry);
-                saveDiaries();
+                const saved = await saveDiaries(false);
+                if (!saved) {
+                    diaries.value = diaries.value.filter(d => d.id !== entry.id);
+                    showToast?.('保存日记失败，请稍后重试', 'error');
+                    return null;
+                }
                 checkDiaryCountWarning(role.id);
                 showToast?.(`📔 ${role.name}今天的日记有些短`);
                 return entry;
@@ -374,57 +508,31 @@ ${chatContext}${prevDiaryContext}
 
 用户已经 ${timeDesc} 没有来找你了。请用第一人称写一篇私密日记，记录这段时间一个人等待的心情。
 要求：
-- 不超过 200 字
+- 正文 100-200 字，必须完整写完等待期间的情绪变化，不能只写开头
 - 写得像真正的私密日记，有情感波动
 - 可以带着小小的埋怨，但最终是期待对方回来
 - 就象真的在独处时会写的日记，自言自语、发呼、小想象
 - 开头必须是具体的数字日期+天气，格式"数字月数字日 天气"（如"6月21日 晴"），禁止用 X 或任何占位符代替数字
-- 最后另起一行写 [摘要]从第一天到现在的整体故事线概括（不超过50字）`;
+- 最后另起一行写 【摘要】从第一天到现在的整体故事线概括（不超过50字）
+- 摘要写完后，最后单独一行原样输出 ${DIARY_COMPLETION_MARKER}，不得省略或改写`;
 
         isGenerating.value = true;
         try {
             const baseUrl = (globalSettings.baseUrl || 'https://api.deepseek.com')
                 .replace(/\/$/, '').replace(/\/chat\/completions$/, '');
-            const model = globalSettings.model?.includes('reasoner')
-                ? 'deepseek-chat'
-                : (globalSettings.model || 'deepseek-chat');
+            const model = globalSettings.model || 'deepseek-chat';
 
             const systemPrompt = `你是一个角色扮演大师。请以“${role.name}”的身份写一篇私密日记，用户已经 ${timeDesc} 没有来找 ta 了。${buildRolePersonaBlock(role)}${personaSummaryForPrompt.value || ''}`;
 
-            const response = await fetch(`${baseUrl}/chat/completions`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${globalSettings.apiKey}`,
-                },
-                body: JSON.stringify({
-                    model,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: prompt }
-                    ],
-                    temperature: 0.9,
-                    max_tokens: 400,
-                    stream: false,
-                }),
-                signal: AbortSignal.timeout(30000),
+            const validatedDiary = await requestCompleteDiary({
+                apiUrl: `${baseUrl}/chat/completions`,
+                apiKey: globalSettings.apiKey,
+                model,
+                systemPrompt,
+                prompt,
             });
-
-            if (!response.ok) throw new Error(`API 错误 ${response.status}`);
-
-            const data = await response.json();
-            const rawDiary = data.choices?.[0]?.message?.content?.trim();
-            if (!rawDiary) throw new Error('日记内容为空');
-            const { rejected: absenceRejected } = detectRejection(rawDiary);
-            if (absenceRejected) throw new Error('AI 拒绝生成思念日记');
-
-            let diaryContent = rawDiary;
-            let summary = null;
-            const summaryMatch = rawDiary.match(/\[摘要\]([\s\S]+)/);
-            if (summaryMatch) {
-                summary = summaryMatch[1].trim().slice(0, 80);
-                diaryContent = rawDiary.replace(/\n*\[摘要\][\s\S]+/, '').trim();
-            }
+            let diaryContent = validatedDiary.content;
+            const summary = validatedDiary.summary;
 
             // 将 AI 生成的假日期替换为真实日期（保留天气/心情描述）
             const now = new Date().toISOString();
@@ -445,7 +553,11 @@ ${chatContext}${prevDiaryContext}
             };
 
             diaries.value.push(entry);
-            saveDiaries();
+            const saved = await saveDiaries(false);
+            if (!saved) {
+                diaries.value = diaries.value.filter(d => d.id !== entry.id);
+                throw new Error('保存日记失败，请稍后重试');
+            }
             checkDiaryCountWarning(role.id);
             return entry;
         } catch (e) {
@@ -460,7 +572,11 @@ ${chatContext}${prevDiaryContext}
                     groupId: null, groupName: null, isAbsenceDiary: true,
                 };
                 diaries.value.push(entry);
-                saveDiaries();
+                const saved = await saveDiaries(false);
+                if (!saved) {
+                    diaries.value = diaries.value.filter(d => d.id !== entry.id);
+                    return null;
+                }
                 checkDiaryCountWarning(role.id);
                 return entry;
             }
