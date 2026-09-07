@@ -25,6 +25,7 @@ function createMockAppState() {
         }),
         messages: ref([]),
         userInput: ref(''),
+        pendingImages: ref([]),
         isStreaming: ref(false),
         isThinking: ref(false),
         abortController: ref(null),
@@ -145,6 +146,57 @@ describe('useChat - 消息处理', () => {
             'error',
             null
         );
+    });
+
+    it('视觉模型应该允许只发送图片并清空待发送区', async () => {
+        const appState = createMockAppState();
+        appState.globalSettings.model = 'deepseek-v4-flash-vision-exp';
+        appState.pendingImages.value = [{
+            id: 'image-1', name: 'test.png', mimeType: 'image/png',
+            dataUrl: 'data:image/png;base64,AAAA', width: 10, height: 10, size: 4,
+        }];
+        global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+        const { useChat } = await import('../src/composables/useChat');
+        const { sendMessage } = useChat(appState);
+        await sendMessage();
+
+        expect(appState.messages.value[0].images).toHaveLength(1);
+        expect(appState.messages.value[0].content).toContain('图片');
+        expect(appState.pendingImages.value).toEqual([]);
+    });
+
+    it('普通模型不应该发送图片', async () => {
+        const appState = createMockAppState();
+        appState.pendingImages.value = [{
+            id: 'image-1', dataUrl: 'data:image/png;base64,AAAA',
+        }];
+
+        const { useChat } = await import('../src/composables/useChat');
+        const { sendMessage } = useChat(appState);
+        await sendMessage();
+
+        expect(appState.messages.value).toHaveLength(0);
+        expect(appState.pendingImages.value).toHaveLength(1);
+        expect(appState.showToast).toHaveBeenCalledWith(
+            expect.stringContaining('不支持图片'),
+            'error'
+        );
+    });
+});
+
+describe('useChat - 多模态指令追加', () => {
+    it('应该把写作指令追加到 text 块并保留图片块', async () => {
+        const { appendTextInstructions } = await import('../src/composables/useChat');
+        const content = [
+            { type: 'text', text: '看看这张图' },
+            { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } },
+        ];
+
+        const result = appendTextInstructions(content, '\n额外指令');
+
+        expect(result[0].text).toBe('看看这张图\n额外指令');
+        expect(result[1]).toEqual(content[1]);
     });
 });
 

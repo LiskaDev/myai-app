@@ -6,6 +6,7 @@ import { useTimeline } from './useTimeline';
 import { useMemory } from './useMemory';
 import { useTTS } from './useTTS';
 import { getFriendlyError, getRechargeUrl } from '../utils/apiError.js';
+import { modelSupportsImages } from '../utils/imageAttachment.js';
 import {
     callWithRetry,
     detectRejection,
@@ -21,10 +22,23 @@ const REASONER_TIMEOUT_MS = 120000;      // Reasoner 模型 120 秒（思考阶�
 // 🛡️ 发送锁 - 防止快速点击重复发送
 let isSending = false;
 
+/** 在纯文本或多模态 user content 中追加本轮写作指令。 */
+export function appendTextInstructions(content, instructions) {
+    if (!instructions) return content;
+    if (!Array.isArray(content)) return `${content || ''}${instructions}`;
+
+    const textIndex = content.findIndex(part => part?.type === 'text');
+    if (textIndex === -1) return [{ type: 'text', text: instructions.trimStart() }, ...content];
+    return content.map((part, index) => index === textIndex
+        ? { ...part, text: `${part.text || ''}${instructions}` }
+        : part
+    );
+}
+
 /** 判断是否为推理模型（需要更长超时 + 特殊 prompt） */
 function modelIsReasoner(family, modelId) {
     const m = (modelId || '').toLowerCase();
-    if (family === 'deepseek') return m.includes('reasoner') || m.includes('r1');
+    if (family === 'deepseek') return m.includes('reasoner') || m.includes('r1') || modelSupportsImages(m);
     if (family === 'qwen') return m.includes('qwq');
     if (family === 'gpt') return m.includes('o1') || m.includes('o3');
     if (family === 'kimi') return m.includes('k1') || m.includes('reasoner');
@@ -44,6 +58,7 @@ export function useChat(appState) {
         showToast,
         saveData,
     } = appState;
+    const pendingImages = appState.pendingImages || { value: [] };
 
     // 导入拆分后的子模块
     const { constructPrompt } = usePromptBuilder(appState);
@@ -55,9 +70,12 @@ export function useChat(appState) {
     // 发送消息
     async function sendMessage() {
         const input = userInput.value.trim();
+        const attachedImages = Array.isArray(pendingImages.value)
+            ? pendingImages.value.map(image => ({ ...image }))
+            : [];
 
         // 🛡️ 立即检查发送锁 - 在任何异步操作之前
-        if (!input || isStreaming.value || isSending) return;
+        if ((!input && attachedImages.length === 0) || isStreaming.value || isSending) return;
 
         // 🛡️ 立即加锁 - 防止疯狂点击
         isSending = true;
@@ -71,17 +89,26 @@ export function useChat(appState) {
             return;
         }
 
+        if (attachedImages.length > 0 && !modelSupportsImages(globalSettings.model || '')) {
+            showToast('当前主模型不支持图片，请选择 DeepSeek V4 Flash Vision', 'error');
+            isSending = false;
+            return;
+        }
+
         // 添加用户消息
         const msgTimestamp = Date.now();
+        const messageText = input || '请查看我发送的图片并作出回应。';
         messages.value.push({
             role: 'user',
-            content: input,
+            content: messageText,
+            ...(attachedImages.length > 0 && { images: attachedImages }),
             timestamp: msgTimestamp,
         });
         // 🕐 记录用户上次活跃时间（供主动消息判断离开时长）
         // 在此处更新而非页面 load/unload，避免 F5 刷新把时间覆写为"现在"
         localStorage.setItem('myai_lastVisitTime', msgTimestamp.toString());
         userInput.value = '';
+        pendingImages.value = [];
 
         // 🧠 用户画像：后台静默分析
         const { onUserMessageSent } = useUserPersona();
@@ -98,7 +125,7 @@ export function useChat(appState) {
         isThinking.value = true;
 
         try {
-            await chat(input);
+            await chat(messageText);
             // 🕐 对话成功后才更新角色上次对话时间
             // 放在 chat() 之后：constructPrompt 读取到的仍是旧值，离线天数计算才正确
             if (currentRole.value) {
@@ -224,7 +251,10 @@ Example format:
                     lengthInstruction = "\n\n[回复长度规则：场景感知]\n根据当前场景类型动态调整回复长度：\n- 日常对话/闲聊：100字以内，简洁有力\n- 情绪转折/冲突：200字以内，动作带情绪\n- 高潮/关键场景：300字以内，句子变短，节奏加快\n你必须自行判断当前属于哪种场景，严格控制字数上限。\n[LENGTH RULE: Scene-Aware] Dynamically adjust length by scene type: casual talk ≤100 chars, emotional turns ≤200, climax ≤300. Judge the scene type yourself.";
                 }
 
-                apiMessages[lastMsgIndex].content += modelSpecificPrompt + lengthInstruction;
+                apiMessages[lastMsgIndex].content = appendTextInstructions(
+                    apiMessages[lastMsgIndex].content,
+                    modelSpecificPrompt + lengthInstruction
+                );
             }
         }
 

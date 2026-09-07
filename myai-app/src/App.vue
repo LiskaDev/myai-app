@@ -30,6 +30,11 @@ import NovelMode from './components/novel/NovelMode.vue';
 import AssistantBot from './components/AssistantBot.vue';
 import { useNovelStore } from './composables/useNovelStore.js';
 import { exportAllBookMessages, saveNovelMessages } from './composables/useNovelDB.js';
+import {
+  MAX_IMAGES_PER_MESSAGE,
+  modelSupportsImages,
+  prepareImageAttachment,
+} from './utils/imageAttachment.js';
 
 // Initialize State
 const appState = useAppState();
@@ -358,7 +363,7 @@ const inputArea = ref(null);
 const {
   globalSettings, roleList, currentRoleId, currentRole, messages,
   showSidebar, showSettings, settingsInitialTab, showImportModal, importJson,
-  userInput, isStreaming, isThinking, activeMessageIndex, toast, editModal,
+  userInput, pendingImages, isStreaming, isThinking, activeMessageIndex, toast, editModal,
   ttsState, availableVoices, memoryEditState, isUserNearBottom,
   showToast, showConfirmModal, handleConfirm, handleCancel, saveData, loadData,
   switchRole, createNewRole, confirmDeleteRole, clearChat, saveAndCloseSettings,
@@ -376,6 +381,54 @@ const currentMatchIndex = ref(0);
 const pendingAiRoleId = ref(null);
 const showStylePanel = ref(false);
 const customDirective = ref('');
+const imageInput = ref(null);
+const isPreparingImages = ref(false);
+const isVisionModelSelected = computed(() => modelSupportsImages(globalSettings.model || ''));
+
+watch(() => globalSettings.model, (model) => {
+  if (!modelSupportsImages(model || '')) pendingImages.value = [];
+});
+
+function openImagePicker() {
+  if (isStreaming.value || isPreparingImages.value) return;
+  if (!isVisionModelSelected.value) {
+    showToast('发送图片需要选择 DeepSeek V4 Flash Vision 主模型', 'info', {
+      label: '去设置',
+      callback: () => { settingsInitialTab.value = 'general'; showSettings.value = true; },
+    });
+    return;
+  }
+  imageInput.value?.click();
+}
+
+async function handleImageSelection(event) {
+  const files = Array.from(event.target.files || []);
+  event.target.value = '';
+  if (files.length === 0) return;
+
+  const availableSlots = MAX_IMAGES_PER_MESSAGE - pendingImages.value.length;
+  if (availableSlots <= 0) {
+    showToast(`每条消息最多发送 ${MAX_IMAGES_PER_MESSAGE} 张图片`, 'error');
+    return;
+  }
+  if (files.length > availableSlots) {
+    showToast(`每条消息最多发送 ${MAX_IMAGES_PER_MESSAGE} 张，已保留前 ${availableSlots} 张`, 'info');
+  }
+
+  isPreparingImages.value = true;
+  for (const file of files.slice(0, availableSlots)) {
+    try {
+      pendingImages.value.push(await prepareImageAttachment(file));
+    } catch (error) {
+      showToast(error.message || '图片处理失败', 'error');
+    }
+  }
+  isPreparingImages.value = false;
+}
+
+function removePendingImage(imageId) {
+  pendingImages.value = pendingImages.value.filter(image => image.id !== imageId);
+}
 const promptPreviewData = ref(null);
 
 async function handlePromptPreview() {
@@ -442,7 +495,7 @@ function handleGlobalKeydown(e) {
 watch(isStreaming, (now, prev) => { if (prev && !now) sfx.play('notify'); });
 
 function sendMessageWithSound() {
-  if (!userInput.value?.trim()) return;
+  if ((!userInput.value?.trim() && pendingImages.value.length === 0) || isPreparingImages.value) return;
   sfx.play('send'); sendMessage();
 }
 function handleSendSuggestion(text) { userInput.value = text; nextTick(() => sendMessageWithSound()); }
@@ -830,7 +883,30 @@ function handleAvatarError(type, roleId) {
           <div v-if="showStylePanel" class="fixed inset-0 z-30" @click="showStylePanel = false"></div>
         </div>
 
+        <div v-if="pendingImages.length > 0 || isPreparingImages" class="pending-image-tray">
+          <div v-for="image in pendingImages" :key="image.id" class="pending-image-item">
+            <img :src="image.dataUrl" :alt="image.name" />
+            <button type="button" class="pending-image-remove" title="移除图片"
+                    @click="removePendingImage(image.id)">✕</button>
+          </div>
+          <div v-if="isPreparingImages" class="pending-image-loading">处理中…</div>
+        </div>
+
         <div class="input-row">
+          <input ref="imageInput" type="file" hidden multiple
+                 accept="image/jpeg,image/png,image/webp,image/gif"
+                 @change="handleImageSelection" />
+          <button type="button" class="image-attach-btn"
+                  :class="{ active: isVisionModelSelected, disabled: isStreaming || isPreparingImages }"
+                  :disabled="isStreaming || isPreparingImages"
+                  :title="isVisionModelSelected ? '发送图片（最多4张）' : '需选择 DeepSeek V4 Flash Vision 模型'"
+                  @click="openImagePicker">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="4" width="18" height="16" rx="3"/>
+              <circle cx="8.5" cy="9" r="1.5"/>
+              <path d="m4 17 4.5-4.5 3.5 3 2.5-2.5L20 18"/>
+            </svg>
+          </button>
           <div class="input-wrap">
             <textarea
               ref="inputArea"
@@ -846,7 +922,7 @@ function handleAvatarError(type, roleId) {
 
           <button v-if="!isStreaming && !isThinking"
                   @click="sendMessageWithSound"
-                  :disabled="!userInput.trim()"
+                  :disabled="(!userInput.trim() && pendingImages.length === 0) || isPreparingImages"
                   class="send-btn">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -1138,6 +1214,37 @@ function handleAvatarError(type, roleId) {
   transition: background .3s, border-color .3s;
 }
 .input-row { display: flex; align-items: flex-end; gap: 8px; }
+.pending-image-tray {
+  display: flex; gap: 8px; align-items: center; overflow-x: auto;
+  padding: 0 2px 9px; scrollbar-width: thin;
+}
+.pending-image-item {
+  position: relative; width: 64px; height: 64px; flex: 0 0 64px;
+  border-radius: 12px; overflow: visible; border: 1px solid var(--border);
+  background: var(--paper-card); box-shadow: 0 2px 8px var(--shadow);
+}
+.pending-image-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 11px; display: block; }
+.pending-image-remove {
+  position: absolute; top: -7px; right: -7px; width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--topbar-bg); border-radius: 50%;
+  background: #8f5d56; color: white; font-size: 10px; cursor: pointer;
+}
+.pending-image-loading {
+  height: 64px; min-width: 72px; display: flex; align-items: center; justify-content: center;
+  color: var(--ink-faint); font-size: 12px; background: var(--brush); border-radius: 12px;
+}
+.image-attach-btn {
+  width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  border: 1px solid var(--border); background: var(--paper-card); color: var(--ink-faint);
+  transition: all .2s;
+}
+.image-attach-btn:hover:not(:disabled), .image-attach-btn.active:hover {
+  color: var(--accent); border-color: var(--accent); background: var(--brush);
+}
+.image-attach-btn.disabled { opacity: .45; cursor: not-allowed; }
+.image-attach-btn svg { width: 19px; height: 19px; }
 .input-wrap {
   flex: 1; background: var(--paper-card); border-radius: 22px;
   border: 1px solid var(--border); padding: 10px 14px;

@@ -13,6 +13,10 @@ vi.mock('../src/utils/summary', () => ({
 
 function createMockAppState(overrides = {}) {
     return {
+        globalSettings: {
+            model: '', immersiveMode: false, semanticSearchEnabled: false,
+            enableVectorMemory: false,
+        },
         currentRole: ref({
             name: 'Test Role',
             systemPrompt: 'You are a test character',
@@ -229,5 +233,40 @@ describe('usePromptBuilder - constructPrompt', () => {
         const messages = await constructPrompt();
         const directiveMsg = messages.find(m => m.content.includes('写作规则'));
         expect(directiveMsg).toBeUndefined();
+    });
+
+    it('视觉模型应该把用户图片组装成 OpenAI 兼容内容块', async () => {
+        const appState = createMockAppState();
+        appState.globalSettings.model = 'deepseek-v4-flash-vision-exp';
+        appState.messages.value = [{
+            role: 'user',
+            content: '这张图里有什么？',
+            images: [{ id: 'img-1', dataUrl: 'data:image/png;base64,AAAA' }],
+        }];
+
+        const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
+        const messages = await usePromptBuilder(appState).constructPrompt();
+        const userMessage = messages.find(message => message.role === 'user');
+
+        expect(userMessage.content).toEqual([
+            { type: 'text', text: '这张图里有什么？' },
+            { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } },
+        ]);
+    });
+
+    it('普通模型读取含图历史时应该降级为纯文字消息', async () => {
+        const appState = createMockAppState();
+        appState.globalSettings.model = 'deepseek-v4-flash';
+        appState.messages.value = [{
+            role: 'user',
+            content: '这是之前发送的图片',
+            images: [{ id: 'img-1', dataUrl: 'data:image/png;base64,AAAA' }],
+        }];
+
+        const { usePromptBuilder } = await import('../src/composables/usePromptBuilder');
+        const messages = await usePromptBuilder(appState).constructPrompt();
+        const userMessage = messages.find(message => message.role === 'user');
+
+        expect(userMessage.content).toBe('这是之前发送的图片');
     });
 });

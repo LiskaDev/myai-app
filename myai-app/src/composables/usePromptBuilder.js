@@ -14,6 +14,7 @@ import { buildMemoryContext, buildMemoryCardContext, buildChapterContext } from 
 import { getActiveLoreEntries, getActiveLoreEntriesHybrid, loadWorldBook } from './promptModules/worldBook.js';
 import { assemblePrompt } from './promptModules/contextAssembler.js';
 import { retrieveRelevantMemories } from './useMemory.js';
+import { modelSupportsImages } from '../utils/imageAttachment.js';
 
 export function usePromptBuilder(appState) {
     const { currentRole, messages } = appState;
@@ -68,6 +69,7 @@ export function usePromptBuilder(appState) {
             vectorMemoryBlocks: vectorMemories,
             role,
             messages: messages.value,
+            includeImages: modelSupportsImages(modelName),
         });
     }
 

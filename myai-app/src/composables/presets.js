@@ -96,6 +96,7 @@ export const MODEL_PRESETS = [
   { group: '🔥 DeepSeek 官方', models: [
     { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (对话)', desc: '极速响应，日常聊天' },
     { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro (对话)', desc: '高质量输出，复杂场景' },
+    { value: 'deepseek-v4-flash-vision-exp', label: 'DeepSeek V4 Flash Vision (多模态·实验)', desc: '支持发送图片并理解画面' },
   ]},
   { group: '🚀 硅基流动 · Qwen', models: [
     { value: 'Qwen/QwQ-32B', label: 'QwQ-32B (推理)', desc: '阿里推理模型，深度思考' },

@@ -56,6 +56,7 @@ const containerRef = ref(null);
 const searchInputRef = ref(null);
 const moreMenuIndex = ref(null);
 const copyFeedbackIndex = ref(null);
+const previewImage = ref(null);
 
 // 滑动保护：touchmove 发生过就不触发 toggle-select，防止滑动时误弹工具栏
 const touchScrolled = ref(false);
@@ -493,7 +494,7 @@ function isCurrentMatch(originalIndex) {
       <template v-for="(msg, visibleIndex) in visibleMessages" :key="getOriginalIndex(visibleIndex)">
         <template v-if="msg.role === 'user' && !msg.hidden">
           <div class="message-bubble flex flex-col items-end"
-               v-memo="[msg.content, activeMessageIndex === getOriginalIndex(visibleIndex), isCurrentMatch(getOriginalIndex(visibleIndex)), searchResults.length]"
+               v-memo="[msg.content, msg.images, activeMessageIndex === getOriginalIndex(visibleIndex), isCurrentMatch(getOriginalIndex(visibleIndex)), searchResults.length]"
                :data-msg-index="getOriginalIndex(visibleIndex)"
                :class="{ 'search-match': isSearchMatch(getOriginalIndex(visibleIndex)), 'search-current': isCurrentMatch(getOriginalIndex(visibleIndex)) }"
                @touchstart="(e) => onMsgTouchStart(e, getOriginalIndex(visibleIndex))"
@@ -504,7 +505,16 @@ function isCurrentMatch(originalIndex) {
                 <div @click.stop="handleToggleSelect(getOriginalIndex(visibleIndex))"
                      class="user-speech-bubble cursor-pointer"
                      :class="{ 'selected': activeMessageIndex === getOriginalIndex(visibleIndex) }">
-                  <div class="message-body message-content text-sm whitespace-pre-wrap" v-html="renderMarkdown(msg.content || '')"></div>
+                  <div v-if="msg.images?.length" class="user-image-grid" :class="{ single: msg.images.length === 1 }">
+                    <button v-for="image in msg.images" :key="image.id || image.dataUrl"
+                            type="button" class="user-image-button"
+                            @click.stop="previewImage = image.dataUrl">
+                      <img :src="image.dataUrl" :alt="image.name || '发送的图片'" loading="lazy" />
+                    </button>
+                  </div>
+                  <div v-if="msg.content" class="message-body message-content text-sm whitespace-pre-wrap"
+                       :class="{ 'has-images': msg.images?.length }"
+                       v-html="renderMarkdown(msg.content)"></div>
                 </div>
 
                 <div class="message-toolbar" :class="{ 'active': activeMessageIndex === getOriginalIndex(visibleIndex) }">
@@ -694,6 +704,16 @@ function isCurrentMatch(originalIndex) {
       </div>
     </div>
   </main>
+
+  <Teleport to="body">
+    <Transition name="image-preview">
+      <div v-if="previewImage" class="chat-image-preview" @click="previewImage = null">
+        <button type="button" class="chat-image-preview-close" aria-label="关闭图片预览"
+                @click="previewImage = null">✕</button>
+        <img :src="previewImage" alt="图片预览" @click.stop />
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -720,6 +740,38 @@ function isCurrentMatch(originalIndex) {
   background: var(--border);
   border-radius: 2px;
 }
+
+.user-image-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;
+  width: min(280px, 58vw); margin: -5px -7px 0;
+}
+.user-image-grid.single { grid-template-columns: 1fr; }
+.user-image-button {
+  display: block; padding: 0; border: none; border-radius: 10px;
+  overflow: hidden; background: rgba(0, 0, 0, .08); cursor: zoom-in;
+  aspect-ratio: 1 / 1;
+}
+.user-image-grid.single .user-image-button { aspect-ratio: auto; max-height: 320px; }
+.user-image-button img { width: 100%; height: 100%; min-height: 110px; object-fit: cover; display: block; }
+.user-image-grid.single img { height: auto; max-height: 320px; object-fit: contain; }
+.message-content.has-images { margin-top: 8px; }
+
+.chat-image-preview {
+  position: fixed; inset: 0; z-index: 3000; padding: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(16, 14, 20, .88); backdrop-filter: blur(8px);
+}
+.chat-image-preview img {
+  max-width: min(96vw, 1200px); max-height: 92vh; object-fit: contain;
+  border-radius: 12px; box-shadow: 0 20px 70px rgba(0, 0, 0, .5);
+}
+.chat-image-preview-close {
+  position: fixed; top: max(18px, env(safe-area-inset-top)); right: 20px;
+  width: 40px; height: 40px; border: none; border-radius: 50%;
+  color: white; background: rgba(255, 255, 255, .14); font-size: 18px; cursor: pointer;
+}
+.image-preview-enter-active, .image-preview-leave-active { transition: opacity .2s ease; }
+.image-preview-enter-from, .image-preview-leave-to { opacity: 0; }
 
 /* ── AI 消息行（打字指示器复用） ── */
 .msg-ai {

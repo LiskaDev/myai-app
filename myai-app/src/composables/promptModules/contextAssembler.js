@@ -15,7 +15,24 @@
  * @param {Array}  options.messages      - 全部消息数组（ref.value）
  * @returns {Array} 最终的 apiMessages
  */
-export function assemblePrompt({ coreBlocks, styleBlocks, memoryBlocks, loreBlocks, vectorMemoryBlocks, role, messages }) {
+export function buildConversationContent(message, includeImages = false) {
+    const text = message.content || (message.images?.length ? '请查看我发送的图片并作出回应。' : '');
+    const images = includeImages && message.role === 'user' && Array.isArray(message.images)
+        ? message.images.filter(image => typeof image?.dataUrl === 'string' && image.dataUrl.startsWith('data:image/'))
+        : [];
+
+    if (images.length === 0) return text;
+
+    return [
+        { type: 'text', text },
+        ...images.map(image => ({
+            type: 'image_url',
+            image_url: { url: image.dataUrl },
+        })),
+    ];
+}
+
+export function assemblePrompt({ coreBlocks, styleBlocks, memoryBlocks, loreBlocks, vectorMemoryBlocks, role, messages, includeImages = false }) {
     const apiMessages = [];
 
     // ── 1. P0+P1 核心身份（最高优先级，永远保留）──
@@ -83,7 +100,10 @@ ${vectorMemoryBlocks.join('\n\n')}`,
             });
         }
 
-        apiMessages.push({ role: msg.role, content: msg.content });
+        apiMessages.push({
+            role: msg.role,
+            content: buildConversationContent(msg, includeImages),
+        });
     }
 
     return apiMessages;

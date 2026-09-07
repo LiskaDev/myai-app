@@ -30,6 +30,7 @@ export function useAppState() {
 
     // 聊天状态
     const userInput = ref('');
+    const pendingImages = ref([]);
     const isStreaming = ref(false);
     const isThinking = ref(false);
     const activeMessageIndex = ref(null);
@@ -307,6 +308,7 @@ export function useAppState() {
         }
         // 释放后台锁：防止上一个角色的任务卡住新角色的后台任务
         releaseBackgroundLock();
+        pendingImages.value = [];
 
         currentRoleId.value = roleId;
         showSidebar.value = false;
@@ -325,6 +327,7 @@ export function useAppState() {
         const newRole = createNewRoleData();
         roleList.value.push(newRole);
         currentRoleId.value = newRole.id;
+        pendingImages.value = [];
         showSidebar.value = false;
         saveData();
         showToast('新角色已创建');
@@ -427,6 +430,7 @@ export function useAppState() {
             isDangerous: true,
             onConfirm: () => {
                 messages.value = [];
+                pendingImages.value = [];
                 // v6.0: 清空聊天时重置记忆系统
                 const role = currentRole.value;
                 if (role) {
@@ -484,6 +488,7 @@ export function useAppState() {
         showImportModal,
         importJson,
         userInput,
+        pendingImages,
         isStreaming,
         isThinking,
         activeMessageIndex,
