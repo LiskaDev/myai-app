@@ -86,7 +86,7 @@ function resetCustomStyle() {
         <div class="w-full">
           <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
             <span>💾 辅助数据(localStorage)</span>
-            <span>{{ storageUsage.usedKB }} KB（角色/设置已存 IndexedDB，无上限）</span>
+            <span>{{ storageUsage.usedKB }} KB（角色/设置已存 IndexedDB，容量由浏览器分配）</span>
           </div>
           <div class="storage-bar-track">
             <div class="storage-bar-fill" :class="storageColor" :style="{ width: Math.min(storageUsage.percent, 100) + '%' }"></div>

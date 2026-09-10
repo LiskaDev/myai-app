@@ -98,6 +98,12 @@ export function useChat(appState) {
             return;
         }
 
+        // Streaming mutates the assistant message many times. A deep watcher used
+        // to save the entire role history whenever the stream paused for 500ms,
+        // which is especially expensive for large chats containing images on iOS.
+        // Coalesce the whole turn into one final save instead.
+        let autoSaveSuspended = false;
+
         // 添加用户消息
         const msgTimestamp = Date.now();
         const messageText = input || '请查看我发送的图片并作出回应。';
@@ -125,6 +131,8 @@ export function useChat(appState) {
             bgApiKey: globalSettings.bgApiKey,
         });
 
+        suspendAutoSave();
+        autoSaveSuspended = true;
         isThinking.value = true;
 
         try {
@@ -156,6 +164,10 @@ export function useChat(appState) {
             isStreaming.value = false;
             isThinking.value = false;
             isSending = false; // 🛡️ 解锁
+            if (autoSaveSuspended) {
+                autoSaveSuspended = false;
+                await resumeAutoSave({ flush: true });
+            }
         }
     }
 
@@ -682,12 +694,13 @@ Example format:
     }
 
     // 继续生成（插入隐藏的 [请继续] 消息后调用 chat）
-    function continueGeneration() {
+    async function continueGeneration() {
         if (isStreaming.value) {
             showToast('请等待当前回复完成', 'error');
             return;
         }
         const targetRoleId = currentRole.value.id;
+        suspendAutoSave();
         messages.value.push({
             role: 'user',
             content: '[请继续]',
@@ -695,7 +708,9 @@ Example format:
             timestamp: Date.now(),
         });
         isThinking.value = true;
-        chat('[请继续]', { targetRoleId }).catch(e => {
+        try {
+            await chat('[请继续]', { targetRoleId });
+        } catch (e) {
             if (e.name !== 'AbortError') {
                 const { msg, isInsufficient } = getFriendlyError(e);
                 const rechargeUrl = isInsufficient ? getRechargeUrl(globalSettings.baseUrl) : '';
@@ -704,10 +719,11 @@ Example format:
                     callback: () => window.open(rechargeUrl, '_blank'),
                 } : null);
             }
-        }).finally(() => {
+        } finally {
             isStreaming.value = false;
             isThinking.value = false;
-        });
+            await resumeAutoSave({ flush: true });
+        }
     }
 
     // 处理 Shift+Enter

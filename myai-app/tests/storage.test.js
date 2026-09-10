@@ -11,12 +11,13 @@ import {
     loadFromStorage,
     importData,
 } from '../src/utils/storage';
-import { idbGet, idbPut, migrateFromLocalStorage } from '../src/utils/indexeddb';
+import { idbGet, idbPut, migrateFromLocalStorage, resetIDBConnection } from '../src/utils/indexeddb';
 
 vi.mock('../src/utils/indexeddb', () => ({
     idbGet: vi.fn(),
     idbPut: vi.fn(),
     migrateFromLocalStorage: vi.fn(),
+    resetIDBConnection: vi.fn(),
 }));
 
 describe('STORAGE_KEYS', () => {
@@ -108,6 +109,39 @@ describe('loadFromStorage', () => {
 
         expect(result.globalSettings).toEqual(settings);
         expect(result.roleList).toEqual(roles);
+    });
+
+    it('Safari 临时中断时应该重连并重试一次', async () => {
+        const transientError = new Error('transaction aborted');
+        transientError.name = 'AbortError';
+        idbPut
+            .mockRejectedValueOnce(transientError)
+            .mockResolvedValue(undefined);
+
+        const result = await saveToStorage({ model: 'test' }, [{ id: '1' }]);
+
+        expect(result).toBe(true);
+        expect(resetIDBConnection).toHaveBeenCalledTimes(1);
+        expect(idbPut).toHaveBeenNthCalledWith(1, 'myai_global_v1', { model: 'test' });
+        expect(idbPut).toHaveBeenNthCalledWith(2, 'myai_global_v1', { model: 'test' });
+        expect(idbPut).toHaveBeenNthCalledWith(3, 'myai_roles_v1', [{ id: '1' }]);
+    });
+
+    it('容量不足时不应该盲目重试，并应给出可执行提示', async () => {
+        const onError = vi.fn();
+        const quotaError = new Error('quota exceeded');
+        quotaError.name = 'QuotaExceededError';
+        idbPut.mockRejectedValue(quotaError);
+
+        const result = await saveToStorage({}, [], onError);
+
+        expect(result).toBe(false);
+        expect(idbPut).toHaveBeenCalledTimes(1);
+        expect(resetIDBConnection).not.toHaveBeenCalled();
+        expect(onError).toHaveBeenCalledWith(
+            expect.stringContaining('存储空间不足'),
+            quotaError
+        );
     });
 
     it('应该兼容 JSON 字符串格式的角色数据', async () => {

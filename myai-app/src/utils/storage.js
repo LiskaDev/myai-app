@@ -1,4 +1,4 @@
-import { idbGet, idbPut, migrateFromLocalStorage } from './indexeddb.js';
+import { idbGet, idbPut, migrateFromLocalStorage, resetIDBConnection } from './indexeddb.js';
 
 // IndexedDB 键名（原 localStorage 主数据键，已迁移到 IDB）
 const IDB_KEYS = {
@@ -64,16 +64,45 @@ export const DEFAULT_GLOBAL_SETTINGS = {
 };
 
 // 保存数据到 IndexedDB（异步，调用方无需 await）
+const RETRYABLE_IDB_ERRORS = new Set([
+    'AbortError',
+    'UnknownError',
+    'InvalidStateError',
+    'TransactionInactiveError',
+]);
+
+function waitForIDBRetry() {
+    return new Promise(resolve => setTimeout(resolve, 80));
+}
+
+async function idbPutWithRetry(key, value) {
+    try {
+        await idbPut(key, value);
+    } catch (error) {
+        if (!RETRYABLE_IDB_ERRORS.has(error?.name)) throw error;
+        resetIDBConnection();
+        await waitForIDBRetry();
+        await idbPut(key, value);
+    }
+}
+
+function getSaveErrorMessage(error) {
+    if (error?.name === 'QuotaExceededError') {
+        return '浏览器存储空间不足，请先导出备份，再清理部分旧对话或图片';
+    }
+    return '保存数据失败，请先导出备份并重试';
+}
+
 export async function saveToStorage(globalSettings, roleList, onError) {
     try {
-        await Promise.all([
-            idbPut(IDB_KEYS.GLOBAL, globalSettings),
-            idbPut(IDB_KEYS.ROLES, roleList),
-        ]);
+        // Keep only one readwrite transaction active at a time. WebKit is much
+        // more reliable with large role/image payloads when these writes are sequential.
+        await idbPutWithRetry(IDB_KEYS.GLOBAL, globalSettings);
+        await idbPutWithRetry(IDB_KEYS.ROLES, roleList);
         return true;
     } catch (e) {
         console.error('[Storage] IDB 保存失败:', e);
-        if (onError) onError('保存数据失败', e);
+        if (onError) onError(getSaveErrorMessage(e), e);
         return false;
     }
 }

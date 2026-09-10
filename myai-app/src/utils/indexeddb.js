@@ -14,6 +14,13 @@ const STORE = 'kv';
 
 let _db = null;
 
+export function resetIDBConnection() {
+    if (_db) {
+        try { _db.close(); } catch { /* ignore */ }
+        _db = null;
+    }
+}
+
 function openDB() {
     if (_db) return Promise.resolve(_db);
     return new Promise((resolve, reject) => {
@@ -28,6 +35,12 @@ function openDB() {
 
         req.onsuccess = (e) => {
             _db = e.target.result;
+            _db.onversionchange = () => resetIDBConnection();
+            // Safari may close an IndexedDB connection when reclaiming resources.
+            // Do not keep returning that stale connection on the next save attempt.
+            if ('onclose' in _db) {
+                _db.onclose = () => { _db = null; };
+            }
             resolve(_db);
         };
 

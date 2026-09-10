@@ -137,6 +137,19 @@ describe('useChat - 消息处理', () => {
         expect(appState.messages.value[0].content).toBe('Hello AI');
     });
 
+    it('生成期间应该暂停深度监听自动保存，结束后合并落盘', async () => {
+        const appState = createMockAppState();
+        appState.userInput.value = '测试大对话保存';
+        global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+        const { useChat } = await import('../src/composables/useChat');
+        await useChat(appState).sendMessage();
+
+        expect(appState.suspendAutoSave).toHaveBeenCalledTimes(1);
+        expect(appState.resumeAutoSave).toHaveBeenCalledTimes(1);
+        expect(appState.resumeAutoSave).toHaveBeenCalledWith({ flush: true });
+    });
+
     it('发送后应该清空输入框', async () => {
         const appState = createMockAppState();
         appState.userInput.value = 'Test message';
