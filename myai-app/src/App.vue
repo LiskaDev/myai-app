@@ -392,7 +392,7 @@ watch(() => globalSettings.model, (model) => {
 function openImagePicker() {
   if (isStreaming.value || isPreparingImages.value) return;
   if (!isVisionModelSelected.value) {
-    showToast('发送图片需要选择 DeepSeek V4 Flash Vision 主模型', 'info', {
+    showToast('当前主模型不支持发送图片', 'info', {
       label: '去设置',
       callback: () => { settingsInitialTab.value = 'general'; showSettings.value = true; },
     });
@@ -899,13 +899,13 @@ function handleAvatarError(type, roleId) {
         </div>
 
         <div class="input-row">
-          <input ref="imageInput" type="file" hidden multiple
+          <input v-if="isVisionModelSelected" ref="imageInput" type="file" hidden multiple
                  accept="image/jpeg,image/png,image/webp,image/gif"
                  @change="handleImageSelection" />
-          <button type="button" class="image-attach-btn"
+          <button v-if="isVisionModelSelected" type="button" class="image-attach-btn"
                   :class="{ active: isVisionModelSelected, disabled: isStreaming || isPreparingImages }"
                   :disabled="isStreaming || isPreparingImages"
-                  :title="isVisionModelSelected ? '发送图片（最多4张）' : '需选择 DeepSeek V4 Flash Vision 模型'"
+                  title="发送图片（最多4张）"
                   @click="openImagePicker">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <rect x="3" y="4" width="18" height="16" rx="3"/>

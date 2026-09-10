@@ -94,9 +94,8 @@ export const WRITING_STYLE_BASE = `[WRITING QUALITY — BASE RULES]
 // ============== 模型预设列表（各平台可选模型） ==============
 export const MODEL_PRESETS = [
   { group: '🔥 DeepSeek 官方', models: [
-    { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (对话)', desc: '极速响应，日常聊天' },
+    { value: 'deepseek-flash', label: 'DeepSeek Flash (对话)', desc: '极速响应，日常聊天' },
     { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro (对话)', desc: '高质量输出，复杂场景' },
-    { value: 'deepseek-v4-flash-vision-exp', label: 'DeepSeek V4 Flash Vision (多模态·实验)', desc: '支持发送图片并理解画面' },
   ]},
   { group: '🚀 硅基流动 · Qwen', models: [
     { value: 'Qwen/QwQ-32B', label: 'QwQ-32B (推理)', desc: '阿里推理模型，深度思考' },
@@ -105,9 +104,8 @@ export const MODEL_PRESETS = [
     { value: 'Qwen/Qwen2.5-7B-Instruct', label: 'Qwen2.5-7B', desc: '轻量快速，适合群聊' },
   ]},
   { group: '🚀 硅基流动 · DeepSeek', models: [
-    { value: 'deepseek-ai/DeepSeek-R1', label: 'DeepSeek R1', desc: '经硅基流动加速' },
-    { value: 'deepseek-ai/DeepSeek-V3', label: 'DeepSeek V3', desc: '经硅基流动加速' },
-    { value: 'deepseek-ai/DeepSeek-R1-0528', label: 'DeepSeek R1-0528', desc: '最新版推理模型' },
+    { value: 'deepseek-ai/DeepSeek-V4-Flash', label: 'DeepSeek V4 Flash', desc: '高速对话，经硅基流动加速' },
+    { value: 'deepseek-ai/DeepSeek-V4-Pro', label: 'DeepSeek V4 Pro', desc: '高质量输出，复杂场景' },
   ]},
   { group: '🌙 硅基流动 · Kimi', models: [
     { value: 'Pro/moonshotai/Kimi-K2.5', label: 'Kimi K2.5 Pro (推理)', desc: '旗舰最强，深度思考' },
@@ -136,8 +134,22 @@ export const MODEL_PRESETS = [
 
 // 已从上面下拉列表中下架的模型 ID：仅用于把用户已保存的旧选择迁移到新默认值，
 // 迁移逻辑见 useAppState.js loadData()
-export const DEPRECATED_MODEL_IDS = ['deepseek-reasoner', 'deepseek-chat'];
-export const DEPRECATED_MODEL_FALLBACK = 'deepseek-v4-flash';
+export const DEPRECATED_MODEL_MIGRATIONS = Object.freeze({
+  'deepseek-chat': 'deepseek-flash',
+  'deepseek-reasoner': 'deepseek-flash',
+  'deepseek-v4-flash': 'deepseek-flash',
+  'deepseek-v4-flash-vision': 'deepseek-flash',
+  'deepseek-v4-flash-vision-exp': 'deepseek-flash',
+  'deepseek-ai/DeepSeek-V3': 'deepseek-ai/DeepSeek-V4-Flash',
+  'deepseek-ai/DeepSeek-R1': 'deepseek-ai/DeepSeek-V4-Pro',
+  'deepseek-ai/DeepSeek-R1-0528': 'deepseek-ai/DeepSeek-V4-Pro',
+});
+export const DEPRECATED_MODEL_IDS = Object.keys(DEPRECATED_MODEL_MIGRATIONS);
+export const DEPRECATED_MODEL_FALLBACK = 'deepseek-flash';
+
+export function migrateDeprecatedModelId(modelId) {
+  return DEPRECATED_MODEL_MIGRATIONS[modelId] || modelId;
+}
 
 // 预设角色列表
 export const PRESET_ROLES = [

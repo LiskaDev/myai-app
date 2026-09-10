@@ -256,7 +256,7 @@ describe('usePromptBuilder - constructPrompt', () => {
 
     it('普通模型读取含图历史时应该降级为纯文字消息', async () => {
         const appState = createMockAppState();
-        appState.globalSettings.model = 'deepseek-v4-flash';
+        appState.globalSettings.model = 'deepseek-flash';
         appState.messages.value = [{
             role: 'user',
             content: '这是之前发送的图片',

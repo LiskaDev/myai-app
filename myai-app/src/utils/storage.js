@@ -17,7 +17,7 @@ export const STORAGE_KEYS = {
 export const DEFAULT_GLOBAL_SETTINGS = {
     baseUrl: 'https://api.deepseek.com',
     apiKey: '',
-    model: 'deepseek-v4-flash',
+    model: 'deepseek-flash',
     userAvatar: '/avatars/default_user.png',
     showLogic: true,
     showInner: true,

@@ -37,7 +37,7 @@ function makeApiResponse(content, finishReason = 'stop', completionTokens = 180)
     };
 }
 
-function makeAppState(model = 'deepseek-v4-flash') {
+function makeAppState(model = 'deepseek-flash') {
     return {
         globalSettings: {
             apiKey: 'test-key',
@@ -111,7 +111,7 @@ describe('推理模型识别', () => {
     });
 
     it('普通对话模型不应被误判', () => {
-        expect(isDiaryReasoningModel('deepseek-v4-flash')).toBe(false);
+        expect(isDiaryReasoningModel('deepseek-flash')).toBe(false);
         expect(isDiaryReasoningModel('anthropic/claude-sonnet-4.6')).toBe(false);
     });
 });

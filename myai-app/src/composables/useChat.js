@@ -93,7 +93,7 @@ export function useChat(appState) {
         }
 
         if (attachedImages.length > 0 && !modelSupportsImages(globalSettings.model || '')) {
-            showToast('当前主模型不支持图片，请选择 DeepSeek V4 Flash Vision', 'error');
+            showToast('当前主模型不支持图片', 'error');
             isSending = false;
             return;
         }
@@ -181,7 +181,7 @@ export function useChat(appState) {
         const apiMessages = await constructPrompt();
 
         // 模型配置
-        const model = globalSettings.model || 'deepseek-v4-flash';
+        const model = globalSettings.model || 'deepseek-flash';
         const modelFamily = detectModelFamily(model);
         const isReasoner = modelIsReasoner(modelFamily, model);
 
