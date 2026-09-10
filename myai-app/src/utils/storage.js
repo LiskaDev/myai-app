@@ -87,13 +87,16 @@ export async function loadFromStorage(onError) {
         // 一次性迁移旧 localStorage 数据
         await migrateFromLocalStorage([IDB_KEYS.GLOBAL, IDB_KEYS.ROLES]);
 
-        const [globalSettings, roleList] = await Promise.all([
+        const [globalSettings, storedRoles] = await Promise.all([
             idbGet(IDB_KEYS.GLOBAL),
             idbGet(IDB_KEYS.ROLES),
         ]);
 
         result.globalSettings = globalSettings;
-        result.roleList = roleList;
+        // 正常格式为对象；同时兼容开发迁移期间可能写入的 JSON 字符串。
+        result.roleList = typeof storedRoles === 'string'
+            ? JSON.parse(storedRoles)
+            : storedRoles;
     } catch (e) {
         if (onError) onError('加载数据失败，数据可能已损坏', e);
         result.error = e;

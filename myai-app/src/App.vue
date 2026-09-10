@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useAppState } from './composables/useAppState';
-import { useChat } from './composables/useChat';
+import { useChat, REGENERATION_MARKER_KEY } from './composables/useChat';
 import { useMemory } from './composables/useMemory';
 import { useTTS } from './composables/useTTS';
 import { useGestures } from './composables/useGestures';
@@ -594,6 +594,12 @@ async function exportData() {
 
 onMounted(async () => {
   await loadData(); setupWatchers(); loadVoices(); await diary.loadDiaries();
+  try {
+    if (sessionStorage.getItem(REGENERATION_MARKER_KEY)) {
+      sessionStorage.removeItem(REGENERATION_MARKER_KEY);
+      showToast('检测到上次重写期间页面被中断，已恢复最近一次完整保存的对话', 'info');
+    }
+  } catch { /* sessionStorage 不可用时忽略 */ }
   if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = loadVoices;
   nextTick(() => { const msgs = messages.value; if (msgs && msgs.length > 0) showHomePage.value = false; });
   setTimeout(() => scrollToBottom(true), 100);

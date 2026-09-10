@@ -1,3 +1,5 @@
+import { toRaw } from 'vue';
+
 /**
  * indexeddb.js — IndexedDB 读写工具
  *
@@ -48,18 +50,22 @@ export async function idbGet(key) {
 export async function idbPut(key, value) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
-        // Vue reactive 对象是 Proxy，IDB structured clone 可能失败；
-        // 先 JSON 序列化剥离 Proxy，得到纯 JS 对象再写入
-        let plain;
-        try {
-            plain = JSON.parse(JSON.stringify(value));
-        } catch {
-            plain = value; // 极端兜底：直接尝试写入
-        }
+        // 调用方传入 Vue 响应式数据时只剥离 Proxy，不再 stringify + parse
+        // 整份角色数据。IndexedDB 自身会执行 structured clone，可显著降低峰值内存。
+        const plain = toRaw(value);
         const tx = db.transaction(STORE, 'readwrite');
-        const req = tx.objectStore(STORE).put({ k: key, v: plain });
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
+        let req;
+        try {
+            req = tx.objectStore(STORE).put({ k: key, v: plain });
+        } catch (error) {
+            reject(error);
+            return;
+        }
+
+        // request 成功只表示请求已执行；必须等事务 complete 才能确认真正提交。
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || req.error);
+        tx.onabort = () => reject(tx.error || req.error || new Error('IndexedDB transaction aborted'));
     });
 }
 

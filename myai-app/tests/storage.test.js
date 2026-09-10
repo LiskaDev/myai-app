@@ -110,6 +110,22 @@ describe('loadFromStorage', () => {
         expect(result.roleList).toEqual(roles);
     });
 
+    it('应该兼容 JSON 字符串格式的角色数据', async () => {
+        const roles = [{ id: '1', name: 'Large Role' }];
+
+        migrateFromLocalStorage.mockResolvedValue(false);
+        idbGet.mockImplementation(async (key) => {
+            if (key === 'myai_global_v1') return { apiKey: 'saved-key' };
+            if (key === 'myai_roles_v1') return JSON.stringify(roles);
+            return null;
+        });
+
+        const result = await loadFromStorage();
+
+        expect(result.error).toBeNull();
+        expect(result.roleList).toEqual(roles);
+    });
+
     it('IDB 读取失败时应该调用 onError', async () => {
         const onError = vi.fn();
         migrateFromLocalStorage.mockResolvedValue(true);

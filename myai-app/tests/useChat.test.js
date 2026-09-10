@@ -30,7 +30,28 @@ function createMockAppState() {
         isThinking: ref(false),
         abortController: ref(null),
         showToast: vi.fn(),
-        saveData: vi.fn(), // 🛡️ 添加 saveData mock
+        saveData: vi.fn().mockResolvedValue(true),
+        suspendAutoSave: vi.fn(),
+        resumeAutoSave: vi.fn().mockResolvedValue(true),
+    };
+}
+
+function createSseResponse(content) {
+    const encoded = new TextEncoder().encode(
+        `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\ndata: [DONE]\n\n`
+    );
+    let consumed = false;
+    return {
+        ok: true,
+        body: {
+            getReader: () => ({
+                read: vi.fn(async () => {
+                    if (consumed) return { done: true, value: undefined };
+                    consumed = true;
+                    return { done: false, value: encoded };
+                }),
+            }),
+        },
     };
 }
 
@@ -243,5 +264,92 @@ describe('useChat - 消息删除', () => {
         expect(() => deleteMessage(-1)).not.toThrow();
         expect(() => deleteMessage(999)).not.toThrow();
         expect(appState.messages.value.length).toBe(1);
+    });
+});
+
+describe('useChat - 事务式重写', () => {
+    beforeEach(() => {
+        global.fetch = vi.fn();
+        sessionStorage.clear();
+    });
+
+    it('成功时应该在可靠保存后替换旧回复', async () => {
+        const appState = createMockAppState();
+        appState.messages.value = [
+            { role: 'user', content: '你好' },
+            { role: 'assistant', content: '旧回复', rawContent: '旧回复' },
+        ];
+        global.fetch.mockResolvedValue(createSseResponse('<inner>新的想法</inner>\n新的回复'));
+
+        const { useChat } = await import('../src/composables/useChat');
+        const result = await useChat(appState).regenerateMessage(1);
+
+        expect(result).toBe(true);
+        expect(appState.messages.value).toHaveLength(2);
+        expect(appState.messages.value[1].rawContent).toContain('新的回复');
+        expect(appState.saveData).toHaveBeenNthCalledWith(1, { force: true });
+        expect(appState.saveData).toHaveBeenNthCalledWith(2, { force: true });
+        expect(appState.suspendAutoSave).toHaveBeenCalledOnce();
+        expect(appState.resumeAutoSave).toHaveBeenCalledWith({ flush: false });
+        expect(sessionStorage.getItem('myai_pending_regeneration_v1')).toBeNull();
+    });
+
+    it('网络失败时应该恢复原回复及其后的消息', async () => {
+        const appState = createMockAppState();
+        const original = [
+            { role: 'user', content: '第一句' },
+            { role: 'assistant', content: '旧回复', rawContent: '旧回复' },
+            { role: 'user', content: '后续消息' },
+        ];
+        appState.messages.value = original.map(message => ({ ...message }));
+        global.fetch.mockRejectedValue(new Error('Network failed'));
+
+        const { useChat } = await import('../src/composables/useChat');
+        const result = await useChat(appState).regenerateMessage(1);
+
+        expect(result).toBe(false);
+        expect(appState.messages.value).toEqual(original);
+        expect(appState.saveData).toHaveBeenCalledTimes(1);
+        expect(appState.resumeAutoSave).toHaveBeenCalledWith({ flush: false });
+        expect(sessionStorage.getItem('myai_pending_regeneration_v1')).toBeNull();
+    });
+
+    it('基线保存失败时不应该删除旧回复或请求模型', async () => {
+        const appState = createMockAppState();
+        appState.messages.value = [
+            { role: 'user', content: '你好' },
+            { role: 'assistant', content: '必须保留的回复' },
+        ];
+        appState.saveData.mockResolvedValueOnce(false);
+
+        const { useChat } = await import('../src/composables/useChat');
+        const result = await useChat(appState).regenerateMessage(1);
+
+        expect(result).toBe(false);
+        expect(appState.messages.value[1].content).toBe('必须保留的回复');
+        expect(global.fetch).not.toHaveBeenCalled();
+        expect(appState.suspendAutoSave).not.toHaveBeenCalled();
+    });
+
+    it('新回复落盘失败时应该回滚为旧回复', async () => {
+        const appState = createMockAppState();
+        appState.messages.value = [
+            { role: 'user', content: '你好' },
+            { role: 'assistant', content: '旧回复', rawContent: '旧回复' },
+        ];
+        appState.saveData
+            .mockResolvedValueOnce(true)
+            .mockResolvedValueOnce(false);
+        global.fetch.mockResolvedValue(createSseResponse('看似完成的新回复'));
+
+        const { useChat } = await import('../src/composables/useChat');
+        const result = await useChat(appState).regenerateMessage(1);
+
+        expect(result).toBe(false);
+        expect(appState.messages.value[1].rawContent).toBe('旧回复');
+        expect(appState.showToast).toHaveBeenCalledWith(
+            expect.stringContaining('已恢复'),
+            'error'
+        );
     });
 });

@@ -18,6 +18,7 @@ import {
 // 🛡️ 超时配置（根据模型类型动态调整）
 const FETCH_TIMEOUT_MS = 30000;          // 普通模型 30 秒
 const REASONER_TIMEOUT_MS = 120000;      // Reasoner 模型 120 秒（思考阶段需要更长时间）
+export const REGENERATION_MARKER_KEY = 'myai_pending_regeneration_v1';
 
 // 🛡️ 发送锁 - 防止快速点击重复发送
 let isSending = false;
@@ -57,6 +58,8 @@ export function useChat(appState) {
         abortController,
         showToast,
         saveData,
+        suspendAutoSave = () => {},
+        resumeAutoSave = () => Promise.resolve(true),
     } = appState;
     const pendingImages = appState.pendingImages || { value: [] };
 
@@ -159,9 +162,10 @@ export function useChat(appState) {
     // 核心聊天函数 - 直连 DeepSeek API
     // options.targetRoleId: 用于防止角色切换时的竞态条件
     async function chat(userMessage, options = {}) {
-        const { targetRoleId = null } = options;
+        const { targetRoleId = null, skipSave = false } = options;
         const role = currentRole.value;
         const initialRoleId = role.id; // 🛡️ 快照当前角色 ID
+        const targetMessages = messages.value; // 🛡️ 固定本轮写入的分支，避免切换角色后误写
         const apiMessages = await constructPrompt();
 
         // 模型配置
@@ -347,8 +351,8 @@ Example format:
             thinkingComplete: false,
             timestamp: Date.now(),
         };
-        messages.value.push(assistantMessage);
-        const msgIndex = messages.value.length - 1;
+        targetMessages.push(assistantMessage);
+        const msgIndex = targetMessages.length - 1;
 
         // 读取流式响应
         const reader = response.body.getReader();
@@ -357,12 +361,33 @@ Example format:
         let fullContent = '';
         let fullThinking = '';
         let tokenUsage = null;
+        let lastRenderAt = 0;
+        let interruptedByRoleChange = false;
+
+        // 将高频 SSE 分片合并后再更新 Vue。避免每个 token 都触发全文解析、
+        // DOM 更新和 roleList 深度监听，尤其降低 iOS WebKit 的瞬时压力。
+        function syncStreamingMessage(force = false) {
+            const now = Date.now();
+            if (!force && now - lastRenderAt < 50) return;
+
+            const liveMessage = targetMessages[msgIndex];
+            if (!liveMessage) return;
+            lastRenderAt = now;
+            liveMessage.rawContent = fullContent;
+
+            const parsed = parseDualLayerResponse(fullContent);
+            liveMessage.thinking = fullThinking || parsed.reasoning || '';
+            liveMessage.thinkingComplete = /<\s*\/\s*think(?:ing)?\s*>/i.test(fullContent);
+            liveMessage.content = parsed.content;
+            liveMessage.inner = parsed.inner;
+        }
 
         while (true) {
             // 🛡️ 每次循环检查角色是否变化
             if (currentRole.value.id !== expectedRoleId) {
                 console.warn('[useChat] 流式传输中角色已切换，中止');
                 abortController.value?.abort();
+                interruptedByRoleChange = true;
                 break;
             }
 
@@ -387,32 +412,13 @@ Example format:
 
                     if (reasoningDelta) {
                         fullThinking += reasoningDelta;
-                        messages.value[msgIndex].thinking = fullThinking;
                     }
 
                     if (delta) {
                         fullContent += delta;
-
-                        // 🛡️ 关键修复：在流式期间也更新 rawContent
-                        messages.value[msgIndex].rawContent = fullContent;
-
-                        const parsed = parseDualLayerResponse(fullContent);
-
-                        // Handle reasoning from content (V3 model fake thinking)
-                        if (parsed.reasoning && !fullThinking) {
-                            messages.value[msgIndex].thinking = parsed.reasoning;
-                        }
-
-                        // CRITICAL: Check if </think> just closed to mark thinkingComplete
-                        // 🛡️ v5.3.1: 容错匹配标签变体（</think >、</ think>、</Think> 等）
-                        if (/<\s*\/\s*think(?:ing)?\s*>/i.test(fullContent)) {
-                            messages.value[msgIndex].thinkingComplete = true;
-                        }
-
-                        // CRITICAL FIX: Do NOT fallback to fullContent!
-                        messages.value[msgIndex].content = parsed.content;
-                        messages.value[msgIndex].inner = parsed.inner;
                     }
+
+                    if (reasoningDelta || delta) syncStreamingMessage();
 
                     // v5.9: 捕获 token 用量
                     if (json.usage) {
@@ -427,17 +433,20 @@ Example format:
             }
         }
 
+        if (interruptedByRoleChange) return false;
+        syncStreamingMessage(true);
+
         // 完成后标记思考完成并保存原始内容（用于编辑）
-        if (messages.value[msgIndex].thinking) {
-            messages.value[msgIndex].thinkingComplete = true;
+        if (targetMessages[msgIndex].thinking) {
+            targetMessages[msgIndex].thinkingComplete = true;
         }
 
         // 保存原始内容用于 Director Mode 编辑
-        messages.value[msgIndex].rawContent = fullContent;
+        targetMessages[msgIndex].rawContent = fullContent;
 
         // v5.9: 保存 token 用量
         if (tokenUsage) {
-            messages.value[msgIndex].tokens = {
+            targetMessages[msgIndex].tokens = {
                 prompt: tokenUsage.prompt_tokens || 0,
                 completion: tokenUsage.completion_tokens || 0,
                 total: tokenUsage.total_tokens || 0,
@@ -447,7 +456,7 @@ Example format:
         // 🛡️ v5.9.3: 流式完成后最终清理 — 确保 content 永远没有 <think>/<inner> 残留
         const finalParsed = parseDualLayerResponse(fullContent);
         if (finalParsed.content) {
-            messages.value[msgIndex].content = finalParsed.content;
+            targetMessages[msgIndex].content = finalParsed.content;
         } else if (fullContent) {
             // fallback: 手动清理（🛡️ 先正规化标签变体，再用 i 旗处理大小写）
             let fallback = normalizeTags(fullContent)
@@ -457,25 +466,25 @@ Example format:
                 .replace(/<inner>[\s\S]*?<\/inner>/gi, '')
                 .replace(/<\/?expr:\w+>/gi, '')
                 .trim();
-            messages.value[msgIndex].content = fallback
+            targetMessages[msgIndex].content = fallback
                 ? formatRoleplayText(fallback)
                 : (fullThinking ? '*(深陷沉思中……)*' : '(内容生成中断，请重试)');
         }
         if (finalParsed.inner) {
-            messages.value[msgIndex].inner = finalParsed.inner;
+            targetMessages[msgIndex].inner = finalParsed.inner;
         }
 
         // 🛡️ 空内容兜底：R1 全部输出在 think 里时
-        if (!messages.value[msgIndex].content?.trim() && fullThinking) {
-            messages.value[msgIndex].content = '*(沉默片刻)*';
+        if (!targetMessages[msgIndex].content?.trim() && fullThinking) {
+            targetMessages[msgIndex].content = '*(沉默片刻)*';
         }
 
         // 🛡️ 拒绝语检测：用 modelAdapter callWithRetry（最多 2 次重试，重试失败用占位兜底）
-        const finalContent = messages.value[msgIndex].content || '';
+        const finalContent = targetMessages[msgIndex].content || '';
         const { rejected } = detectRejection(finalContent);
         if (rejected) {
             console.warn('[SafeGuard] 检测到拒绝回复，启动 callWithRetry...');
-            messages.value.splice(msgIndex, 1); // 删除这条拒绝回复
+            targetMessages.splice(msgIndex, 1); // 删除这条拒绝回复
 
             // 把所有 system 消息合并为一个 systemPrompt 传给 adapter
             // （constructPrompt 会生成多条 system：框架、写作风格、角色人设、记忆卡…，必须全部保留）
@@ -514,7 +523,7 @@ Example format:
 
                 console.log(`[SafeGuard] 重试成功，共 ${attempts} 次`);
                 const parsed = parseDualLayerResponse(retryText);
-                messages.value.push({
+                targetMessages.push({
                     role: 'assistant',
                     content: parsed.content || retryText,
                     rawContent: retryText,
@@ -532,17 +541,18 @@ Example format:
                     `*${roleName}轻轻叹了口气*\n\n"……算了，我们换个话题好吗？"`,
                 ];
                 const fb = FALLBACK[Math.floor(Math.random() * FALLBACK.length)];
-                messages.value.push({ role: 'assistant', content: fb, rawContent: fb, timestamp: Date.now() });
+                targetMessages.push({ role: 'assistant', content: fb, rawContent: fb, timestamp: Date.now() });
             }
         }
 
         // 🔊 自动朗读：AI 回复完成后按用户设置自动播放语音
-        const lastMsg = messages.value[messages.value.length - 1];
+        const lastMsg = targetMessages[targetMessages.length - 1];
         if (lastMsg?.role === 'assistant') {
             autoPlayTTSIfEnabled(lastMsg.rawContent || lastMsg.content || '');
         }
 
-        saveData();
+        if (!skipSave) await saveData();
+        return true;
     }
 
     // 停止生成
@@ -556,42 +566,98 @@ Example format:
         showToast('生成已停止');
     }
 
-    // 重新生成消息
-    function regenerateMessage(index) {
-        // 🛡️ 流式输出时禁止重写，防止双流冲突
-        if (isStreaming.value) {
+    // 重新生成消息：先保全旧记录，再临时生成，成功落盘后才提交替换。
+    async function regenerateMessage(index) {
+        // 🛡️ 请求等待响应头时 isStreaming 仍为 false，因此同时检查发送锁和思考状态
+        if (isStreaming.value || isThinking.value || isSending) {
             showToast('请等待当前回复完成', 'error');
-            return;
+            return false;
         }
-        if (index < 0 || index >= messages.value.length) return;
+        if (index < 0 || index >= messages.value.length) return false;
 
         const msg = messages.value[index];
-        if (msg.role !== 'assistant') return;
+        if (msg.role !== 'assistant') return false;
 
         // 🛡️ 保存当前角色 ID 快照，防止竞态条件
         const targetRoleId = currentRole.value.id;
+        const targetMessages = messages.value;
+        const lastUserMsg = targetMessages
+            .slice(0, index)
+            .filter(message => message.role === 'user')
+            .pop();
+        if (!lastUserMsg) return false;
 
-        // 删除当前消息及之后的所有消息
-        messages.value.splice(index);
+        // 保留被替换消息及其后的完整尾部。网络失败、停止生成或保存失败时原样恢复。
+        const originalTail = targetMessages.slice(index);
+        let autoSaveSuspended = false;
 
-        // 获取最后一条用户消息作为上下文
-        const lastUserMsg = messages.value.filter(m => m.role === 'user').pop();
-        if (lastUserMsg) {
-            isThinking.value = true;
-            // 🛡️ 传递角色 ID 用于验证
-            chat(lastUserMsg.content, { targetRoleId }).catch(e => {
-                if (e.name !== 'AbortError') {
-                    const { msg, isInsufficient } = getFriendlyError(e);
+        isSending = true;
+        isThinking.value = true;
+
+        try {
+            // 先确保旧回复已经可靠落盘；如果页面随后被 iOS 回收，仍能恢复旧版本。
+            const baselineSaved = await saveData({ force: true });
+            if (baselineSaved === false) {
+                const error = new Error('旧对话尚未保存成功，已取消重写以保护数据');
+                error.code = 'STORAGE_SAVE_FAILED';
+                throw error;
+            }
+
+            try {
+                sessionStorage.setItem(REGENERATION_MARKER_KEY, JSON.stringify({
+                    roleId: targetRoleId,
+                    startedAt: Date.now(),
+                }));
+            } catch { /* sessionStorage 不可用时不影响重写 */ }
+
+            suspendAutoSave();
+            autoSaveSuspended = true;
+            targetMessages.splice(index);
+
+            const completed = await chat(lastUserMsg.content, {
+                targetRoleId,
+                skipSave: true,
+            });
+            if (!completed) {
+                const error = new Error('角色已切换，重写已取消');
+                error.name = 'AbortError';
+                throw error;
+            }
+
+            // 只有完整的新回复写入 IDB 后，才把本次重写视为成功。
+            const resultSaved = await saveData({ force: true });
+            if (resultSaved === false) {
+                const error = new Error('新回复保存失败，已恢复重写前的内容');
+                error.code = 'STORAGE_SAVE_FAILED';
+                throw error;
+            }
+            return true;
+        } catch (error) {
+            // 始终操作最初捕获的分支数组，避免切换角色后误改新角色。
+            targetMessages.splice(index, targetMessages.length - index, ...originalTail);
+
+            if (error.name !== 'AbortError') {
+                if (error.code === 'STORAGE_SAVE_FAILED') {
+                    showToast(error.message, 'error');
+                } else {
+                    const { msg: friendlyMsg, isInsufficient } = getFriendlyError(error);
                     const rechargeUrl = isInsufficient ? getRechargeUrl(globalSettings.baseUrl) : '';
-                    showToast(msg, 'error', rechargeUrl ? {
+                    showToast(friendlyMsg, 'error', rechargeUrl ? {
                         label: '去充值 →',
                         callback: () => window.open(rechargeUrl, '_blank'),
                     } : null);
                 }
-            }).finally(() => {
-                isStreaming.value = false;
-                isThinking.value = false;
-            });
+            }
+            return false;
+        } finally {
+            try { sessionStorage.removeItem(REGENERATION_MARKER_KEY); } catch { /* ignore */ }
+            if (autoSaveSuspended) {
+                // 成功时新版本已经落盘；失败时基线旧版本仍在盘中，均无需重复大对象写入。
+                await resumeAutoSave({ flush: false });
+            }
+            isStreaming.value = false;
+            isThinking.value = false;
+            isSending = false;
         }
     }
 

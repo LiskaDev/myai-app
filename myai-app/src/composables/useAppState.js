@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch } from 'vue';
+import { ref, reactive, computed, watch, toRaw } from 'vue';
 import { PRESET_ROLES, createNewRoleData, migrateRoleMemoryFields, DEPRECATED_MODEL_IDS, DEPRECATED_MODEL_FALLBACK } from './presets';
 import { releaseBackgroundLock } from './useTimeline';
 import {
@@ -178,12 +178,59 @@ export function useAppState() {
         confirmModal.show = false;
     }
 
-    // saveData 保持同步签名（调用方无需修改），内部 fire-and-forget 异步写 IDB
-    function saveData() {
-        // onError 在 saveToStorage 内部触发，这里只处理未预期的 reject
-        saveToStorage(globalSettings, roleList.value, (msg) => showToast(msg, 'error'))
-            .then(() => { refreshStorageUsage(); })
-            .catch(() => showToast('⚠️ 数据保存异常，请刷新重试', 'error'));
+    // 大数据保存协调器：同一时间只允许一次完整 IDB 写入。
+    // 写入期间到达的多个请求合并成下一轮，避免 iOS 同时复制多份角色数据。
+    let saveLoopPromise = null;
+    let saveRequested = false;
+    let autoSaveSuspendDepth = 0;
+    let autoSaveDirty = false;
+
+    function saveData(options = {}) {
+        const force = options?.force === true;
+        if (autoSaveSuspendDepth > 0 && !force) {
+            autoSaveDirty = true;
+            return Promise.resolve(true);
+        }
+
+        saveRequested = true;
+        if (!saveLoopPromise) {
+            saveLoopPromise = (async () => {
+                let allSaved = true;
+                do {
+                    saveRequested = false;
+                    const saved = await saveToStorage(
+                        toRaw(globalSettings),
+                        toRaw(roleList.value),
+                        (msg) => showToast(msg, 'error')
+                    );
+                    allSaved = allSaved && saved;
+                } while (saveRequested);
+
+                refreshStorageUsage();
+                return allSaved;
+            })()
+                .catch(() => {
+                    showToast('⚠️ 数据保存异常，请刷新重试', 'error');
+                    return false;
+                })
+                .finally(() => {
+                    saveLoopPromise = null;
+                });
+        }
+        return saveLoopPromise;
+    }
+
+    function suspendAutoSave() {
+        autoSaveSuspendDepth += 1;
+        debouncedSave.cancel();
+    }
+
+    function resumeAutoSave({ flush = true } = {}) {
+        if (autoSaveSuspendDepth > 0) autoSaveSuspendDepth -= 1;
+        if (autoSaveSuspendDepth > 0 || !autoSaveDirty) return Promise.resolve(true);
+
+        autoSaveDirty = false;
+        return flush ? saveData({ force: true }) : Promise.resolve(true);
     }
 
     async function loadData() {
@@ -460,18 +507,34 @@ export function useAppState() {
     // 🛡️ 简单的 debounce 实现
     function debounce(fn, delay) {
         let timeoutId = null;
-        return function (...args) {
+        const debounced = function (...args) {
             if (timeoutId) clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => fn.apply(this, args), delay);
+            timeoutId = setTimeout(() => {
+                timeoutId = null;
+                fn.apply(this, args);
+            }, delay);
         };
+        debounced.cancel = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            timeoutId = null;
+        };
+        return debounced;
     }
 
     // 设置 watchers - 使用 debounce 减少频繁写入
     const debouncedSave = debounce(saveData, 500);
 
+    function requestAutoSave() {
+        if (autoSaveSuspendDepth > 0) {
+            autoSaveDirty = true;
+            return;
+        }
+        debouncedSave();
+    }
+
     function setupWatchers() {
-        watch(() => roleList.value, debouncedSave, { deep: true });
-        watch(globalSettings, debouncedSave, { deep: true });
+        watch(() => roleList.value, requestAutoSave, { deep: true });
+        watch(globalSettings, requestAutoSave, { deep: true });
     }
 
     const appStateObj = {
@@ -508,6 +571,8 @@ export function useAppState() {
         handleConfirm,
         handleCancel,
         saveData,
+        suspendAutoSave,
+        resumeAutoSave,
         loadData,
         switchRole,
         createNewRole,
