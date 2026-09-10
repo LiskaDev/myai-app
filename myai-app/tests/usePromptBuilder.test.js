@@ -237,7 +237,7 @@ describe('usePromptBuilder - constructPrompt', () => {
 
     it('视觉模型应该把用户图片组装成 OpenAI 兼容内容块', async () => {
         const appState = createMockAppState();
-        appState.globalSettings.model = 'deepseek-v4-flash-vision-exp';
+        appState.globalSettings.model = 'deepseek-flash';
         appState.messages.value = [{
             role: 'user',
             content: '这张图里有什么？',
@@ -256,7 +256,7 @@ describe('usePromptBuilder - constructPrompt', () => {
 
     it('普通模型读取含图历史时应该降级为纯文字消息', async () => {
         const appState = createMockAppState();
-        appState.globalSettings.model = 'deepseek-flash';
+        appState.globalSettings.model = 'deepseek-v4-pro';
         appState.messages.value = [{
             role: 'user',
             content: '这是之前发送的图片',

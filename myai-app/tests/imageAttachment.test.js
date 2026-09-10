@@ -7,10 +7,11 @@ import {
 } from '../src/utils/imageAttachment.js';
 
 describe('图片附件模型与文件校验', () => {
-    it('只对 DeepSeek 实验视觉模型启用图片', () => {
+    it('应该对 DeepSeek V4.1 Flash 启用图片', () => {
         expect(modelSupportsImages(DEEPSEEK_VISION_MODEL)).toBe(true);
         expect(modelSupportsImages(DEEPSEEK_VISION_MODEL.toUpperCase())).toBe(true);
-        expect(modelSupportsImages('deepseek-flash')).toBe(false);
+        expect(modelSupportsImages('deepseek-v4-flash-vision-exp')).toBe(false);
+        expect(modelSupportsImages('deepseek-ai/DeepSeek-V4-Flash')).toBe(false);
         expect(modelSupportsImages('')).toBe(false);
     });
 

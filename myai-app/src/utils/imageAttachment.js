@@ -3,7 +3,8 @@
  * 图片在浏览器本地缩放并转为 Data URL，随后随角色消息一起保存到 IndexedDB。
  */
 
-export const DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash-vision-exp';
+// DeepSeek V4.1 folds the retired experimental Vision route into deepseek-flash.
+export const DEEPSEEK_VISION_MODEL = 'deepseek-flash';
 export const MAX_IMAGES_PER_MESSAGE = 4;
 export const MAX_SOURCE_IMAGE_BYTES = 12 * 1024 * 1024;
 export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];

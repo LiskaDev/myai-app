@@ -184,7 +184,7 @@ describe('useChat - 消息处理', () => {
 
     it('视觉模型应该允许只发送图片并清空待发送区', async () => {
         const appState = createMockAppState();
-        appState.globalSettings.model = 'deepseek-v4-flash-vision-exp';
+        appState.globalSettings.model = 'deepseek-flash';
         appState.pendingImages.value = [{
             id: 'image-1', name: 'test.png', mimeType: 'image/png',
             dataUrl: 'data:image/png;base64,AAAA', width: 10, height: 10, size: 4,
