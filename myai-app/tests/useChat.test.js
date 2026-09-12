@@ -55,6 +55,34 @@ function createSseResponse(content) {
     };
 }
 
+function createReasoningOnlySseResponse(reasoning = '正在分析', finishReason = 'length') {
+    const encoded = new TextEncoder().encode(
+        `data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: reasoning }, finish_reason: null }] })}\n\n`
+        + `data: ${JSON.stringify({
+            choices: [{ delta: {}, finish_reason: finishReason }],
+            usage: {
+                prompt_tokens: 100,
+                completion_tokens: 4096,
+                total_tokens: 4196,
+                completion_tokens_details: { reasoning_tokens: 4096 },
+            },
+        })}\n\ndata: [DONE]\n\n`
+    );
+    let consumed = false;
+    return {
+        ok: true,
+        body: {
+            getReader: () => ({
+                read: vi.fn(async () => {
+                    if (consumed) return { done: true, value: undefined };
+                    consumed = true;
+                    return { done: false, value: encoded };
+                }),
+            }),
+        },
+    };
+}
+
 describe('useChat - 发送锁机制', () => {
     it('不应该在 isStreaming 时发送消息', async () => {
         const appState = createMockAppState();
@@ -148,6 +176,42 @@ describe('useChat - 消息处理', () => {
         expect(appState.suspendAutoSave).toHaveBeenCalledTimes(1);
         expect(appState.resumeAutoSave).toHaveBeenCalledTimes(1);
         expect(appState.resumeAutoSave).toHaveBeenCalledWith({ flush: true });
+    });
+
+    it('DeepSeek 只返回思考时应该提高预算自动重试一次', async () => {
+        const appState = createMockAppState();
+        appState.globalSettings.model = 'deepseek-flash';
+        appState.userInput.value = '请继续剧情';
+        global.fetch = vi.fn()
+            .mockResolvedValueOnce(createReasoningOnlySseResponse())
+            .mockResolvedValueOnce(createSseResponse('补全成功的角色回复'));
+
+        const { useChat } = await import('../src/composables/useChat');
+        await useChat(appState).sendMessage();
+
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        const firstBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+        const retryBody = JSON.parse(global.fetch.mock.calls[1][1].body);
+        expect(firstBody.max_tokens).toBe(4096);
+        expect(retryBody.max_tokens).toBe(8192);
+        expect(appState.messages.value.at(-1).content).toContain('补全成功');
+        expect(appState.messages.value.some(message => message.content?.includes('沉默片刻'))).toBe(false);
+    });
+
+    it('自动重试仍无正文时应该停止重试并给出明确提示', async () => {
+        const appState = createMockAppState();
+        appState.globalSettings.model = 'deepseek-flash';
+        appState.userInput.value = '请继续剧情';
+        global.fetch = vi.fn()
+            .mockResolvedValueOnce(createReasoningOnlySseResponse())
+            .mockResolvedValueOnce(createReasoningOnlySseResponse());
+
+        const { useChat } = await import('../src/composables/useChat');
+        await useChat(appState).sendMessage();
+
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(appState.messages.value.at(-1).content).toContain('未生成完整');
+        expect(appState.messages.value.at(-1).interrupted).toBe(true);
     });
 
     it('发送后应该清空输入框', async () => {

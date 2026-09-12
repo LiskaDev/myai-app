@@ -62,6 +62,12 @@ export function useChat(appState) {
         resumeAutoSave = () => Promise.resolve(true),
     } = appState;
     const pendingImages = appState.pendingImages || { value: [] };
+    const requestedEmptyReplySimulations = import.meta.env.DEV && typeof window !== 'undefined'
+        ? Number.parseInt(new URLSearchParams(window.location.search).get('simulateEmptyReply') || '0', 10)
+        : 0;
+    let debugEmptyReplyRemaining = Number.isFinite(requestedEmptyReplySimulations)
+        ? Math.min(Math.max(requestedEmptyReplySimulations, 0), 2)
+        : 0;
 
     // 导入拆分后的子模块
     const { constructPrompt } = usePromptBuilder(appState);
@@ -174,7 +180,12 @@ export function useChat(appState) {
     // 核心聊天函数 - 直连 DeepSeek API
     // options.targetRoleId: 用于防止角色切换时的竞态条件
     async function chat(userMessage, options = {}) {
-        const { targetRoleId = null, skipSave = false } = options;
+        const {
+            targetRoleId = null,
+            skipSave = false,
+            emptyContentRetry = false,
+            maxTokensOverride = 0,
+        } = options;
         const role = currentRole.value;
         const initialRoleId = role.id; // 🛡️ 快照当前角色 ID
         const targetMessages = messages.value; // 🛡️ 固定本轮写入的分支，避免切换角色后误写
@@ -287,6 +298,21 @@ Example format:
         }
         // 'auto' 模式：保持用户设置的参数，不做调整
 
+        // DeepSeek thinking and visible content share one output budget. Preserve
+        // the current thinking behaviour, but leave enough room for the final roleplay text.
+        if (modelFamily === 'deepseek') {
+            const minimumBudget = responseLength === 'long' ? 8192 : 4096;
+            effectiveMaxTokens = Math.max(effectiveMaxTokens || 0, minimumBudget);
+        }
+        if (maxTokensOverride > 0) {
+            effectiveMaxTokens = Math.max(effectiveMaxTokens || 0, maxTokensOverride);
+        }
+
+        // Local development fault injection for manually verifying the recovery UI.
+        // Example: ?simulateEmptyReply=1 (retry succeeds) or =2 (both attempts fail).
+        const simulateReasoningOnly = import.meta.env.DEV && debugEmptyReplyRemaining > 0;
+        if (simulateReasoningOnly) debugEmptyReplyRemaining -= 1;
+
         // 创建 AbortController - 🛡️ 组合用户中止和超时信号
         abortController.value = new AbortController();
 
@@ -371,8 +397,9 @@ Example format:
         const decoder = new TextDecoder('utf-8');
         let buffer = '';
         let fullContent = '';
-        let fullThinking = '';
+        let fullThinking = simulateReasoningOnly ? '[本地测试] 模拟输出预算被思考过程耗尽' : '';
         let tokenUsage = null;
+        let finishReason = null;
         let lastRenderAt = 0;
         let interruptedByRoleChange = false;
 
@@ -422,11 +449,11 @@ Example format:
                     const delta = json.choices?.[0]?.delta?.content;
                     const reasoningDelta = json.choices?.[0]?.delta?.reasoning_content;
 
-                    if (reasoningDelta) {
+                    if (!simulateReasoningOnly && reasoningDelta) {
                         fullThinking += reasoningDelta;
                     }
 
-                    if (delta) {
+                    if (!simulateReasoningOnly && delta) {
                         fullContent += delta;
                     }
 
@@ -435,6 +462,9 @@ Example format:
                     // v5.9: 捕获 token 用量
                     if (json.usage) {
                         tokenUsage = json.usage;
+                    }
+                    if (json.choices?.[0]?.finish_reason) {
+                        finishReason = json.choices[0].finish_reason;
                     }
                 } catch (e) {
                     // 记录流式解析错误（仅开发模式详细日志）
@@ -446,6 +476,7 @@ Example format:
         }
 
         if (interruptedByRoleChange) return false;
+        if (simulateReasoningOnly) finishReason = 'length';
         syncStreamingMessage(true);
 
         // 完成后标记思考完成并保存原始内容（用于编辑）
@@ -462,11 +493,41 @@ Example format:
                 prompt: tokenUsage.prompt_tokens || 0,
                 completion: tokenUsage.completion_tokens || 0,
                 total: tokenUsage.total_tokens || 0,
+                reasoning: tokenUsage.completion_tokens_details?.reasoning_tokens || 0,
             };
         }
+        if (finishReason) targetMessages[msgIndex].finishReason = finishReason;
 
         // 🛡️ v5.9.3: 流式完成后最终清理 — 确保 content 永远没有 <think>/<inner> 残留
         const finalParsed = parseDualLayerResponse(fullContent);
+
+        // A thinking model may consume the complete output budget before it emits
+        // final content. Detect this before applying any display fallback, otherwise
+        // a placeholder could be mistaken for a valid assistant reply.
+        const hasThinkingWithoutContent = !finalParsed.content?.trim()
+            && Boolean(fullThinking || finalParsed.reasoning);
+        if (hasThinkingWithoutContent) {
+            if (!emptyContentRetry) {
+                targetMessages.splice(msgIndex, 1);
+                isStreaming.value = false;
+                isThinking.value = true;
+                showToast('模型只返回了思考过程，正在自动补全回复…', 'info');
+                return chat(userMessage, {
+                    targetRoleId: expectedRoleId,
+                    skipSave,
+                    emptyContentRetry: true,
+                    maxTokensOverride: Math.max(effectiveMaxTokens || 0, 8192),
+                });
+            }
+
+            targetMessages[msgIndex].content = '⚠️ 本次回复未生成完整，请点击“重写”重试。';
+            targetMessages[msgIndex].interrupted = true;
+            const error = new Error('模型连续两次只返回思考过程，没有生成正文');
+            error.code = 'EMPTY_FINAL_CONTENT';
+            error.finishReason = finishReason;
+            throw error;
+        }
+
         if (finalParsed.content) {
             targetMessages[msgIndex].content = finalParsed.content;
         } else if (fullContent) {
@@ -484,11 +545,6 @@ Example format:
         }
         if (finalParsed.inner) {
             targetMessages[msgIndex].inner = finalParsed.inner;
-        }
-
-        // 🛡️ 空内容兜底：R1 全部输出在 think 里时
-        if (!targetMessages[msgIndex].content?.trim() && fullThinking) {
-            targetMessages[msgIndex].content = '*(沉默片刻)*';
         }
 
         // 🛡️ 拒绝语检测：用 modelAdapter callWithRetry（最多 2 次重试，重试失败用占位兜底）
