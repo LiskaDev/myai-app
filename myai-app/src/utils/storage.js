@@ -46,6 +46,8 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     showTokens: false,
     // v6.0: 后台智能分析开关
     enableSmartAnalysis: true,
+    // 自动思念日记（离开超过 8 小时后生成）
+    autoDiaryEnabled: true,
     // v6.1: 聊天字体大小
     chatFontSize: 1.0,
     // v6.x: 聊天行间距（1.2=紧凑, 1.6=默认, 2.2=宽松）

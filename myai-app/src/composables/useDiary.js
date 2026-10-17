@@ -478,6 +478,7 @@ ${chatContext}${prevDiaryContext}
      * 不需要对话素材，基于角色性格和等待情绪生成
      */
     async function generateAbsenceDiary(role, hoursAway, messages = []) {
+        if (globalSettings.autoDiaryEnabled === false) return null;
         if (isGenerating.value) return null;
         if (!globalSettings.apiKey) return null;
 

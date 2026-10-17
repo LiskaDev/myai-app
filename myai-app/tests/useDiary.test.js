@@ -37,12 +37,13 @@ function makeApiResponse(content, finishReason = 'stop', completionTokens = 180)
     };
 }
 
-function makeAppState(model = 'deepseek-flash') {
+function makeAppState(model = 'deepseek-flash', autoDiaryEnabled = true) {
     return {
         globalSettings: {
             apiKey: 'test-key',
             baseUrl: 'https://api.example.com/v1',
             model,
+            autoDiaryEnabled,
         },
         showToast: vi.fn(),
     };
@@ -221,5 +222,15 @@ describe('日记生成与自动重试', () => {
         expect(entry.isAbsenceDiary).toBe(true);
         expect(entry.content).toContain(COMPLETE_BODY_TEXT);
         expect(idbPut).toHaveBeenCalledTimes(1);
+    });
+
+    it('全局关闭自动私密日记后不应该发起思念日记请求', async () => {
+        const diary = useDiary(makeAppState('deepseek-flash', false));
+
+        const entry = await diary.generateAbsenceDiary(makeRole(), 12, makeMessages());
+
+        expect(entry).toBeNull();
+        expect(fetch).not.toHaveBeenCalled();
+        expect(idbPut).not.toHaveBeenCalled();
     });
 });

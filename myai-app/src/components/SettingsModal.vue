@@ -998,6 +998,14 @@ function showLocalToast(msg, type = 'info') {
 
               <div class="toggle-row">
                 <div>
+                  <div class="toggle-label">📔 自动私密日记</div>
+                  <div class="toggle-desc">离开超过 8 小时后，角色自动写一篇思念日记（额外消耗 Token）</div>
+                </div>
+                <div class="toggle-switch" :class="{ active: globalSettings.autoDiaryEnabled !== false }" @click="globalSettings.autoDiaryEnabled = globalSettings.autoDiaryEnabled === false"></div>
+              </div>
+
+              <div class="toggle-row">
+                <div>
                   <div class="toggle-label">🔊 音效</div>
                   <div class="toggle-desc">UI 交互音效和 AI 回复提示音</div>
                 </div>

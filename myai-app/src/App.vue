@@ -8,7 +8,7 @@ import { useGestures } from './composables/useGestures';
 import { useBranch } from './composables/useBranch';
 import { useSoundEffects } from './composables/useSoundEffects';
 import { useDiary } from './composables/useDiary';
-import { useActiveMessage } from './composables/useActiveMessage';
+import { isAutoDiaryEnabled, useActiveMessage } from './composables/useActiveMessage';
 import { useBackgroundTasks } from './composables/useBackgroundTasks';
 import { extractExpression, parseDualLayerResponse } from './utils/textParser';
 import { idbClearAll } from './utils/indexeddb';
@@ -607,7 +607,7 @@ onMounted(async () => {
   setTimeout(async () => {
     const sent = await activeMessage.checkAndSend(diary);
     if (sent) { await nextTick(); scrollToBottom(true); }
-    const unread = diary.getUnreadDiaries();
+    const unread = isAutoDiaryEnabled(globalSettings) ? diary.getUnreadDiaries() : [];
     if (unread.length > 0) {
       if (showSettings.value) { const stopWatch = watch(showSettings, (val) => { if (!val) { diaryDisplayList.value = unread; showDiaryModal.value = true; stopWatch(); } }); }
       else { diaryDisplayList.value = unread; showDiaryModal.value = true; }
