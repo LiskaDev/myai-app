@@ -97,12 +97,12 @@ function finish() {
   max-width: 420px;
   width: 100%;
   background: linear-gradient(145deg, rgba(26, 26, 50, 0.98), rgba(22, 33, 62, 0.98));
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  border: 1px solid rgba(191, 91, 59, 0.3);
   border-radius: 24px;
   padding: 2rem;
   text-align: center;
   position: relative;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(191, 91, 59, 0.1);
   animation: cardSlideUp 0.5s ease;
 }
 
@@ -129,11 +129,11 @@ function finish() {
 .step-dot.active {
   width: 24px;
   border-radius: 4px;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
+  background: linear-gradient(135deg, #bf5b3b, #a14a2e);
 }
 
 .step-dot.done {
-  background: rgba(99, 102, 241, 0.5);
+  background: rgba(191, 91, 59, 0.5);
 }
 
 .step-content {
@@ -148,13 +148,13 @@ function finish() {
 .step-icon {
   font-size: 3.5rem;
   margin-bottom: 1rem;
-  filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.3));
+  filter: drop-shadow(0 0 12px rgba(191, 91, 59, 0.3));
 }
 
 .step-title {
   font-size: 1.3rem;
   font-weight: 700;
-  color: #e0d4ff;
+  color: #a14a2e;
   margin-bottom: 0.75rem;
 }
 
@@ -167,9 +167,9 @@ function finish() {
 
 .step-tip {
   font-size: 0.78rem;
-  color: #6366f1;
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.15);
+  color: #bf5b3b;
+  background: rgba(191, 91, 59, 0.08);
+  border: 1px solid rgba(191, 91, 59, 0.15);
   border-radius: 10px;
   padding: 0.5rem 0.75rem;
   margin-bottom: 1.5rem;
@@ -194,12 +194,12 @@ function finish() {
 
 .skip-btn:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #c4b5fd;
+  color: #bf5b3b;
 }
 
 .next-btn {
   padding: 0.6rem 2rem;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
+  background: linear-gradient(135deg, #bf5b3b, #a14a2e);
   border: none;
   border-radius: 12px;
   color: white;
@@ -212,7 +212,7 @@ function finish() {
 
 .next-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 16px rgba(191, 91, 59, 0.4);
 }
 
 .step-count {

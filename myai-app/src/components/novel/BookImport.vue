@@ -1222,7 +1222,7 @@ function finish() {
 }
 
 /* ── Count Slider ── */
-.count-slider { width: 100%; accent-color: #8b5cf6; margin: 8px 0 4px; }
+.count-slider { width: 100%; accent-color: #a14a2e; margin: 8px 0 4px; }
 .slider-range-hint {
   display: flex; justify-content: space-between;
   font-size: 10px; color: rgba(255,255,255,0.3);

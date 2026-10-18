@@ -3,6 +3,7 @@ import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
 import { parseDualLayerResponse } from '../utils/textParser';
 import { useLongPress } from '../composables/useGestures';
+import { uiStyle } from '../composables/useUiStyle';
 import BranchSwitcher from './BranchSwitcher.vue';
 
 const props = defineProps({
@@ -30,6 +31,9 @@ const props = defineProps({
   branches: { type: Array, default: () => [] },
   currentBranchId: { type: String, default: 'branch-main' }
 });
+
+// 原版风格下，占位头像沿用 👤 emoji
+const isClassicUi = computed(() => uiStyle.value === 'classic');
 
 const emit = defineEmits([
   'toggle-select',
@@ -545,7 +549,7 @@ function isCurrentMatch(originalIndex) {
               <div v-if="globalSettings.userAvatar" class="avatar flex-shrink-0">
                 <img :src="globalSettings.userAvatar" alt="User Avatar" class="w-full h-full rounded-full object-cover" @error="$event.target.style.display='none'">
               </div>
-              <div v-else class="avatar-placeholder avatar-user text-white flex-shrink-0">👤</div>
+              <div v-else class="avatar-placeholder avatar-user flex-shrink-0">{{ isClassicUi ? '👤' : '你' }}</div>
             </div>
           </div>
         </template>
@@ -566,7 +570,7 @@ function isCurrentMatch(originalIndex) {
                 <img :src="currentRole.avatar" alt="AI Avatar" class="w-full h-full rounded-full object-cover" @error="$event.target.style.display='none'">
               </div>
               <div v-else
-                   class="avatar-placeholder avatar-ai text-white flex-shrink-0 expr-avatar"
+                   class="avatar-placeholder avatar-ai flex-shrink-0 expr-avatar"
                    :class="[parsedMessages[visibleIndex]?.expression ? 'expr-' + parsedMessages[visibleIndex].expression : '',
                             getOriginalIndex(visibleIndex) === messages.length - 1 ? 'expr-latest' : '']">🎭</div>
 
@@ -724,12 +728,25 @@ function isCurrentMatch(originalIndex) {
 
 /* ── 聊天滚动区 ── */
 .chat-scroll-area {
-  padding: 20px 16px 12px;
+  padding: 22px 18px 18px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   background: var(--paper);
   -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 900px) {
+  .chat-scroll-area { padding: 28px 28px 20px; }
+
+  /* 宽屏下消息收进一个可读列，避免长行横穿整个屏幕 */
+  .message-bubble,
+  .msg-ai,
+  .welcome-screen {
+    width: 100%;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 .chat-scroll-area::-webkit-scrollbar {
@@ -788,7 +805,8 @@ function isCurrentMatch(originalIndex) {
   border-radius: 50%;
   flex-shrink: 0;
   margin-top: 2px;
-  border: 1.5px solid var(--border-accent, rgba(196,150,58,0.35));
+  border: 1.5px solid var(--paper-card);
+  box-shadow: 0 2px 8px -2px var(--shadow-lg);
   transition: all 0.3s;
 }
 
@@ -802,24 +820,23 @@ function isCurrentMatch(originalIndex) {
 
 [data-theme="light"] .avatar,
 [data-theme="light"] .avatar-placeholder {
-  background: linear-gradient(135deg, #c4b8ae, #9e8478);
-  border-color: rgba(196, 150, 58, 0.35);
+  background: linear-gradient(140deg, var(--glow-1), var(--glow-2));
+  border-color: var(--paper-card);
 }
 
 [data-theme="dark"] .avatar,
 [data-theme="dark"] .avatar-placeholder {
-  background: linear-gradient(135deg, #a090e0, #6040c0);
-  border-color: rgba(139, 120, 255, 0.3);
-  box-shadow: 0 0 8px rgba(139, 120, 255, 0.2);
+  background: linear-gradient(140deg, var(--glow-1), var(--glow-2));
+  border-color: var(--paper-card);
 }
 
 /* ── 打字指示器气泡 ── */
 .typing-bubble {
   background: var(--ai-bubble-bg);
   border: 1px solid var(--ai-bubble-border);
-  border-radius: 4px 16px 16px 16px;
-  padding: 10px 14px;
-  box-shadow: 0 1px 6px var(--shadow);
+  border-radius: 16px 16px 16px 5px;
+  padding: 12px 16px;
+  box-shadow: 0 1px 2px var(--shadow);
   transition: background 0.3s;
 }
 

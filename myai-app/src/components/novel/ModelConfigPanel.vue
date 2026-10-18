@@ -77,7 +77,7 @@ function save() {
 <style scoped>
 .mcp-panel {
   background: rgba(15, 10, 25, 0.97);
-  border: 1px solid rgba(139, 92, 246, 0.35);
+  border: 1px solid rgba(191, 91, 59, 0.35);
   border-radius: 14px;
   padding: 18px 20px 16px;
   margin: 10px 0;
@@ -109,7 +109,7 @@ function save() {
   transition: border-color 0.2s;
   box-sizing: border-box;
 }
-.mcp-input:focus { border-color: rgba(139, 92, 246, 0.5); }
+.mcp-input:focus { border-color: rgba(191, 91, 59, 0.5); }
 .mcp-key-row { display: flex; gap: 6px; align-items: center; }
 .mcp-key-input { flex: 1; }
 .mcp-eye-btn {
@@ -144,7 +144,7 @@ function save() {
 .mcp-cancel:hover { border-color: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.6); }
 .mcp-save {
   padding: 6px 20px;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.85), rgba(59, 130, 246, 0.75));
+  background: linear-gradient(135deg, rgba(191, 91, 59, 0.85), rgba(59, 130, 246, 0.75));
   border: none;
   border-radius: 10px;
   color: #fff;
@@ -153,5 +153,5 @@ function save() {
   cursor: pointer;
   transition: all 0.2s;
 }
-.mcp-save:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3); }
+.mcp-save:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(191, 91, 59, 0.3); }
 </style>

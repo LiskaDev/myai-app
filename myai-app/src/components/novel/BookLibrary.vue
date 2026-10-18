@@ -147,7 +147,7 @@ function bookTags(book) {
 
 .empty-icon {
   font-size: 52px;
-  filter: drop-shadow(0 0 16px rgba(139, 92, 246, 0.3));
+  filter: drop-shadow(0 0 16px rgba(191, 91, 59, 0.3));
   margin-bottom: 4px;
 }
 
@@ -167,7 +167,7 @@ function bookTags(book) {
 .import-btn-main {
   margin-top: 16px;
   padding: 12px 32px;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.8), rgba(59, 130, 246, 0.8));
+  background: linear-gradient(135deg, rgba(191, 91, 59, 0.8), rgba(59, 130, 246, 0.8));
   border: none;
   border-radius: 24px;
   color: #fff;
@@ -183,7 +183,7 @@ function bookTags(book) {
 
 .import-btn-main:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.35);
+  box-shadow: 0 8px 24px rgba(191, 91, 59, 0.35);
 }
 
 /* ── Library Header ── */
@@ -202,8 +202,8 @@ function bookTags(book) {
 
 .import-btn-sm {
   padding: 7px 18px;
-  background: rgba(139, 92, 246, 0.15);
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: rgba(191, 91, 59, 0.15);
+  border: 1px solid rgba(191, 91, 59, 0.3);
   border-radius: 20px;
   color: rgba(192, 132, 252, 0.9);
   font-size: 13px;
@@ -213,8 +213,8 @@ function bookTags(book) {
 }
 
 .import-btn-sm:hover {
-  background: rgba(139, 92, 246, 0.25);
-  border-color: rgba(139, 92, 246, 0.5);
+  background: rgba(191, 91, 59, 0.25);
+  border-color: rgba(191, 91, 59, 0.5);
 }
 
 /* ── Book Grid ── */
@@ -247,16 +247,16 @@ function bookTags(book) {
 .book-card:hover {
   transform: translateY(-5px);
   background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(139, 92, 246, 0.35);
+  border-color: rgba(191, 91, 59, 0.35);
   box-shadow:
-    0 10px 32px rgba(139, 92, 246, 0.14),
-    0 0 0 1px rgba(139, 92, 246, 0.18);
+    0 10px 32px rgba(191, 91, 59, 0.14),
+    0 0 0 1px rgba(191, 91, 59, 0.18);
 }
 
 .book-cover {
   font-size: 44px;
   margin-bottom: 14px;
-  filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.2));
+  filter: drop-shadow(0 0 12px rgba(191, 91, 59, 0.2));
   line-height: 1;
 }
 
@@ -298,8 +298,8 @@ function bookTags(book) {
 
 .book-tag {
   padding: 2px 7px;
-  background: rgba(139, 92, 246, 0.1);
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  background: rgba(191, 91, 59, 0.1);
+  border: 1px solid rgba(191, 91, 59, 0.2);
   border-radius: 8px;
   font-size: 10px;
   color: rgba(192, 132, 252, 0.75);
@@ -346,8 +346,8 @@ function bookTags(book) {
 
 .book-menu-btn:hover,
 .book-menu-btn.active {
-  background: rgba(139, 92, 246, 0.2);
-  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(191, 91, 59, 0.2);
+  border-color: rgba(191, 91, 59, 0.4);
   color: rgba(192, 132, 252, 0.9);
 }
 
@@ -356,7 +356,7 @@ function bookTags(book) {
   top: 38px;
   right: 8px;
   background: rgba(20, 15, 40, 0.97);
-  border: 1px solid rgba(139, 92, 246, 0.25);
+  border: 1px solid rgba(191, 91, 59, 0.25);
   border-radius: 10px;
   padding: 4px 0;
   min-width: 140px;
@@ -386,7 +386,7 @@ function bookTags(book) {
 }
 
 .menu-item:hover {
-  background: rgba(139, 92, 246, 0.15);
+  background: rgba(191, 91, 59, 0.15);
   color: rgba(255, 255, 255, 0.95);
 }
 

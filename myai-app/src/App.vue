@@ -10,12 +10,14 @@ import { useSoundEffects } from './composables/useSoundEffects';
 import { useDiary } from './composables/useDiary';
 import { isAutoDiaryEnabled, useActiveMessage } from './composables/useActiveMessage';
 import { useBackgroundTasks } from './composables/useBackgroundTasks';
+import { applyUiStyle, readBootUiStyle, uiStyle } from './composables/useUiStyle';
 import { extractExpression, parseDualLayerResponse } from './utils/textParser';
 import { idbClearAll } from './utils/indexeddb';
 import { STYLE_QUICK_TAGS, WRITING_STYLE_PRESETS, createNewRoleData } from './composables/presets';
 
 // Import Components
 import ChatWindow from './components/ChatWindow.vue';
+import IconLine from './components/IconLine.vue';
 import SettingsModal from './components/SettingsModal.vue';
 import RoleSidebar from './components/RoleSidebar.vue';
 import EditMessageModal from './components/EditMessageModal.vue';
@@ -55,6 +57,14 @@ function toggleTheme() {
 }
 // 初始化主题
 document.documentElement.setAttribute('data-theme', 'light');
+
+// ── 界面风格（新版 / 原版）──
+// 首帧先用 localStorage 的值，避免异步读 IDB 期间闪一下新版
+applyUiStyle(readBootUiStyle());
+watch(() => appState.globalSettings.uiStyle, (v) => {
+  if (v) applyUiStyle(v);
+}, { immediate: true });
+const isClassicUi = computed(() => uiStyle.value === 'classic');
 
 // ── 星星菜单面板 ──
 const showMenuPanel = ref(false);
@@ -773,7 +783,16 @@ function handleAvatarError(type, roleId) {
 
         <!-- 日夜切换 -->
         <button class="theme-btn" @click="toggleTheme" :title="isDark ? '切换日间' : '切换夜间'">
-          {{ isDark ? '🌙' : '☀️' }}
+          <template v-if="isClassicUi">{{ isDark ? '🌙' : '☀️' }}</template>
+          <template v-else>
+            <svg v-if="!isDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+            </svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+            </svg>
+          </template>
         </button>
 
         <!-- 星星菜单 -->
@@ -950,27 +969,27 @@ function handleAvatarError(type, roleId) {
 
           <div class="menu-list">
             <div class="menu-row" @click="showMenuPanel = false; openDiaryHistory()">
-              <span class="menu-row-icon">📖</span>
+              <span class="menu-row-icon"><IconLine emoji="📖" :size="18" /></span>
               <span class="menu-row-label">角色日记</span>
               <span class="menu-row-arrow">›</span>
             </div>
             <div class="menu-row" @click="showMenuPanel = false; handleEndDay()">
-              <span class="menu-row-icon">🌙</span>
+              <span class="menu-row-icon"><IconLine emoji="🌙" :size="18" /></span>
               <span class="menu-row-label">结束今天</span>
               <span class="menu-row-arrow">›</span>
             </div>
             <div class="menu-row" @click="showMenuPanel = false; showStoryExport = true">
-              <span class="menu-row-icon">🪶</span>
+              <span class="menu-row-icon"><IconLine emoji="🪶" :size="18" /></span>
               <span class="menu-row-label">导出为故事</span>
               <span class="menu-row-arrow">›</span>
             </div>
             <div class="menu-row" @click="showMenuPanel = false; showAssistant = true">
-              <span class="menu-row-icon">✨</span>
+              <span class="menu-row-icon"><IconLine emoji="✨" :size="18" /></span>
               <span class="menu-row-label">AI 助手</span>
               <span class="menu-row-arrow">›</span>
             </div>
             <div class="menu-row" @click="showMenuPanel = false; showStylePanel = true">
-              <span class="menu-row-icon">🎨</span>
+              <span class="menu-row-icon"><IconLine emoji="🎨" :size="18" /></span>
               <span class="menu-row-label">风格调整</span>
               <span class="menu-row-arrow">›</span>
             </div>
@@ -1144,80 +1163,84 @@ function handleAvatarError(type, roleId) {
 <style scoped>
 /* ══ 顶栏 ══ */
 .topbar {
-  height: 58px;
+  height: 60px;
   display: flex; align-items: center;
-  padding: 0 12px; gap: 8px;
+  padding: 0 16px; gap: 8px;
   background: var(--topbar-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(1.7);
+  backdrop-filter: blur(20px) saturate(1.7);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 1px 8px var(--shadow);
   position: relative; z-index: 20; flex-shrink: 0;
   transition: background .3s, border-color .3s;
 }
 
 .topbar-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
-.topbar-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.topbar-right { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 
 .icon-btn {
-  width: 36px; height: 36px; border-radius: 10px; border: none;
+  width: 38px; height: 38px; border-radius: 11px; border: 1px solid transparent;
   background: transparent; color: var(--ink-faint);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all .15s; flex-shrink: 0;
+  transition: all .18s cubic-bezier(.2,.8,.2,1); flex-shrink: 0;
 }
-.icon-btn:hover { background: var(--brush); }
-.icon-btn:active { transform: scale(.92); }
+.icon-btn:hover { background: var(--brush); color: var(--ink); border-color: var(--border); }
+.icon-btn:active { transform: scale(.95); }
 .icon-btn svg { width: 18px; height: 18px; }
 
-.star-btn { color: var(--accent-gold); }
+.star-btn { color: var(--ink-faint); }
 
 .theme-btn {
-  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
-  border: 1px solid rgba(196,150,58,0.25);
-  background: rgba(196,150,58,0.1);
-  color: var(--accent-gold);
+  width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-faint);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  font-size: 16px; transition: all .2s;
+  transition: all .18s cubic-bezier(.2,.8,.2,1);
 }
-.theme-btn:active { transform: scale(.9); }
+.theme-btn:hover { background: var(--brush); color: var(--ink); border-color: var(--border); }
+.theme-btn:active { transform: scale(.95); }
+.theme-btn svg { width: 18px; height: 18px; }
 
 .char-avatar {
-  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
-  border: 1.5px solid rgba(196,150,58,0.4); overflow: hidden;
-  background: linear-gradient(135deg, #c4b8ae, #9e8478);
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid var(--paper-card); overflow: hidden;
+  background: linear-gradient(140deg, var(--glow-1), var(--glow-2));
+  box-shadow: 0 2px 8px -2px var(--shadow-lg);
   transition: all .3s;
 }
-[data-theme="dark"] .char-avatar {
-  background: linear-gradient(135deg, #a090e0, #6040c0);
-  border-color: rgba(139,120,255,0.35);
-  box-shadow: 0 0 8px rgba(139,120,255,0.25);
-}
 .char-avatar-placeholder {
-  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
-  border: 1.5px solid rgba(196,150,58,0.4);
-  background: linear-gradient(135deg, #c4b8ae, #9e8478);
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid var(--paper-card);
+  background: linear-gradient(140deg, var(--glow-1), var(--glow-2));
   display: flex; align-items: center; justify-content: center; font-size: 16px;
 }
 .char-meta { min-width: 0; }
 .char-name {
-  font-family: 'Noto Serif SC', serif;
-  font-size: 15px; font-weight: 500; line-height: 1.2;
+  font-family: var(--font-serif-sc);
+  font-size: 15px; font-weight: 600; letter-spacing: .01em; line-height: 1.25;
   color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: color .3s;
 }
 .char-status {
-  font-family: 'Noto Sans SC', sans-serif;
-  font-size: 10px; color: var(--accent);
-  display: flex; align-items: center; gap: 3px; transition: color .3s;
+  font-family: var(--font-sans-sc);
+  font-size: 11px; color: var(--ink-faint); line-height: 1.4; margin-top: 1px;
+  display: flex; align-items: center; gap: 5px; transition: color .3s;
 }
 .status-dot {
-  width: 5px; height: 5px; border-radius: 50%; background: #7aad6e; display: inline-block;
+  width: 5px; height: 5px; border-radius: 50%; background: var(--online); display: inline-block;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--online) 18%, transparent);
 }
 
 /* ══ 底栏 ══ */
 .bottombar {
-  background: var(--topbar-bg); border-top: 1px solid var(--border);
-  padding: 10px 12px max(14px, env(safe-area-inset-bottom, 14px)); flex-shrink: 0; position: relative; z-index: 10;
-  box-shadow: 0 -2px 12px var(--shadow);
-  transition: background .3s, border-color .3s;
+  background: linear-gradient(to top,
+    var(--bg-base) 0%,
+    var(--bg-base) 58%,
+    color-mix(in srgb, var(--bg-base) 62%, transparent) 82%,
+    transparent 100%);
+  border-top: none;
+  padding: 14px 16px 12px; flex-shrink: 0; position: relative; z-index: 10;
+  transition: background .3s;
 }
 .input-row { display: flex; align-items: flex-end; gap: 8px; }
 .pending-image-tray {
@@ -1253,30 +1276,36 @@ function handleAvatarError(type, roleId) {
 .image-attach-btn svg { width: 19px; height: 19px; }
 .input-wrap {
   flex: 1; background: var(--paper-card); border-radius: 22px;
-  border: 1px solid var(--border); padding: 10px 14px;
+  border: 1px solid var(--border); padding: 10px 16px;
   min-height: 44px; max-height: 120px;
-  transition: border-color .2s, background .3s;
+  box-shadow: 0 12px 30px -20px var(--shadow-lg);
+  transition: border-color .2s ease, box-shadow .2s ease, background .3s;
 }
-.input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--brush); }
+.input-wrap:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow: 0 0 0 4px var(--accent-soft), 0 12px 30px -20px var(--shadow-lg);
+}
 .chat-input {
   width: 100%; border: none; background: transparent;
-  font-family: 'Noto Serif SC', serif; font-size: 15px; color: var(--ink);
-  resize: none; outline: none; line-height: 1.5; max-height: 96px; overflow-y: auto;
+  font-family: var(--font-sans-sc); font-size: 15px; color: var(--ink);
+  resize: none; outline: none; line-height: 1.6; max-height: 96px; overflow-y: auto;
   transition: color .3s;
 }
-.chat-input::placeholder { color: var(--ink-faint); opacity: .5; }
+.chat-input::placeholder { color: var(--ink-faint); opacity: .85; }
 
 .send-btn {
   width: 40px; height: 40px; border-radius: 50%; border: none;
-  background: var(--ink); color: var(--paper);
+  background: var(--accent); color: #fff;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; transition: all .2s; box-shadow: 0 2px 8px var(--shadow-lg);
+  flex-shrink: 0; transition: all .2s cubic-bezier(.2,.8,.2,1);
+  box-shadow: 0 8px 18px -10px var(--accent);
 }
-[data-theme="dark"] .send-btn { background: var(--accent); box-shadow: 0 2px 8px rgba(139,120,255,0.3); }
-.send-btn:disabled { opacity: .45; cursor: not-allowed; }
-.send-btn:active:not(:disabled) { transform: scale(.9); }
+[data-theme="dark"] .send-btn { color: #17120f; }
+.send-btn:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); }
+.send-btn:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; transform: none; }
+.send-btn:active:not(:disabled) { transform: scale(.94); }
 .send-btn svg { width: 16px; height: 16px; margin-left: 1px; }
-.stop-btn { background: #c07070 !important; box-shadow: 0 2px 8px rgba(192,112,112,0.3) !important; }
+.stop-btn { background: var(--accent-rose) !important; box-shadow: 0 8px 18px -10px var(--accent-rose) !important; }
 
 /* ══ 星星菜单面板 ══ */
 .panel-overlay {
@@ -1294,7 +1323,7 @@ function handleAvatarError(type, roleId) {
   position: absolute; bottom: 0; left: 0; right: 0;
   background: var(--paper-card); border-radius: 20px 20px 0 0;
   border-top: 1px solid var(--border);
-  padding: 14px 20px 32px;
+  padding: 14px 20px max(32px, calc(20px + env(safe-area-inset-bottom)));
   box-shadow: 0 -4px 24px var(--shadow-lg);
   max-height: 85dvh; overflow-y: auto;
   transition: background .3s, border-color .3s;
@@ -1316,25 +1345,26 @@ function handleAvatarError(type, roleId) {
 .menu-list { display: flex; flex-direction: column; gap: 0; }
 .menu-row {
   display: flex; align-items: center; gap: 14px;
-  padding: 14px 4px; cursor: pointer;
+  padding: 14px 10px; cursor: pointer;
   border-bottom: 1px solid var(--border);
-  border-radius: 10px; transition: background .15s;
+  border-radius: 0; transition: background .15s ease, padding-left .15s ease;
 }
 .menu-row:last-child { border-bottom: none; }
-.menu-row:active { background: var(--brush); }
+.menu-row:hover { background: var(--brush); }
+.menu-row:active { background: var(--paper-warm); }
 .menu-row-icon {
-  font-size: 20px; width: 28px; text-align: center; flex-shrink: 0;
+  font-size: 20px; width: 26px; text-align: center; flex-shrink: 0;
   color: var(--ink-faint);
   display: flex; align-items: center; justify-content: center;
 }
 .menu-row-label {
-  flex: 1; font-family: 'Noto Sans SC', sans-serif;
-  font-size: 15px; color: var(--ink); transition: color .3s;
+  flex: 1; font-family: var(--font-sans-sc);
+  font-size: 14.5px; color: var(--ink); transition: color .3s;
 }
-.menu-row-arrow { color: var(--ink-faint); font-size: 18px; }
+.menu-row-arrow { color: var(--ink-faint); font-size: 18px; opacity: .55; }
 .menu-row.danger .menu-row-label,
-.menu-row.danger .menu-row-icon { color: #c07070; }
-.menu-divider { height: 1px; background: var(--border); margin: 6px 0; }
+.menu-row.danger .menu-row-icon { color: var(--accent-rose); }
+.menu-divider { height: 1px; background: var(--border); margin: 6px 10px; }
 
 /* ══ Toast ══ */
 .toast-msg {

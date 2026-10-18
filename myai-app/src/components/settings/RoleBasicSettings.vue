@@ -3,6 +3,7 @@ import { ref, onBeforeUnmount } from 'vue';
 import { generateRoleFromDescription } from '../../composables/useRoleGenerator';
 import { WRITING_STYLE_PRESETS } from '../../composables/presets';
 import AvatarCropper from '../AvatarCropper.vue';
+import IconLine from '../IconLine.vue';
 
 const props = defineProps({
   currentRole: Object,
@@ -106,201 +107,250 @@ function clearAvatar() {
     @cancel="onCropCancel"
   />
 
-  <section class="glass bg-glass-message rounded-xl p-4 space-y-4">
-    <h3 class="font-semibold text-secondary flex items-center text-shadow">
-      <span class="mr-2">🎭</span> {{ currentRole.name || '新角色' }}
-      <span class="ml-auto text-xs font-normal text-gray-500 bg-secondary/20 px-2 py-0.5 rounded-full">基础设置</span>
-    </h3>
+  <section class="basic-settings">
+    <header class="bs-head">
+      <h3 class="bs-title">{{ currentRole.name || '新角色' }}</h3>
+      <span class="bs-badge">基础设定</span>
+    </header>
 
-    <div class="space-y-4">
-
-      <!-- ✨ AI 一键生成 -->
-      <div class="ai-gen-card">
-        <div class="flex items-center gap-2 mb-2">
-          <span class="text-base">✨</span>
-          <label class="text-sm font-medium ai-gen-label">AI 一键生成</label>
-          <span class="ml-auto text-xs text-gray-500">描述你想要的角色，AI 帮你填好一切</span>
-        </div>
-        <div class="flex gap-2">
-          <input
-            v-model="aiDescription"
-            type="text"
-            :disabled="isGenerating"
-            placeholder="例如：一个傲娇的赛博朋克黑客少女"
-            class="flex-1 glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-amber-500/50 transition text-shadow-light disabled:opacity-50"
-            @keydown.enter.prevent="handleGenerate"
-          >
-          <button @click="handleGenerate" :disabled="isGenerating || !aiDescription.trim()" class="ai-gen-btn">
-            <span v-if="isGenerating" class="ai-gen-spinner"></span>
-            <span v-else>✨ 生成</span>
-          </button>
-        </div>
+    <!-- ✨ AI 一键生成 -->
+    <div class="ai-gen-card">
+      <div class="ai-gen-head">
+        <IconLine emoji="✨" :size="15" class="ai-gen-icon" />
+        <label class="ai-gen-label">AI 一键生成</label>
+        <span class="ai-gen-desc">描述你想要的角色，AI 帮你填好一切</span>
       </div>
+      <div class="ai-gen-row">
+        <input
+          v-model="aiDescription"
+          type="text"
+          :disabled="isGenerating"
+          placeholder="例如：一个傲娇的赛博朋克黑客少女"
+          class="bs-input"
+          @keydown.enter.prevent="handleGenerate"
+        >
+        <button @click="handleGenerate" :disabled="isGenerating || !aiDescription.trim()" class="ai-gen-btn">
+          <span v-if="isGenerating" class="ai-gen-spinner"></span>
+          <template v-else>
+            <IconLine emoji="✨" :size="14" />
+            <span>生成</span>
+          </template>
+        </button>
+      </div>
+    </div>
 
-      <!-- 🖼️ 角色头像 -->
-      <div class="basic-field">
-        <div class="flex items-center gap-2 mb-2">
-          <span class="text-base">🖼️</span>
-          <label class="text-sm text-gray-200 font-medium">角色头像</label>
-        </div>
-        <div class="flex items-center gap-4">
-          <!-- 头像预览 / 点击上传 -->
-          <div class="avatar-picker" @click="triggerFilePicker" :class="{ 'opacity-70': isAvatarProcessing }">
-            <img v-if="currentRole.avatar" :src="currentRole.avatar" class="w-full h-full object-cover rounded-full" />
-            <div v-else class="avatar-picker-empty">
-              <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-              </svg>
-              <span class="text-[10px] text-gray-500 mt-1">点击上传</span>
-            </div>
-            <div v-if="isAvatarProcessing" class="avatar-picker-loading">
-              <div class="avatar-spinner"></div>
-            </div>
+    <!-- 角色头像 -->
+    <div class="basic-field">
+      <label class="bs-label">角色头像</label>
+      <div class="flex items-center gap-4">
+        <div class="avatar-picker" @click="triggerFilePicker" :class="{ 'opacity-70': isAvatarProcessing }">
+          <img v-if="currentRole.avatar" :src="currentRole.avatar" class="w-full h-full object-cover" />
+          <div v-else class="avatar-picker-empty">
+            <IconLine emoji="🖼️" :size="20" />
+            <span>点击上传</span>
           </div>
-          <!-- 右侧：URL输入 + 清除 -->
-          <div class="flex-1 space-y-2">
-            <input v-model="currentRole.avatar" type="text" placeholder="或粘贴图片 URL..."
-                   class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2 outline-none border border-white/10 focus:border-secondary transition text-shadow-light text-sm">
-            <div class="flex items-center gap-3">
-              <span class="text-xs text-gray-500">点击头像或粘贴 URL</span>
-              <button v-if="currentRole.avatar" @click="clearAvatar" class="text-xs text-red-400 hover:text-red-300 transition ml-auto">清除头像</button>
-            </div>
+          <div v-if="isAvatarProcessing" class="avatar-picker-loading">
+            <div class="avatar-spinner"></div>
           </div>
         </div>
-        <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="handleFileSelect">
-      </div>
-
-      <!-- 📛 角色名称 -->
-      <div class="basic-field">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-base">📛</span>
-          <label class="text-sm text-gray-200 font-medium">角色名称</label>
-        </div>
-        <input v-model="currentRole.name" type="text" placeholder="例如：温柔姐姐、赛博黑客..."
-               class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-secondary transition text-shadow-light">
-      </div>
-
-      <!-- 💫 角色性格与背景 -->
-      <div class="basic-field">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-base">💫</span>
-          <label class="text-sm text-gray-200 font-medium">角色性格与背景</label>
-          <div class="tooltip-trigger relative group ml-auto">
-            <span class="cursor-help text-gray-500 hover:text-gray-300 text-xs">❓</span>
-            <div class="tooltip-content">定义角色的核心人格：TA 是谁？性格如何？有什么特点？</div>
+        <div class="flex-1 space-y-2">
+          <input v-model="currentRole.avatar" type="text" placeholder="或粘贴图片 URL..."
+                 class="bs-input">
+          <div class="flex items-center gap-3">
+            <span class="bs-hint">点击头像或粘贴 URL</span>
+            <button v-if="currentRole.avatar" @click="clearAvatar" class="bs-danger">清除头像</button>
           </div>
         </div>
-        <textarea v-model="currentRole.systemPrompt" rows="5"
-                  placeholder="例如：你是一个来自2077年的赛博黑客，性格酷炫，说话简短有力..."
-                  class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-secondary transition resize-none text-shadow-light"></textarea>
       </div>
+      <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="handleFileSelect">
+    </div>
 
-      <!-- 📝 对话示例 -->
-      <div class="basic-field">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-base">📝</span>
-          <label class="text-sm text-gray-200 font-medium">对话示例</label>
-          <div class="tooltip-trigger relative group ml-auto">
-            <span class="cursor-help text-gray-500 hover:text-gray-300 text-xs">❓</span>
-            <div class="tooltip-content">直接粘贴 1-3 段对话示例，格式自由。AI 会模仿这些示例的语调和说话风格来回复。✨ AI 一键生成时会自动补全此字段。</div>
-          </div>
-        </div>
-        <textarea v-model="currentRole.mesExample" rows="4"
-                  placeholder="我：*轻轻推了推她的肩膀*&#10;角色：*猛地抬头，眼眶有些红* 「……你干嘛突然吓我」&#10;&#10;我：算了，走吧。&#10;角色：*跟上来，保持着半步的距离* 「去哪？」"
-                  class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-secondary transition resize-none text-shadow-light text-sm"></textarea>
-        <p class="text-xs text-gray-500 mt-1">直接粘贴对话内容即可，格式自由，空行分隔不同段落</p>
-      </div>
+    <!-- 角色名称 -->
+    <div class="basic-field">
+      <label class="bs-label">角色名称</label>
+      <input v-model="currentRole.name" type="text" placeholder="例如：温柔姐姐、赛博黑客..."
+             class="bs-input">
+    </div>
 
-      <!-- 📋 补充指令/作者备注 -->
-      <div class="basic-field">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-base">📋</span>
-          <label class="text-sm text-gray-200 font-medium">补充指令 / 作者备注</label>
-          <div class="tooltip-trigger relative group ml-auto">
-            <span class="cursor-help text-gray-500 hover:text-gray-300 text-xs">❓</span>
-            <div class="tooltip-content">每轮对话末尾都会注入，承载绝对不能被 AI 遗忘的底层铁律。字数越精简越有效。✨ AI 一键生成时会自动补全。</div>
-          </div>
+    <!-- 角色性格与背景 -->
+    <div class="basic-field">
+      <div class="bs-label-row">
+        <label class="bs-label">角色性格与背景</label>
+        <div class="tooltip-trigger">
+          <span class="bs-help">?</span>
+          <div class="tooltip-content">定义角色的核心人格：TA 是谁？性格如何？有什么特点？</div>
         </div>
-        <textarea v-model="currentRole.authorNote" rows="3"
-                  placeholder="例如：禁止主动提出分别；战斗场景必须描写实际伤亡；永远不主动提及过去的恋情。"
-                  class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-amber-500/40 transition resize-none text-shadow-light"></textarea>
-        <p class="text-xs text-gray-500 mt-1">此处内容以最高优先级注入每轮对话末尾，用于不可妥协的行为约束</p>
       </div>
+      <textarea v-model="currentRole.systemPrompt" rows="5"
+                placeholder="例如：你是一个来自2077年的赛博黑客，性格酷炫，说话简短有力..."
+                class="bs-textarea"></textarea>
+    </div>
 
-      <!-- 💬 开场白 -->
-      <div class="basic-field">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-base">💬</span>
-          <label class="text-sm text-gray-200 font-medium">开场白</label>
-          <div class="tooltip-trigger relative group ml-auto">
-            <span class="cursor-help text-gray-500 hover:text-gray-300 text-xs">❓</span>
-            <div class="tooltip-content">角色说的第一句话，用于开启对话</div>
-          </div>
+    <!-- 对话示例 -->
+    <div class="basic-field">
+      <div class="bs-label-row">
+        <label class="bs-label">对话示例</label>
+        <div class="tooltip-trigger">
+          <span class="bs-help">?</span>
+          <div class="tooltip-content">直接粘贴 1-3 段对话示例，格式自由。AI 会模仿这些示例的语调和说话风格来回复。✨ AI 一键生成时会自动补全此字段。</div>
         </div>
-        <textarea v-model="currentRole.firstMessage" rows="2"
-                  placeholder="例如：你好，旅行者。在这个数字世界里，没有什么是我无法破解的..."
-                  class="w-full glass-light bg-glass-light text-gray-100 rounded-lg px-3 py-2.5 outline-none border border-white/10 focus:border-secondary transition resize-none text-shadow-light"></textarea>
       </div>
+      <textarea v-model="currentRole.mesExample" rows="4"
+                placeholder="我：*轻轻推了推她的肩膀*&#10;角色：*猛地抬头，眼眶有些红* 「……你干嘛突然吓我」&#10;&#10;我：算了，走吧。&#10;角色：*跟上来，保持着半步的距离* 「去哪？」"
+                class="bs-textarea"></textarea>
+      <p class="bs-hint">直接粘贴对话内容即可，格式自由，空行分隔不同段落</p>
+    </div>
 
-      <!-- 🎨 写作风格 -->
-      <div class="basic-field">
-        <div class="flex items-center gap-2 mb-2">
-          <span class="text-base">🎨</span>
-          <label class="text-sm text-gray-200 font-medium">写作风格</label>
-          <div class="tooltip-trigger relative group ml-auto">
-            <span class="cursor-help text-gray-500 hover:text-gray-300 text-xs">❓</span>
-            <div class="tooltip-content">选择一种写作风格模板，AI 会自动调整回复的节奏、语言和氛围</div>
-          </div>
+    <!-- 补充指令 / 作者备注 -->
+    <div class="basic-field">
+      <div class="bs-label-row">
+        <label class="bs-label">补充指令 / 作者备注</label>
+        <div class="tooltip-trigger">
+          <span class="bs-help">?</span>
+          <div class="tooltip-content">每轮对话末尾都会注入，承载绝对不能被 AI 遗忘的底层铁律。字数越精简越有效。✨ AI 一键生成时会自动补全。</div>
         </div>
-        <div class="writing-style-grid">
-          <button class="writing-style-option" :class="{ active: !currentRole.writingStyle }" @click="currentRole.writingStyle = ''">
-            <span class="ws-icon">✨</span><span class="ws-label">默认</span>
-          </button>
-          <button v-for="preset in WRITING_STYLE_PRESETS" :key="preset.id"
-                  class="writing-style-option" :class="{ active: currentRole.writingStyle === preset.id }"
-                  @click="currentRole.writingStyle = preset.id" :title="preset.description">
-            <span class="ws-icon">{{ preset.icon }}</span><span class="ws-label">{{ preset.label }}</span>
-          </button>
-        </div>
-        <p v-if="currentRole.writingStyle" class="text-xs text-gray-500 mt-1.5">
-          {{ WRITING_STYLE_PRESETS.find(s => s.id === currentRole.writingStyle)?.description }}
-        </p>
       </div>
+      <textarea v-model="currentRole.authorNote" rows="3"
+                placeholder="例如：禁止主动提出分别；战斗场景必须描写实际伤亡；永远不主动提及过去的恋情。"
+                class="bs-textarea"></textarea>
+      <p class="bs-hint">此处内容以最高优先级注入每轮对话末尾，用于不可妥协的行为约束</p>
+    </div>
 
-      <!-- 引导提示 -->
-      <div v-if="!currentRole.systemPrompt?.trim()" class="text-center py-2">
-        <p class="text-xs text-gray-500 italic">💡 不知道怎么填？试试最上方的 <span class="text-amber-400">✨ AI 一键生成</span></p>
+    <!-- 开场白 -->
+    <div class="basic-field">
+      <div class="bs-label-row">
+        <label class="bs-label">开场白</label>
+        <div class="tooltip-trigger">
+          <span class="bs-help">?</span>
+          <div class="tooltip-content">角色说的第一句话，用于开启对话</div>
+        </div>
       </div>
+      <textarea v-model="currentRole.firstMessage" rows="2"
+                placeholder="例如：你好，旅行者。在这个数字世界里，没有什么是我无法破解的..."
+                class="bs-textarea"></textarea>
+    </div>
+
+    <!-- 写作风格 -->
+    <div class="basic-field">
+      <div class="bs-label-row">
+        <label class="bs-label">写作风格</label>
+        <div class="tooltip-trigger">
+          <span class="bs-help">?</span>
+          <div class="tooltip-content">选择一种写作风格模板，AI 会自动调整回复的节奏、语言和氛围</div>
+        </div>
+      </div>
+      <div class="writing-style-grid">
+        <button class="writing-style-option" :class="{ active: !currentRole.writingStyle }" @click="currentRole.writingStyle = ''">
+          <span class="ws-icon">✨</span><span class="ws-label">默认</span>
+        </button>
+        <button v-for="preset in WRITING_STYLE_PRESETS" :key="preset.id"
+                class="writing-style-option" :class="{ active: currentRole.writingStyle === preset.id }"
+                @click="currentRole.writingStyle = preset.id" :title="preset.description">
+          <span class="ws-icon">{{ preset.icon }}</span><span class="ws-label">{{ preset.label }}</span>
+        </button>
+      </div>
+      <p v-if="currentRole.writingStyle" class="bs-hint mt-1.5">
+        {{ WRITING_STYLE_PRESETS.find(s => s.id === currentRole.writingStyle)?.description }}
+      </p>
+    </div>
+
+    <!-- 引导提示 -->
+    <div v-if="!currentRole.systemPrompt?.trim()" class="bs-empty-hint">
+      <p class="text-xs">不知道怎么填？试试最上方的「AI 一键生成」</p>
     </div>
   </section>
 </template>
 
 <style scoped>
-.basic-field {
-  padding: 12px;
-  background: var(--brush);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  transition: all 0.2s ease;
+.basic-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
-.basic-field:hover { background: var(--paper-warm); border-color: var(--border-accent); }
-.basic-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent); }
+.bs-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 22px;
+}
+.bs-title {
+  font-family: var(--font-serif-sc);
+  font-size: 21px; font-weight: 600; letter-spacing: .03em;
+  color: var(--ink); margin: 0;
+}
+.bs-badge {
+  margin-left: auto;
+  font-size: 11.5px; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--paper-warm);
+  color: var(--ink-faint); letter-spacing: .02em;
+}
+
+.bs-label {
+  display: block;
+  font-size: 12px; font-weight: 500; color: var(--ink-light);
+  letter-spacing: .01em; margin-bottom: 8px;
+}
+.bs-label-row { display: flex; align-items: center; gap: 8px; }
+.bs-label-row .bs-label { margin-bottom: 8px; }
+.bs-label-row .tooltip-trigger { margin-left: auto; margin-bottom: 8px; }
+.bs-hint { font-size: 11px; color: var(--ink-faint); line-height: 1.5; margin-top: 6px; }
+.bs-danger {
+  margin-left: auto; font-size: 11.5px; color: var(--accent);
+  background: none; border: none; cursor: pointer; padding: 0;
+}
+.bs-danger:hover { color: var(--accent-strong); text-decoration: underline; }
+.bs-help {
+  width: 16px; height: 16px; display: grid; place-items: center;
+  border-radius: 50%; border: 1px solid var(--border);
+  font-size: 10px; color: var(--ink-faint); cursor: help;
+  transition: all .18s ease;
+}
+.bs-help:hover { border-color: var(--accent); color: var(--accent); }
+
+.bs-input, .bs-textarea {
+  width: 100%;
+  padding: 11px 13px;
+  font: inherit; font-size: 13.5px; line-height: 1.65;
+  color: var(--ink);
+  background: var(--paper-warm);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.bs-textarea { resize: vertical; min-height: 76px; }
+.bs-input::placeholder, .bs-textarea::placeholder { color: var(--ink-faint); }
+.bs-input:hover, .bs-textarea:hover { border-color: var(--border-strong); }
+.bs-input:focus, .bs-textarea:focus {
+  background: var(--paper-card);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.bs-input:disabled { opacity: .55; }
+
+.basic-field {
+  padding: 18px 0;
+  border-top: 1px solid var(--border);
+}
+.basic-field:first-of-type { border-top: none; padding-top: 0; }
+/* 聚焦时只让标签变色，不改变整块底色——保持「分隔线」而非「卡片」的观感 */
+.basic-field:focus-within .bs-label { color: var(--accent); }
 
 /* 头像选择器 */
 .avatar-picker {
-  width: 68px; height: 68px;
-  border-radius: 50%;
-  border: 2px dashed var(--border);
+  width: 76px; height: 76px;
+  border-radius: 20px;
+  border: 1px dashed var(--border-strong);
   cursor: pointer; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; position: relative;
   transition: all 0.2s ease;
-  background: var(--brush);
+  background: var(--paper-warm);
 }
-.avatar-picker:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
-.avatar-picker:active { transform: scale(0.95); }
-.avatar-picker-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.avatar-picker:hover { border-color: var(--accent); background: var(--accent-soft); }
+.avatar-picker:active { transform: scale(0.97); }
+.avatar-picker-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; font-size: 10px; color: var(--ink-faint);
+}
 .avatar-picker-loading {
   position: absolute; inset: 0;
   background: rgba(0,0,0,0.6);
@@ -321,10 +371,10 @@ function clearAvatar() {
 .tooltip-content {
   position: absolute; right: 0; top: 100%; margin-top: 6px;
   padding: 8px 12px; min-width: 220px; max-width: 280px;
-  background: rgba(15,15,25,0.95); backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
-  font-size: 0.75rem; color: rgba(220,220,240,0.9); line-height: 1.5;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 100;
+  background: var(--paper-card);
+  border: 1px solid var(--border); border-radius: 10px;
+  font-size: 0.75rem; color: var(--ink-light); line-height: 1.6;
+  box-shadow: 0 8px 24px -10px var(--shadow-lg); z-index: 100;
   opacity: 0; visibility: hidden; transform: translateY(-4px);
   transition: all 0.2s ease; pointer-events: none;
 }
@@ -332,50 +382,73 @@ function clearAvatar() {
 
 /* AI 生成卡 */
 .ai-gen-card {
-  padding: 14px;
-  background: linear-gradient(135deg, rgba(245,158,11,0.06), rgba(168,85,247,0.06));
-  border-radius: 14px; border: 1px solid rgba(245,158,11,0.2);
-  transition: all 0.3s ease; position: relative; overflow: hidden;
+  padding: 16px;
+  margin-bottom: 4px;
+  background: linear-gradient(180deg, var(--accent-soft), transparent 92%);
+  border: 1px dashed color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-radius: 14px;
+  transition: border-color .2s ease;
 }
-.ai-gen-card::before {
-  content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(245,158,11,0.04), transparent);
-  animation: ai-shimmer 3s ease-in-out infinite;
-}
-@keyframes ai-shimmer { 0% { transform: translateX(-50%); } 100% { transform: translateX(50%); } }
-.ai-gen-card:hover { border-color: rgba(245,158,11,0.35); box-shadow: 0 0 20px rgba(245,158,11,0.08); }
+.ai-gen-card:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+.ai-gen-head { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; }
+.ai-gen-icon { color: var(--accent); }
 .ai-gen-label {
-  background: linear-gradient(135deg, #f59e0b, #a855f7);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  font-size: 12.5px; font-weight: 600; color: var(--ink);
+  letter-spacing: .01em;
 }
+.ai-gen-desc { font-size: 11px; color: var(--ink-faint); margin-left: auto; }
+.ai-gen-row { display: flex; gap: 9px; }
+.ai-gen-row .bs-input { flex: 1; background: var(--paper-card); }
 .ai-gen-btn {
-  padding: 8px 18px;
-  background: linear-gradient(135deg, rgba(245,158,11,0.8), rgba(168,85,247,0.8));
-  color: white; border: none; border-radius: 10px;
-  font-size: 0.85rem; font-weight: 600; cursor: pointer;
-  transition: all 0.25s ease; white-space: nowrap; min-width: 80px;
-  display: flex; align-items: center; justify-content: center;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 40px; padding: 0 16px;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: 11px;
+  font-family: inherit; font-size: 13px; font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+  box-shadow: 0 8px 18px -10px var(--accent);
+  transition: all 0.18s ease;
 }
-.ai-gen-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(245,158,11,0.3); }
-.ai-gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+[data-theme="dark"] .ai-gen-btn { color: #17120f; }
+.ai-gen-btn:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); }
+.ai-gen-btn:active:not(:disabled) { transform: translateY(0) scale(.985); }
+.ai-gen-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 .ai-gen-spinner {
-  width: 18px; height: 18px;
-  border: 2px solid rgba(255,255,255,0.3); border-top-color: white;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3); border-top-color: currentColor;
   border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@media (max-width: 640px) {
+  .ai-gen-desc { display: none; }
+  .ai-gen-row { flex-direction: column; }
+  .ai-gen-row .bs-input { width: 100%; }
 }
 
 /* 写作风格 */
-.writing-style-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.writing-style-grid { display: flex; flex-wrap: wrap; gap: 7px; }
 .writing-style-option {
   display: flex; align-items: center; gap: 5px;
-  padding: 6px 12px; border-radius: 20px;
+  padding: 7px 13px; border-radius: 999px;
   border: 1px solid var(--border);
-  background: var(--brush);
-  color: var(--ink-faint); font-size: 0.8rem;
-  cursor: pointer; transition: all 0.25s ease; white-space: nowrap;
+  background: var(--paper-card);
+  color: var(--ink-light); font-family: inherit; font-size: 12.5px;
+  cursor: pointer; transition: all 0.18s ease; white-space: nowrap;
 }
-.writing-style-option:hover { border-color: var(--border-accent); background: var(--paper-warm); color: var(--ink); }
-.writing-style-option.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--ink); box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 15%, transparent); }
+.writing-style-option:hover { border-color: var(--border-strong); color: var(--ink); }
+.writing-style-option.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
 .ws-icon { font-size: 0.9rem; line-height: 1; }
 .ws-label { font-weight: 500; }
+
+.bs-empty-hint {
+  padding: 14px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--ink-faint);
+  margin-top: 6px;
+}
 </style>

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { extractExpression } from '../utils/textParser';
+import IconLine from './IconLine.vue';
 
 const props = defineProps({
   roleList: Array,
@@ -178,7 +179,7 @@ const libraryCount = computed(() => {
 
       <!-- 头部 -->
       <div class="sidebar-head">
-        <span class="sidebar-title">🎭 角色列表</span>
+        <span class="sidebar-title"><IconLine emoji="🎭" :size="16" /> 角色列表</span>
         <button class="sidebar-close" @click="$emit('close')">
           <svg class="svg-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -274,7 +275,7 @@ const libraryCount = computed(() => {
   display: flex; 
   flex-direction: column; 
   height: 100%;
-  padding: 16px; 
+  padding: max(16px, env(safe-area-inset-top)) 16px 0;
 }
 .sidebar-scroll-area { 
   flex: 1; 
@@ -290,10 +291,12 @@ const libraryCount = computed(() => {
   flex-shrink: 0;
 }
 .sidebar-title {
-  font-family: 'Noto Serif SC', serif;
-  font-size: 16px; font-weight: 500; color: var(--ink);
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-serif-sc);
+  font-size: 16px; font-weight: 600; letter-spacing: .03em; color: var(--ink);
   transition: color .3s;
 }
+.sidebar-title :deep(svg) { color: var(--accent); }
 .sidebar-close {
   width: 32px; height: 32px; border-radius: 8px; border: none;
   background: transparent; color: var(--ink-faint);
@@ -405,14 +408,15 @@ const libraryCount = computed(() => {
   flex-shrink: 0;
   position: relative; z-index: 1;
   display: flex; align-items: center; gap: 8px;
-  margin: 0 -16px; padding: 11px 30px;
+  margin: 0 -16px;
+  padding: 12px 30px max(12px, calc(8px + env(safe-area-inset-bottom)));
   cursor: pointer;
-  box-shadow: 0 -1px 6px var(--shadow);
+  border-top: 1px solid var(--border);
   transition: background .15s;
 }
 .card-lib-entry:hover { background: var(--brush); }
 .card-lib-label {
-  flex: 1; font-family: 'Noto Sans SC', sans-serif;
+  flex: 1; font-family: var(--font-sans-sc);
   font-size: 13px; color: var(--ink-faint); transition: color .3s;
 }
 .card-lib-count {

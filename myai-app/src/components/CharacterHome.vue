@@ -2,7 +2,13 @@
   <div class="character-home">
     <!-- 顶部标题区 -->
     <div class="home-header">
-      <div class="home-logo">✨</div>
+      <div class="home-logo">
+        <span v-if="isClassicUi">✨</span>
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" />
+          <path d="M19 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" />
+        </svg>
+      </div>
       <h1 class="home-title">MyAI RolePlay</h1>
       <p class="home-subtitle">选择一个角色，开始你的故事</p>
     </div>
@@ -10,10 +16,10 @@
     <!-- Tab 切换 -->
     <div class="home-tabs">
       <button :class="['home-tab', activeTab === 'role' && 'active']" @click="activeTab = 'role'">
-        👤 角色
+        <IconLine emoji="👤" :size="14" /> 角色
       </button>
       <button :class="['home-tab', activeTab === 'world' && 'active']" @click="switchToWorld">
-        🌏 世界
+        <IconLine emoji="🌏" :size="14" /> 世界
       </button>
     </div>
 
@@ -139,11 +145,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import BookLibrary from './novel/BookLibrary.vue';
 import BookImport  from './novel/BookImport.vue';
 import SaveSelect  from './novel/SaveSelect.vue';
 import BookSettings from './novel/BookSettings.vue';
+import IconLine from './IconLine.vue';
+import { uiStyle } from '../composables/useUiStyle';
 import { useNovelStore } from '../composables/useNovelStore.js';
 import { exportAllBookMessages } from '../composables/useNovelDB.js';
 
@@ -159,6 +167,9 @@ const activeTab      = ref('role');
 const worldNav       = ref('library');   // 'library' | 'import' | 'save-select'
 const selectedBook   = ref(null);
 const showBookSettings = ref(false);
+
+// 原版风格下 logo 用 emoji
+const isClassicUi = computed(() => uiStyle.value === 'classic');
 
 // ── Novel Store ──
 const novelStore = useNovelStore();
@@ -424,7 +435,7 @@ function hasHistory(role) {
   gap: 4px;
   background: var(--brush);
   border: 1px solid var(--border);
-  border-radius: 24px;
+  border-radius: 999px;
   padding: 4px;
   margin-bottom: 28px;
   animation: fadeSlideUp 0.5s ease-out both;
@@ -434,21 +445,24 @@ function hasHistory(role) {
 .home-tab {
   flex: 1;
   padding: 8px 20px;
-  border-radius: 20px;
-  border: none;
+  border-radius: 999px;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--ink-faint);
+  font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.25s;
-  letter-spacing: 0.5px;
+  transition: all 0.22s cubic-bezier(.2,.8,.2,1);
+  letter-spacing: 0.02em;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
 }
 
 .home-tab.active {
-  background: var(--accent);
-  color: white;
-  box-shadow: 0 2px 12px var(--shadow);
+  background: var(--paper-card);
+  color: var(--ink);
+  border-color: var(--border);
+  box-shadow: 0 1px 2px var(--shadow);
 }
 
 .home-tab:not(.active):hover {
@@ -522,8 +536,12 @@ function hasHistory(role) {
   flex-direction: column;
   align-items: center;
   overflow-y: auto;
-  padding: 40px 24px 60px;
-  background: var(--paper);
+  padding: 56px 24px 60px;
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(760px 420px at 12% -12%, color-mix(in srgb, var(--glow-2) 42%, transparent), transparent 65%),
+    radial-gradient(680px 420px at 92% -6%, color-mix(in srgb, var(--glow-1) 52%, transparent), transparent 65%);
+  background-attachment: fixed;
   animation: homeIn 0.5s ease-out;
 }
 
@@ -545,18 +563,20 @@ function hasHistory(role) {
 }
 
 .home-logo {
-  font-size: 48px;
-  margin-bottom: 12px;
-  filter: drop-shadow(0 0 16px var(--shadow));
+  color: var(--accent);
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: center;
 }
+.home-logo svg { width: 30px; height: 30px; }
 
 .home-title {
-  font-size: 28px;
-  font-weight: 700;
+  font-family: var(--font-serif-sc);
+  font-size: 30px;
+  font-weight: 600;
   color: var(--ink);
-  margin: 0 0 8px;
-  letter-spacing: 1px;
-  font-family: 'Noto Serif SC', serif;
+  margin: 0 0 10px;
+  letter-spacing: 0.04em;
 }
 
 .home-subtitle {
@@ -637,11 +657,12 @@ function hasHistory(role) {
 .role-card-avatar {
   width: 80px;
   height: 80px;
-  border-radius: 50%;
+  border-radius: 24px;
   overflow: hidden;
   margin-bottom: 14px;
-  border: 2px solid var(--border);
-  transition: border-color 0.3s, box-shadow 0.3s;
+  border: 1px solid var(--border);
+  background: linear-gradient(140deg, var(--glow-1), var(--glow-2));
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
   flex-shrink: 0;
 }
 
@@ -662,7 +683,7 @@ function hasHistory(role) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.3));
+  background: linear-gradient(140deg, var(--glow-1), var(--glow-2));
   font-size: 32px;
 }
 
@@ -674,11 +695,12 @@ function hasHistory(role) {
 }
 
 .role-card-name {
+  font-family: var(--font-serif-sc);
   font-size: 16px;
   font-weight: 600;
   color: var(--ink);
   margin: 0 0 6px;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.03em;
 }
 
 .role-card-desc {
@@ -724,16 +746,18 @@ function hasHistory(role) {
     margin-bottom: 28px;
   }
 
-  .home-logo {
-    font-size: 36px;
+  .home-logo svg {
+    width: 26px;
+    height: 26px;
   }
 
   .home-title {
-    font-size: 22px;
+    font-size: 24px;
   }
 
   .home-subtitle {
     font-size: 12px;
+    letter-spacing: 0.06em;
   }
 
   .home-grid {
@@ -742,14 +766,15 @@ function hasHistory(role) {
   }
 
   .role-card {
-    padding: 20px 12px 16px;
-    border-radius: 16px;
+    padding: 18px 12px 15px;
+    border-radius: 18px;
   }
 
   .role-card-avatar {
-    width: 60px;
-    height: 60px;
-    margin-bottom: 10px;
+    width: 64px;
+    height: 64px;
+    border-radius: 20px;
+    margin-bottom: 11px;
   }
 
   .role-card-name {

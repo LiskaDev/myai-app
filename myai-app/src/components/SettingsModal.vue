@@ -2,12 +2,14 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useAppState } from '../composables/useAppState';
 import AvatarCropper from './AvatarCropper.vue';
+import IconLine from './IconLine.vue';
 import RoleBasicSettings from './settings/RoleBasicSettings.vue';
 import CharacterDepthSettings from './settings/CharacterDepthSettings.vue';
 import MemoryManager from './settings/MemoryManager.vue';
 import UserPersonaSettings from './settings/UserPersonaSettings.vue';
 import WorldBookSettings from './settings/WorldBookSettings.vue';
 import { MODEL_PRESETS } from '../composables/presets';
+import { UI_STYLE_OPTIONS, uiStyle } from '../composables/useUiStyle';
 
 // ===== 通用设置所需的模型列表（从 presets.js 导入） =====
 
@@ -134,6 +136,9 @@ const TABS = props.isGroupMode
 // 支持从外部指定初始 Tab（如「去设置」按钮直接跳转到通用 Tab）
 const defaultTab = props.isGroupMode ? 'general' : (props.initialTab || 'role');
 const activeTab = ref(defaultTab);
+
+// 界面风格（新版 / 原版）
+const currentUiStyle = computed(() => uiStyle.value);
 
 // 角色 Tab 的左侧二级导航
 const ROLE_SECTIONS = [
@@ -348,7 +353,7 @@ function showLocalToast(msg, type = 'info') {
 
       <!-- 弹窗头部 -->
       <header class="modal-header">
-        <span class="modal-title">⚙️ 设置</span>
+        <span class="modal-title">设置</span>
         <div class="modal-header-right">
           <span class="modal-save-hint">修改自动生效，无需手动保存</span>
           <button @click="$emit('close')" class="modal-close-btn">
@@ -364,7 +369,7 @@ function showLocalToast(msg, type = 'info') {
         <button v-for="tab in TABS" :key="tab.id"
                 class="modal-tab" :class="{ active: activeTab === tab.id }"
                 @click="activeTab = tab.id">
-          <span class="modal-tab-icon">{{ tab.icon }}</span>
+          <IconLine :emoji="tab.icon" :size="14" class="modal-tab-icon" />
           <span class="modal-tab-label">{{ tab.label }}</span>
         </button>
       </nav>
@@ -380,13 +385,13 @@ function showLocalToast(msg, type = 'info') {
             <button v-for="s in ROLE_SECTIONS" :key="s.id"
                     class="sidebar-item" :class="{ active: activeRoleSection === s.id }"
                     @click="activeRoleSection = s.id">
-              <span class="sidebar-item-icon">{{ s.icon }}</span>
+              <IconLine :emoji="s.icon" :size="15" class="sidebar-item-icon" />
               {{ s.label }}
             </button>
             <p class="sidebar-section-label" style="margin-top:16px">参数</p>
             <button class="sidebar-item" :class="{ active: activeRoleSection === 'params' }"
                     @click="activeRoleSection = 'params'">
-              <span class="sidebar-item-icon">🎛️</span> 高级参数
+              <IconLine emoji="⚙️" :size="15" class="sidebar-item-icon" /> 高级参数
             </button>
           </aside>
           <!-- 右侧内容 -->
@@ -477,7 +482,7 @@ function showLocalToast(msg, type = 'info') {
             <button v-for="s in MEMORY_SECTIONS" :key="s.id"
                     class="sidebar-item" :class="{ active: activeMemorySection === s.id }"
                     @click="activeMemorySection = s.id">
-              <span class="sidebar-item-icon">{{ s.icon }}</span>
+              <IconLine :emoji="s.icon" :size="15" class="sidebar-item-icon" />
               {{ s.label }}
             </button>
           </aside>
@@ -732,7 +737,7 @@ function showLocalToast(msg, type = 'info') {
             <button v-for="s in GENERAL_SECTIONS" :key="s.id"
                     class="sidebar-item" :class="{ active: activeGeneralSection === s.id }"
                     @click="activeGeneralSection = s.id">
-              <span class="sidebar-item-icon">{{ s.icon }}</span>
+              <IconLine :emoji="s.icon" :size="15" class="sidebar-item-icon" />
               {{ s.label }}
             </button>
           </aside>
@@ -908,6 +913,27 @@ function showLocalToast(msg, type = 'info') {
                   <option value="normal">标准（均衡模式 200-400字）</option>
                   <option value="long">详述（沉浸小说 400+字）</option>
                 </select>
+              </div>
+
+              <!-- 界面风格 -->
+              <div>
+                <label class="block text-sm text-gray-300 mb-1.5">🎨 界面风格</label>
+                <div class="ui-style-group">
+                  <button v-for="opt in UI_STYLE_OPTIONS" :key="opt.id"
+                          type="button"
+                          class="ui-style-card"
+                          :class="{ active: currentUiStyle === opt.id }"
+                          @click="globalSettings.uiStyle = opt.id">
+                    <span class="ui-style-name">
+                      {{ opt.label }}
+                      <span v-if="currentUiStyle === opt.id" class="ui-style-check">✓</span>
+                    </span>
+                    <span class="ui-style-desc">{{ opt.desc }}</span>
+                  </button>
+                </div>
+                <p class="text-xs text-gray-500 mt-1.5">
+                  切换后立即生效，设置会跟随账号数据保存。若新版遇到问题，可随时切回原版。
+                </p>
               </div>
 
               <!-- 开关组 -->
@@ -1164,9 +1190,10 @@ function showLocalToast(msg, type = 'info') {
 .modal-overlay {
   position: fixed; inset: 0; z-index: 200;
   background: var(--overlay-bg);
-  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  backdrop-filter: blur(10px) saturate(1.2);
   display: flex; align-items: center; justify-content: center;
-  padding: 20px;
+  padding: 22px;
 }
 @media (max-width: 640px) {
   .modal-overlay { padding: 0; align-items: flex-end; }
@@ -1174,18 +1201,18 @@ function showLocalToast(msg, type = 'info') {
 
 /* ===== 弹窗主体 ===== */
 .modal-container {
-  width: 100%; max-width: 860px;
-  height: min(680px, calc(100vh - 40px));
+  width: 100%; max-width: 1000px;
+  height: min(760px, calc(100vh - 44px));
   background: var(--paper-card);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  box-shadow: 0 32px 80px var(--shadow-lg);
+  border-radius: 22px;
+  box-shadow: 0 30px 70px -24px var(--shadow-lg), 0 2px 8px var(--shadow);
   display: flex; flex-direction: column;
   overflow: hidden;
 }
 @media (max-width: 640px) {
   .modal-container {
-    border-radius: 20px 20px 0 0;
+    border-radius: 22px 22px 0 0;
     height: 92dvh;
     max-width: 100%;
   }
@@ -1194,54 +1221,56 @@ function showLocalToast(msg, type = 'info') {
 /* ===== 头部 ===== */
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px 0;
+  padding: 0 16px 0 24px;
+  height: 62px;
   flex-shrink: 0;
-}
-.modal-title { font-size: 14px; font-weight: 600; color: var(--ink); }
-.modal-header-right { display: flex; align-items: center; gap: 12px; }
-.modal-save-hint { font-size: 11px; color: var(--ink-faint); }
-.modal-close-btn {
-  width: 26px; height: 26px; border-radius: 7px; border: none;
-  background: var(--brush); color: var(--ink-faint);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
-}
-.modal-close-btn:hover { background: var(--brush); color: var(--ink); }
-
-/* ===== Tab 栏 ===== */
-.modal-tabs {
-  display: flex; padding: 12px 20px 0;
   border-bottom: 1px solid var(--border);
-  flex-shrink: 0; gap: 2px;
 }
+.modal-title {
+  font-family: var(--font-serif-sc);
+  font-size: 17px; font-weight: 600; letter-spacing: .05em; color: var(--ink);
+}
+.modal-header-right { display: flex; align-items: center; gap: 12px; }
+.modal-save-hint { font-size: 11.5px; color: var(--ink-faint); letter-spacing: .01em; }
+.modal-close-btn {
+  width: 34px; height: 34px; border-radius: 10px; border: 1px solid transparent;
+  background: transparent; color: var(--ink-faint);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.18s cubic-bezier(.2,.8,.2,1);
+}
+.modal-close-btn:hover { background: var(--brush); color: var(--ink); border-color: var(--border); }
+
+/* ===== Tab 栏（横向胶囊导航） ===== */
+.modal-tabs {
+  display: flex; padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0; gap: 4px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.modal-tabs::-webkit-scrollbar { display: none; }
 .modal-tab {
-  display: flex; align-items: center; gap: 5px;
-  padding: 7px 12px 9px; border: none; background: transparent;
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border: 1px solid transparent; background: transparent;
   color: var(--ink-faint); font-size: 12.5px; font-family: inherit;
-  cursor: pointer; transition: all 0.15s; white-space: nowrap;
-  position: relative; bottom: -1px; border-radius: 6px 6px 0 0;
+  cursor: pointer; transition: all 0.18s cubic-bezier(.2,.8,.2,1);
+  white-space: nowrap; border-radius: 999px;
 }
-.modal-tab:hover { color: var(--ink); }
+.modal-tab:hover { color: var(--ink); background: var(--brush); }
 .modal-tab.active {
   color: var(--ink); font-weight: 500;
-  border: 1px solid var(--border);
-  border-bottom-color: var(--paper-card);
-  background: var(--brush);
+  border-color: var(--border);
+  background: var(--paper-warm);
 }
-.modal-tab-icon { font-size: 13px; }
-.modal-tab-label { font-size: 12px; }
+.modal-tab-icon { width: 14px; height: 14px; opacity: .9; }
+.sidebar-item-icon { width: 15px; height: 15px; flex-shrink: 0; }
 @media (max-width: 640px) {
   .modal-tabs {
-    padding: 10px 12px 0;
-    overflow-x: auto; overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    gap: 0;
+    padding: 8px 12px;
+    gap: 4px;
   }
-  .modal-tabs::-webkit-scrollbar { display: none; }
-  .modal-tab { padding: 6px 10px 8px; font-size: 11.5px; }
-  .modal-tab-icon { font-size: 12px; }
-  .modal-tab-label { font-size: 11px; }
+  .modal-tab { padding: 6px 11px; }
+  .modal-tab-icon { width: 13px; height: 13px; }
+  .modal-tab-label { font-size: 11.5px; }
 }
 
 /* ===== Body：左 + 右 ===== */
@@ -1254,28 +1283,34 @@ function showLocalToast(msg, type = 'info') {
 
 /* ===== 左侧导航 ===== */
 .modal-sidebar {
-  width: 160px; flex-shrink: 0;
+  width: 208px; flex-shrink: 0;
   border-right: 1px solid var(--border);
-  padding: 16px 10px;
+  background: var(--paper-warm);
+  padding: 16px 12px;
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 2px;
 }
 .sidebar-section-label {
-  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .13em;
   text-transform: uppercase; color: var(--ink-faint);
-  padding: 2px 8px 6px;
+  padding: 6px 10px 7px;
 }
 .sidebar-item {
-  display: flex; align-items: center; gap: 7px;
-  padding: 7px 10px; border-radius: 8px;
-  border: none; background: transparent;
-  color: var(--ink-faint); font-size: 12.5px;
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 11px; border-radius: 10px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--ink-faint); font-size: 13px;
   font-family: inherit; cursor: pointer; text-align: left;
-  width: 100%; transition: all 0.15s;
+  width: 100%; transition: all 0.18s cubic-bezier(.2,.8,.2,1);
 }
 .sidebar-item:hover { background: var(--brush); color: var(--ink); }
-.sidebar-item.active { background: var(--brush); color: var(--accent); }
-.sidebar-item-icon { font-size: 13px; flex-shrink: 0; }
+.sidebar-item.active {
+  background: var(--paper-card);
+  color: var(--ink); font-weight: 500;
+  border-color: var(--border);
+  box-shadow: 0 1px 2px var(--shadow);
+}
+.sidebar-item.active .sidebar-item-icon { color: var(--accent); }
 
 /* 手机端：sidebar 变横向滚动 Tab 条 */
 @media (max-width: 640px) {
@@ -1296,35 +1331,38 @@ function showLocalToast(msg, type = 'info') {
     padding: 6px 12px;
     font-size: 12px;
     white-space: nowrap;
-    border-radius: 20px;
-    background: var(--brush);
+    border-radius: 999px;
+    background: var(--paper-card);
   }
   .sidebar-item.active {
-    background: color-mix(in srgb, var(--accent) 20%, transparent);
+    background: var(--paper-card);
+    border-color: var(--border);
     color: var(--accent);
   }
 }
 
 /* ===== 右侧内容 ===== */
 .modal-content {
-  flex: 1; overflow-y: auto; padding: 20px 24px;
+  flex: 1; overflow-y: auto; padding: 28px 36px 44px;
 }
+.modal-content > * { max-width: 660px; margin-inline: auto; }
 .modal-content::-webkit-scrollbar { width: 4px; }
 .modal-content::-webkit-scrollbar-track { background: transparent; }
 .modal-content::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
 @media (max-width: 640px) {
-  .modal-content { padding: 16px 16px 24px; }
+  .modal-content { padding: 18px 16px 32px; }
 }
 
 /* 无左导航的全宽内容 */
 .modal-content-full {
-  flex: 1; overflow-y: auto; padding: 20px 24px;
+  flex: 1; overflow-y: auto; padding: 28px 36px 44px;
 }
+.modal-content-full > * { max-width: 660px; margin-inline: auto; }
 .modal-content-full::-webkit-scrollbar { width: 4px; }
 .modal-content-full::-webkit-scrollbar-track { background: transparent; }
 .modal-content-full::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
 @media (max-width: 640px) {
-  .modal-content-full { padding: 16px 16px 24px; }
+  .modal-content-full { padding: 18px 16px 32px; }
 }
 
 /* ===== 通用内容样式 ===== */
@@ -1702,7 +1740,7 @@ select.api-input option { background: var(--paper-card); color: var(--ink); }
 /* 极窄设备（320px，旧 iPhone SE 等） */
 @media (max-width: 360px) {
   .modal-tab { padding: 6px 8px 8px; gap: 3px; }
-  .modal-tab-icon { font-size: 11px; }
+  .modal-tab-icon { width: 13px; height: 13px; }
   .modal-tab-label { font-size: 10px; }
 }
 
@@ -1743,7 +1781,7 @@ select.api-input option { background: var(--paper-card); color: var(--ink); }
   flex-shrink: 0; font-size: 10px; font-weight: 600; padding: 2px 8px;
   border-radius: 4px; letter-spacing: 0.3px; text-transform: uppercase;
 }
-.prompt-tag-system { background: rgba(99, 102, 241, 0.18); color: var(--accent); }
+.prompt-tag-system { background: rgba(191, 91, 59, 0.18); color: var(--accent); }
 .prompt-tag-user { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
 .prompt-tag-assistant { background: rgba(156, 163, 175, 0.12); color: var(--ink-light); }
 .prompt-block-preview {
@@ -1760,5 +1798,34 @@ select.api-input option { background: var(--paper-card); color: var(--ink); }
 .prompt-token-footer {
   text-align: center; font-size: 12px; color: var(--ink-light);
   margin-top: 12px; padding: 8px 0; border-top: 1px solid var(--border);
+}
+
+/* ===== 界面风格切换 ===== */
+.ui-style-group { display: flex; gap: 8px; }
+.ui-style-card {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 11px 13px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--paper-card);
+  color: var(--text-primary);
+  font-family: inherit; text-align: left; cursor: pointer;
+  transition: border-color .18s ease, background .18s ease;
+}
+.ui-style-card:hover { border-color: var(--border-strong); }
+.ui-style-card.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.ui-style-name {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600;
+}
+.ui-style-card.active .ui-style-name { color: var(--accent); }
+.ui-style-check { font-size: 11px; line-height: 1; }
+.ui-style-desc { font-size: 11px; line-height: 1.5; color: var(--text-faint); }
+@media (max-width: 640px) {
+  .ui-style-group { flex-direction: column; }
 }
 </style>

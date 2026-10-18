@@ -331,8 +331,8 @@ function toggleVectorMemory() {
 .wb-action-btn:hover { background: var(--paper-warm); color: var(--ink); }
 .wb-action-btn.primary { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); border-color: var(--border-accent); }
 .wb-action-btn.primary:hover { background: color-mix(in srgb, var(--accent) 25%, transparent); }
-.wb-action-btn.ai { background: rgba(168, 85, 247, 0.15); color: #c4b5fd; border-color: rgba(168, 85, 247, 0.25); }
-.wb-action-btn.ai:hover { background: rgba(168, 85, 247, 0.25); }
+.wb-action-btn.ai { background: rgba(161, 74, 46, 0.15); color: #bf5b3b; border-color: rgba(161, 74, 46, 0.25); }
+.wb-action-btn.ai:hover { background: rgba(161, 74, 46, 0.25); }
 
 /* ── 编辑表单 ── */
 .wb-edit-form {

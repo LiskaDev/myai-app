@@ -102,10 +102,10 @@ const roleData = computed(() => ({
 
 const activeTemplate = computed(() => theme.value?.template || 'minimal')
 const themeStyle = computed(() => ({
-  '--card-primary': theme.value?.overrides?.primary || '#6366f1',
+  '--card-primary': theme.value?.overrides?.primary || '#bf5b3b',
   '--card-bg':      theme.value?.overrides?.bg      || '#0e0e1f',
   '--card-text':    theme.value?.overrides?.text     || '#f0eeff',
-  '--card-accent':  theme.value?.overrides?.accent   || '#8b5cf6',
+  '--card-accent':  theme.value?.overrides?.accent   || '#a14a2e',
 }))
 
 // ── Template & Color Switcher ─────────────────────
@@ -291,10 +291,10 @@ function showLocalToast(msg) {
         <div class="rcg-section">
           <label class="rcg-label">自定义颜色</label>
           <div class="rcg-color-row">
-            <label class="rcg-color-item"><span>主色</span><input type="color" :value="theme?.overrides?.primary||'#6366f1'" @input="updateColor('primary',$event.target.value)"></label>
+            <label class="rcg-color-item"><span>主色</span><input type="color" :value="theme?.overrides?.primary||'#bf5b3b'" @input="updateColor('primary',$event.target.value)"></label>
             <label class="rcg-color-item"><span>背景</span><input type="color" :value="theme?.overrides?.bg||'#0e0e1f'"      @input="updateColor('bg',$event.target.value)"></label>
             <label class="rcg-color-item"><span>文字</span><input type="color" :value="theme?.overrides?.text||'#f0eeff'"    @input="updateColor('text',$event.target.value)"></label>
-            <label class="rcg-color-item"><span>强调</span><input type="color" :value="theme?.overrides?.accent||'#8b5cf6'"  @input="updateColor('accent',$event.target.value)"></label>
+            <label class="rcg-color-item"><span>强调</span><input type="color" :value="theme?.overrides?.accent||'#a14a2e'"  @input="updateColor('accent',$event.target.value)"></label>
           </div>
         </div>
 
@@ -615,7 +615,7 @@ function showLocalToast(msg) {
 .rcg-label { font-size:11px;letter-spacing:1px;color:#6b7280;text-transform:uppercase; }
 .rcg-hint { font-size:12px;color:#6b7280;line-height:1.5; }
 .rcg-warn { font-size:11px;color:#f59e0b; }
-.rcg-btn-primary { padding:9px 16px;border-radius:10px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:opacity 0.15s; }
+.rcg-btn-primary { padding:9px 16px;border-radius:10px;border:none;background:linear-gradient(135deg,#bf5b3b,#a14a2e);color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:opacity 0.15s; }
 .rcg-btn-primary:disabled { opacity:0.5;cursor:not-allowed; }
 .rcg-btn-primary:not(:disabled):hover { opacity:0.88; }
 .rcg-textarea { width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e5e7eb;font-size:12px;padding:8px;resize:none;outline:none; }

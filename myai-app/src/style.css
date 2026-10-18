@@ -3,10 +3,11 @@
 @import "./styles/tokens.css";
 @import "./styles/theme-tokens.css";
 @import "./styles/decor-tokens.css";
+@import "./styles/classic-theme.css";
 
 @theme {
-  --color-primary: #6366f1;
-  --color-secondary: #8b5cf6;
+  --color-primary: #bf5b3b;
+  --color-secondary: #a14a2e;
   --color-dark-100: #1e1e2e;
   --color-dark-200: #181825;
   --color-dark-300: #11111b;
@@ -18,38 +19,47 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ============== 原生 Select 下拉暗色修复 ============== */
-/* 浏览器原生下拉弹出层不继承半透明背景，需要用不透明深色覆盖 */
+/* ============== 原生 Select 下拉 ============== */
+/* 浏览器原生下拉弹出层不继承半透明背景，需要用不透明背景覆盖 */
 select {
-  background-color: #1e1e30 !important;
-  color: #e2e8f0;
+  background-color: var(--paper-card) !important;
+  color: var(--ink);
+  color-scheme: light;
+}
+
+[data-theme="dark"] select {
   color-scheme: dark;
 }
 
 select option {
-  background-color: #1e1e30;
-  color: #e2e8f0;
+  background-color: var(--paper-card);
+  color: var(--ink);
 }
 
 select optgroup {
-  background-color: #16162a;
-  color: #94a3b8;
+  background-color: var(--paper-warm);
+  color: var(--ink-faint);
 }
 
 html {
-  background-color: #1a1a2e; /* 画布底色，z-index:-1 的 .fullscreen-bg 在此之上、body 之下 */
+  background-color: #f3f0eb; /* 画布底色，z-index:-1 的 .fullscreen-bg 在此之上、body 之下 */
 }
 html[data-theme="light"] {
-  background-color: #f5f0e8; /* 日间主题画布底色，防止深色漏出 */
+  background-color: #f3f0eb;
+}
+html[data-theme="dark"] {
+  background-color: #0c0c0f;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-sans-sc);
   overscroll-behavior: none;
   margin: 0;
   padding: 0;
   background-color: transparent; /* 让 .fullscreen-bg 透过来 */
-  color: #f0f0f5;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 /* ============== 全屏背景层 ============== */
@@ -63,10 +73,8 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   z-index: -1;
-  background-color: #1a1a2e;
-  /* 🛡️ 渐变 fallback：无背景图时也不会纯黑 */
-  background-image: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
-  transition: background-image 0.5s ease-in-out;
+  background-color: var(--bg-base);
+  transition: background-image 0.5s ease-in-out, background-color 0.3s;
 }
 
 /* 📱 iOS 软键盘偏移量 */
@@ -82,23 +90,23 @@ footer {
 }
 
 
+/* 环境光：无背景图时给纸面一点温度，不再是一片死平的米色 */
 .fullscreen-bg::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(26, 26, 46, 0.3), rgba(22, 33, 62, 0.3));
   z-index: 1;
+  pointer-events: none;
+  opacity: var(--glow-opacity, 0.17);
+  background:
+    radial-gradient(760px 420px at 12% -12%, var(--glow-2), transparent 65%),
+    radial-gradient(680px 420px at 92% -6%, var(--glow-1), transparent 65%);
 }
 
 /* ============== 磨砂玻璃效果 ============== */
 .glass {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-}
-
-.glass-strong {
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
 .glass-light {
@@ -117,10 +125,6 @@ footer {
 
 .bg-glass-message {
   background: rgba(30, 30, 46, 0.6);
-}
-
-.bg-glass-user {
-  background: rgba(99, 102, 241, 0.7);
 }
 
 /* ============== 文字阴影 ============== */
@@ -275,7 +279,7 @@ footer {
 .typing-cursor::after {
   content: '▋';
   animation: blink 1s infinite;
-  color: #8b5cf6;
+  color: #a14a2e;
 }
 
 @keyframes blink {
@@ -309,16 +313,18 @@ footer {
 }
 
 .markdown-body code {
-  background: rgba(139, 92, 246, 0.3);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
   padding: 0.2em 0.4em;
-  border-radius: 4px;
+  border-radius: 5px;
   font-size: 0.9em;
 }
 
 .markdown-body pre {
-  background: rgba(17, 17, 27, 0.9);
+  background: var(--paper-warm);
+  color: var(--ink);
   padding: 1em;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow-x: auto;
   margin: 0.5em 0;
 }
@@ -329,10 +335,10 @@ footer {
 }
 
 .markdown-body blockquote {
-  border-left: 3px solid #6366f1;
+  border-left: 3px solid var(--accent);
   padding-left: 1em;
   margin: 0.5em 0;
-  color: #a0a0c0;
+  color: var(--text-secondary);
 }
 
 .markdown-body ul,
@@ -341,51 +347,40 @@ footer {
   margin: 0.5em 0;
 }
 
-/* ============== Token Pressure Bar ============== */
-.token-pressure-bar {
-  display: none !important;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.04);
-  flex-shrink: 0;
-  position: relative;
-  z-index: 19;
-}
-
-.token-pressure-fill {
-  height: 100%;
-  transition: width 0.5s ease, background 0.5s ease;
-  border-radius: 0 2px 2px 0;
-  box-shadow: 0 0 6px currentColor;
-}
-
 /* ============== 头像样式 ============== */
+/* 尺寸由 ChatWindow.vue 统一覆写为 38px，这里只负责通用外观 */
 .avatar {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(99, 102, 241, 0.5);
+  border: 2px solid var(--paper-card);
   flex-shrink: 0;
 }
 
 .avatar-placeholder {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
   flex-shrink: 0;
-  border: 2px solid rgba(99, 102, 241, 0.5);
+  border: 2px solid var(--paper-card);
 }
 
+/* 用户占位头像：中性纸面 + 深墨字，与「你」的气泡呼应 */
 .avatar-user {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: var(--paper-warm);
+  color: var(--ink-faint);
+  border-color: var(--border);
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .avatar-ai {
-  background: linear-gradient(135deg, #8b5cf6, #a855f7);
+  background: linear-gradient(140deg, var(--glow-1), var(--glow-2));
 }
 
 /* ============== Toggle Switch ============== */
@@ -401,9 +396,9 @@ footer {
 }
 
 .toggle-switch.active {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border-color: rgba(139, 92, 246, 0.5);
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+  background: linear-gradient(135deg, #bf5b3b, #a14a2e);
+  border-color: rgba(191, 91, 59, 0.5);
+  box-shadow: 0 0 12px rgba(191, 91, 59, 0.4);
 }
 
 .toggle-switch::after {
@@ -434,7 +429,7 @@ footer {
   width: 6px;
   height: 6px;
   margin: 0 3px;
-  background-color: #a0a0c0;
+  background-color: var(--dot-color);
   border-radius: 50%;
   animation: bounce 1.4s infinite ease-in-out both;
 }
@@ -466,7 +461,7 @@ footer {
   align-items: flex-start;
   justify-content: center;
   min-height: 60vh;
-  padding: 2rem 1rem;
+  padding: 28px 16px 8px;
   overflow-y: auto;
 }
 
@@ -475,14 +470,14 @@ footer {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  max-width: 420px;
-  animation: welcomeFadeIn 0.8s ease-out;
+  max-width: 460px;
+  animation: welcomeFadeIn 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes welcomeFadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
 
   to {
@@ -491,44 +486,48 @@ footer {
   }
 }
 
-/* 头像 + 呼吸光环 */
+/* 头像 + 呼吸环形光 */
 .welcome-avatar-wrapper {
   position: relative;
-  width: 96px;
-  height: 96px;
-  margin-bottom: 1rem;
+  width: 104px;
+  height: 104px;
+  margin-bottom: 22px;
 }
 
 .avatar-glow {
   position: absolute;
-  inset: -8px;
+  inset: -18px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.35), rgba(139, 92, 246, 0.15), transparent 70%);
-  animation: avatarPulse 3s ease-in-out infinite;
+  background:
+    radial-gradient(circle at 32% 28%, var(--glow-1), transparent 62%),
+    radial-gradient(circle at 72% 76%, var(--glow-2), transparent 62%);
+  filter: blur(14px);
+  opacity: 0.75;
+  animation: avatarPulse 7s ease-in-out infinite;
 }
 
 @keyframes avatarPulse {
 
   0%,
   100% {
-    transform: scale(1);
-    opacity: 0.6;
+    transform: scale(0.94);
+    opacity: 0.55;
   }
 
   50% {
-    transform: scale(1.12);
-    opacity: 1;
+    transform: scale(1.08);
+    opacity: 0.9;
   }
 }
 
 .welcome-avatar {
   position: relative;
-  width: 96px;
-  height: 96px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid rgba(99, 102, 241, 0.4);
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+  border: 3px solid var(--paper-card);
+  box-shadow: 0 14px 34px -14px var(--shadow-lg);
 }
 
 .welcome-avatar-placeholder {
@@ -536,67 +535,75 @@ footer {
   align-items: center;
   justify-content: center;
   font-size: 2.5rem;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(140deg, var(--glow-1), var(--glow-2));
 }
 
 .welcome-name {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #e2e8f0;
-  margin-bottom: 0.25rem;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-family: var(--font-serif-sc);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  color: var(--ink);
+  margin: 0 0 10px;
 }
 
 .welcome-tagline {
-  font-size: 0.85rem;
-  color: #94a3b8;
-  margin-bottom: 1.25rem;
-  font-style: italic;
+  font-size: 13px;
+  color: var(--text-faint);
+  margin: 0 0 18px;
+  line-height: 1.8;
+  max-width: 400px;
 }
 
 /* 开场白气泡 */
 .welcome-bubble {
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--paper-card);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 1rem 1.25rem;
-  margin-bottom: 1.5rem;
-  color: #cbd5e1;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  max-width: 360px;
+  padding: 13px 16px;
+  margin-bottom: 24px;
+  color: var(--text-primary);
+  font-size: 14.5px;
+  line-height: 1.8;
+  max-width: 400px;
   text-align: left;
   max-height: min(45vh, 400px);
   overflow-y: auto;
+  box-shadow: 0 1px 2px var(--shadow), 0 8px 24px -18px var(--shadow-lg);
 }
 
 /* 快捷对话建议 */
 .welcome-suggestions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 8px;
   justify-content: center;
 }
 
 .suggestion-btn {
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  color: #c4b5fd;
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 8px 15px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: var(--paper-card);
+  border: 1px solid var(--border);
   cursor: pointer;
-  transition: all 0.25s ease;
-  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 2px var(--shadow);
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .suggestion-btn:hover {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.4);
-  color: #e0d4ff;
+  background: var(--paper-card);
+  border-color: var(--accent);
+  color: var(--accent);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 6px 18px -10px var(--shadow-lg);
+}
+
+.suggestion-btn:active {
+  transform: scale(0.98);
 }
 
 /* ============== 心情 Emoji Badge ============== */
@@ -606,29 +613,29 @@ footer {
   right: -2px;
   font-size: 12px;
   line-height: 1;
-  background: rgba(17, 17, 27, 0.85);
+  background: var(--paper-card);
   border-radius: 50%;
   padding: 1px;
-  border: 1.5px solid rgba(99, 102, 241, 0.3);
+  border: 1.5px solid var(--border);
 }
 
 /* ============== 回访欢迎横幅 ============== */
 .return-banner {
   text-align: center;
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 1rem;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.06));
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 12px;
-  color: #94a3b8;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+  border-radius: 999px;
+  color: var(--accent-strong);
   font-size: 0.8rem;
-  animation: welcomeFadeIn 0.8s ease-out;
+  animation: welcomeFadeIn 0.5s ease-out;
 }
 
 .return-banner .return-action {
   display: inline-block;
   margin-top: 0.25rem;
-  color: #c4b5fd;
+  color: var(--accent);
   cursor: pointer;
   font-size: 0.75rem;
   text-decoration: underline;
@@ -636,20 +643,20 @@ footer {
 }
 
 .return-banner .return-action:hover {
-  color: #e0d4ff;
+  color: var(--accent-strong);
 }
 
 /* ============== 主动消息标记 ============== */
 .active-message-badge {
   display: inline-block;
   font-size: 0.7rem;
-  color: #c4b5fd;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.08));
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 8px;
-  padding: 2px 8px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  border-radius: 999px;
+  padding: 2px 9px;
   margin-bottom: 4px;
-  animation: welcomeFadeIn 0.6s ease-out;
+  animation: welcomeFadeIn 0.5s ease-out;
 }
 
 .active-message-badge.has-diary {
@@ -658,23 +665,22 @@ footer {
 }
 
 .active-message-badge.has-diary:hover {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.18));
-  border-color: rgba(99, 102, 241, 0.4);
-  color: #e0d4ff;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--accent-strong);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
 }
 
 .speech-bubble.diary-clickable {
   cursor: pointer;
-  border-color: rgba(139, 92, 246, 0.25);
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .speech-bubble.diary-clickable:hover {
-  border-color: rgba(139, 92, 246, 0.5);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   box-shadow:
-    0 12px 40px rgba(139, 92, 246, 0.2),
-    0 4px 12px rgba(139, 92, 246, 0.1),
+    0 12px 40px rgba(191, 91, 59, 0.2),
+    0 4px 12px rgba(191, 91, 59, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
@@ -704,13 +710,13 @@ footer {
 
 .typing-name {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--text-faint);
   font-style: italic;
 }
 
 .typing-dots span {
   animation: typingBlink 1.4s infinite;
-  color: #94a3b8;
+  color: var(--text-faint);
   font-weight: bold;
   font-size: 1.1rem;
 }
@@ -1161,8 +1167,8 @@ footer {
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
-  background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: rgba(191, 91, 59, 0.12);
+  border: 1px solid rgba(191, 91, 59, 0.25);
   border-radius: 10px;
   font-size: 11px;
   color: #8888a0;
@@ -1171,7 +1177,7 @@ footer {
 }
 
 .logic-tag:hover {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(191, 91, 59, 0.2);
   color: #9999bb;
 }
 
@@ -1185,7 +1191,7 @@ footer {
   background: rgba(25, 25, 35, 0.95);
   backdrop-filter: blur(16px);
   border-radius: 10px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  border: 1px solid rgba(191, 91, 59, 0.3);
   padding: 10px 12px;
   font-family: 'Consolas', monospace;
   font-size: 0.72rem;
@@ -1258,16 +1264,7 @@ details.reasoning-block[open]>summary {
 }
 
 /* ============== Settings Panel ============== */
-.settings-panel {
-  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
-  z-index: 50;
-}
-
-.settings-panel.hidden {
-  transform: translateY(100%);
-  opacity: 0;
-  pointer-events: none;
-}
+/* （`.settings-panel` 类已不再使用；设置弹窗样式见 SettingsModal.vue） */
 
 /* ============== Sidebar ============== */
 .sidebar {
@@ -1285,12 +1282,12 @@ details.reasoning-block[open]>summary {
 }
 
 .role-item:hover {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(191, 91, 59, 0.2);
 }
 
 .role-item.active {
-  background: rgba(99, 102, 241, 0.3);
-  border-left: 3px solid #6366f1;
+  background: rgba(191, 91, 59, 0.3);
+  border-left: 3px solid #bf5b3b;
 }
 
 /* ============== Memory System ============== */
@@ -1304,7 +1301,7 @@ details.reasoning-block[open]>summary {
 
 .memory-edit-input {
   background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(99, 102, 241, 0.4);
+  border: 1px solid rgba(191, 91, 59, 0.4);
   border-radius: 8px;
   padding: 8px 12px;
   width: 100%;
@@ -1316,7 +1313,7 @@ details.reasoning-block[open]>summary {
 
 .memory-edit-input:focus {
   outline: none;
-  border-color: rgba(99, 102, 241, 0.8);
+  border-color: rgba(191, 91, 59, 0.8);
 }
 
 .memory-action-btn {
@@ -1332,7 +1329,7 @@ details.reasoning-block[open]>summary {
 }
 
 .memory-action-btn.refine {
-  background: rgba(139, 92, 246, 0.2);
+  background: rgba(191, 91, 59, 0.2);
   color: #a78bfa;
 }
 
@@ -1359,7 +1356,7 @@ details.reasoning-block[open]>summary {
 .memory-add-btn {
   width: 100%;
   padding: 10px;
-  border: 2px dashed rgba(139, 92, 246, 0.4);
+  border: 2px dashed rgba(191, 91, 59, 0.4);
   border-radius: 10px;
   background: transparent;
   color: #a78bfa;
@@ -1368,8 +1365,8 @@ details.reasoning-block[open]>summary {
 }
 
 .memory-add-btn:hover {
-  border-color: rgba(139, 92, 246, 0.8);
-  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(191, 91, 59, 0.8);
+  background: rgba(191, 91, 59, 0.1);
 }
 
 @keyframes spin {
@@ -1442,7 +1439,7 @@ details.reasoning-block[open]>summary {
 
 /* ============== Input Focus ============== */
 .input-focus:focus {
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 2px rgba(191, 91, 59, 0.5);
 }
 
 /* ============== Send Button ============== */
@@ -1464,12 +1461,9 @@ details.reasoning-block[open]>summary {
 }
 
 /* ============== Message Bubble ============== */
+/* 消息间距的唯一来源：桌面 20px / 移动端 16px（见下方移动端块） */
 .message-bubble {
-  margin-bottom: 20px !important;
-}
-
-.message-bubble:last-child {
-  margin-bottom: 8px !important;
+  margin-bottom: 20px;
 }
 
 /* ============== User Speech Bubble Selected ============== */
@@ -1548,31 +1542,31 @@ details.reasoning-block[open]>summary {
 
 /* ============== Primary Color Classes ============== */
 .text-primary {
-  color: #6366f1;
+  color: #bf5b3b;
 }
 
 .text-secondary {
-  color: #8b5cf6;
+  color: #a14a2e;
 }
 
 .bg-primary {
-  background-color: #6366f1;
+  background-color: #bf5b3b;
 }
 
 .from-primary {
-  --tw-gradient-from: #6366f1;
+  --tw-gradient-from: #bf5b3b;
 }
 
 .to-secondary {
-  --tw-gradient-to: #8b5cf6;
+  --tw-gradient-to: #a14a2e;
 }
 
 .accent-primary {
-  accent-color: #6366f1;
+  accent-color: #bf5b3b;
 }
 
 .focus\:border-primary:focus {
-  border-color: #6366f1;
+  border-color: #bf5b3b;
 }
 
 /* ============== v5.6 UI Polish (from Design Critique) ============== */
@@ -1600,25 +1594,6 @@ details.reasoning-block[open]>summary {
 }
 
 /* P1: Improved Message Spacing */
-.message-bubble {
-  margin-bottom: 24px;
-}
-
-/* P1: Improved Bubble Padding */
-.speech-bubble {
-  padding: 18px 22px;
-}
-
-/* P1: Form Spacing in Settings */
-.settings-panel .space-y-3 {
-  gap: 16px;
-}
-
-.settings-panel .space-y-4 {
-  gap: 20px;
-}
-
-
 /* P2: Memory Item Feedback */
 .memory-item {
   transition: all 0.2s ease;
@@ -1665,25 +1640,17 @@ details.reasoning-block[open]>summary {
     min-height: 40px;
   }
 
-  /* Header compact */
-  header {
-    padding-top: 6px !important;
-    padding-bottom: 6px !important;
+  /* Header compact：只收窄水平内边距，保持 60px 高度与内容对齐 */
+  header.topbar {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
   }
 
-  /* Bubble padding compact */
-  .speech-bubble {
-    padding: 14px 16px !important;
-  }
+  /* 消息气泡的内边距/圆角统一在下方「移动端紧凑」块里维护 */
 
   /* Message spacing compact */
   .message-bubble {
     margin-bottom: 16px;
-  }
-
-  /* Settings bottom safe area */
-  .settings-panel {
-    padding-bottom: 100px;
   }
 
 }
@@ -1759,7 +1726,7 @@ details.reasoning-block[open]>summary {
 
 /* --- smirk: 紫色阴影 + 微倾斜（持久） --- */
 .expr-smirk {
-  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.6)) drop-shadow(0 0 16px rgba(168, 85, 247, 0.25));
+  filter: drop-shadow(0 0 8px rgba(161, 74, 46, 0.6)) drop-shadow(0 0 16px rgba(161, 74, 46, 0.25));
   transform: rotate(3deg);
 }
 
@@ -1919,101 +1886,40 @@ details.reasoning-block[open]>summary {
 
 
 /* ============== 📱 移动端适配 ============== */
+/* 设置弹窗相关样式在 SettingsModal.vue 内维护；
+   这里只保留确实还被引用的全局移动端规则。 */
 @media (max-width: 640px) {
 
-  /* --- Settings Modal: 可滚动 Tab 栏 --- */
-  .settings-panel nav {
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    flex-wrap: nowrap !important;
-    gap: 2px !important;
-    padding: 8px 8px !important;
-  }
-
-  .settings-panel nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  .settings-panel nav button {
-    flex: 0 0 auto;
-    min-width: 56px;
-    padding: 6px 8px !important;
-    font-size: 0.7rem !important;
-  }
-
-  .settings-panel nav button .text-lg {
-    font-size: 1rem !important;
-  }
-
-  /* --- Settings Modal: 全局溢出控制 --- */
-  .settings-panel {
-    overflow-x: hidden !important;
-    max-width: 100vw !important;
-  }
-
-  .settings-panel>* {
-    overflow-x: hidden !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  /* --- Settings Modal: 内容区紧凑间距 --- */
-  .settings-panel>div:last-child {
-    padding: 12px !important;
-  }
-
-  /* --- AI 一键生成卡片：移动端竖排 --- */
-  .ai-gen-card {
-    padding: 10px !important;
-  }
-
-  .ai-gen-card .flex.items-center.gap-2 {
-    flex-wrap: wrap;
-  }
-
-  .ai-gen-card .flex.items-center.gap-2 .ml-auto {
-    margin-left: 0 !important;
-    width: 100%;
-    margin-top: 2px;
-  }
-
-  .ai-gen-card .flex.gap-2 {
+  /* --- AI 一键生成卡片：窄屏竖排（结构见 .ai-gen-row） --- */
+  .ai-gen-card .ai-gen-row {
     flex-direction: column;
   }
 
   .ai-gen-btn {
-    width: 100% !important;
-    min-width: unset !important;
+    width: 100%;
   }
 
   /* --- 已有功能紧凑布局 --- */
-  /* 头像缩小 */
-  .avatar,
+  /* 头像尺寸保持 38px（与 ChatWindow 的设计规范一致），仅微调字号 */
   .avatar-placeholder {
-    width: 36px !important;
-    height: 36px !important;
     font-size: 1rem !important;
   }
 
-  /* 消息区域减少边距 */
+  /* 消息区域减少边距（保留呼吸感，但比桌面紧凑） */
   main.flex-1 {
-    padding: 8px !important;
-    gap: 8px !important;
+    padding: 16px 14px 10px !important;
+    gap: 14px !important;
   }
 
-  /* 消息气泡减少内边距 */
+  /* 消息气泡：保持设计语言（AI 左下尖角 / 用户右下尖角） */
   .speech-bubble {
-    padding: 10px 14px !important;
-    border-radius: 16px !important;
-    border-top-left-radius: 4px !important;
+    padding: 12px 15px !important;
+    border-radius: 16px 16px 16px 5px !important;
   }
 
   .user-speech-bubble {
-    padding: 10px 14px !important;
-    border-radius: 16px !important;
-    border-top-right-radius: 4px !important;
+    padding: 12px 15px !important;
+    border-radius: 16px 16px 5px 16px !important;
   }
 
   /* 消息内容字体适配 */
@@ -2063,18 +1969,6 @@ details.reasoning-block[open]>summary {
     max-width: 88% !important;
   }
 
-  /* Story Export Modal 适配 */
-  .story-export-modal .preview-body {
-    padding: 16px !important;
-    font-size: 0.88rem !important;
-  }
-
-  /* 侧边栏紧凑 */
-  .sidebar-panel {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
   /* 输入框区域 */
   footer .glass {
     margin: 4px 8px !important;
@@ -2083,6 +1977,39 @@ details.reasoning-block[open]>summary {
 
   footer textarea {
     font-size: 0.9rem !important;
+  }
+}
+
+/* ============== Settings 内容区：移动端字号与触控 ============== */
+@media (max-width: 640px) {
+  /* iOS 在 < 16px 的输入框上会自动放大页面，这里统一提到 16px */
+  .bs-input,
+  .bs-textarea,
+  .modal-content input[type="text"],
+  .modal-content input[type="password"],
+  .modal-content input[type="number"],
+  .modal-content select,
+  .modal-content-full input[type="text"],
+  .modal-content-full input[type="password"],
+  .modal-content-full select {
+    font-size: 16px !important;
+  }
+
+  /* 弹窗 Tab 栏：右侧渐隐提示「还有更多」 */
+  .modal-tabs {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  }
+
+  /* 顶部 tab 与二级导航的触控高度 */
+  .modal-tab,
+  .sidebar-item {
+    min-height: 34px;
+  }
+
+  .modal-close-btn {
+    width: 38px;
+    height: 38px;
   }
 }
 
@@ -2116,16 +2043,16 @@ details.reasoning-block[open]>summary {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  background: rgba(20, 20, 35, 0.95);
+  background: var(--paper-card);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 0.72rem;
-  color: #e2e8f0;
+  color: var(--ink);
   white-space: nowrap;
   z-index: 50;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 16px var(--shadow);
 }
 
 .group:hover .bg-task-tooltip {
@@ -2161,7 +2088,7 @@ details.reasoning-block[open]>summary {
 /* ============== 群聊内联打字点 ============== */
 .typing-dots-inline span {
   animation: typingBlink 1.4s infinite;
-  color: #94a3b8;
+  color: var(--text-faint);
   font-weight: bold;
   font-size: 1.1rem;
 }
@@ -2177,18 +2104,18 @@ details.reasoning-block[open]>summary {
 /* ============== API Key 引导高亮 ============== */
 .api-key-highlight {
   animation: apiKeyGlow 2s ease-in-out 3;
-  border-color: rgba(99, 102, 241, 0.6) !important;
+  border-color: rgba(191, 91, 59, 0.6) !important;
 }
 
 @keyframes apiKeyGlow {
 
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    box-shadow: 0 0 0 0 rgba(191, 91, 59, 0);
   }
 
   50% {
-    box-shadow: 0 0 12px 4px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 12px 4px rgba(191, 91, 59, 0.3);
   }
 }
 
@@ -2209,14 +2136,14 @@ details.reasoning-block[open]>summary {
 }
 
 .style-adjust-btn:hover {
-  border-color: rgba(139, 92, 246, 0.4);
-  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(191, 91, 59, 0.4);
+  background: rgba(191, 91, 59, 0.1);
 }
 
 .style-adjust-btn.active {
-  border-color: rgba(139, 92, 246, 0.6);
-  background: rgba(139, 92, 246, 0.15);
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+  border-color: rgba(191, 91, 59, 0.6);
+  background: rgba(191, 91, 59, 0.15);
+  box-shadow: 0 0 12px rgba(191, 91, 59, 0.2);
 }
 
 .style-adjust-panel {
@@ -2226,11 +2153,11 @@ details.reasoning-block[open]>summary {
   right: 0;
   background: rgba(20, 20, 35, 0.96);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(191, 91, 59, 0.2);
   border-radius: 16px;
   padding: 14px;
   z-index: 40;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(139, 92, 246, 0.06);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4), 0 0 40px rgba(191, 91, 59, 0.06);
   max-height: 60vh;
   overflow-y: auto;
 }
@@ -2241,8 +2168,8 @@ details.reasoning-block[open]>summary {
   gap: 6px;
   padding: 6px 10px;
   margin-bottom: 10px;
-  background: rgba(139, 92, 246, 0.08);
-  border: 1px solid rgba(139, 92, 246, 0.15);
+  background: rgba(191, 91, 59, 0.08);
+  border: 1px solid rgba(191, 91, 59, 0.15);
   border-radius: 8px;
   font-size: 0.75rem;
   color: rgba(200, 200, 220, 0.8);
@@ -2261,16 +2188,16 @@ details.reasoning-block[open]>summary {
 }
 
 .style-tag-btn:hover {
-  border-color: rgba(139, 92, 246, 0.3);
-  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(191, 91, 59, 0.3);
+  background: rgba(191, 91, 59, 0.1);
   color: white;
 }
 
 .style-tag-btn.active {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(191, 91, 59, 0.5);
+  background: rgba(191, 91, 59, 0.2);
   color: white;
-  box-shadow: 0 0 8px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 8px rgba(191, 91, 59, 0.15);
 }
 
 .style-directives-list {
@@ -2348,54 +2275,25 @@ details.reasoning-block[open]>summary {
   padding: 16px;
 }
 
-/* ============== 🃏 卡片库侧边栏入口 ============== */
-.card-library-entry {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  cursor: pointer;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  margin-top: 8px;
-  transition: background 0.15s;
-}
-
-.card-library-entry:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.card-library-icon {
-  font-size: 16px;
-}
-
-.card-library-label {
-  font-size: 13px;
-  color: #9ca3af;
-  flex: 1;
-}
-
-.card-library-count {
-  font-size: 11px;
-  background: rgba(99, 102, 241, 0.3);
-  color: #a5b4fc;
-  padding: 1px 7px;
-  border-radius: 999px;
-}
-
 /* ============================================================
-   ☀️  浅色主题 (data-theme="light") 覆盖
-   作用：把所有用了旧深色工具类的组件（设置子面板、导入页、
-   存档页等）全部修正为可读的浅色风格
+   ☀️  浅色主题兼容层 (data-theme="light")
+   ------------------------------------------------------------
+   用途：部分组件仍写死了深色 Tailwind 工具类（text-gray-300、
+   border-white/10、bg-glass-light 等），在浅色主题下不可读。
+   这里把这些工具类统一改写成主题 token。
+
+   维护约定：
+   - 只保留「源码里确实还在用」的选择器，删除前先确认无引用
+   - 新版设计里已用 token 的元素，不要再在这里加 !important
+   - 「原版」风格的差异统一放在 styles/classic-theme.css
    ============================================================ */
 
 /* ── 1. 玻璃背景 → CSS 变量 ── */
 [data-theme="light"] .bg-glass-message { background: var(--brush) !important; }
 [data-theme="light"] .bg-glass-light   { background: var(--brush) !important; }
 [data-theme="light"] .bg-glass-dark    { background: var(--paper-card) !important; }
-[data-theme="light"] .bg-glass-user    { background: var(--accent) !important; }
 
 /* ── 2. Tailwind text-gray-* → 可读深色文字 ── */
-[data-theme="light"] .text-gray-50,
 [data-theme="light"] .text-gray-100,
 [data-theme="light"] .text-gray-200  { color: var(--ink) !important; }
 
@@ -2404,14 +2302,12 @@ details.reasoning-block[open]>summary {
 [data-theme="light"] .text-gray-400,
 [data-theme="light"] .text-gray-500  { color: var(--ink-faint) !important; }
 
-[data-theme="light"] .text-gray-600,
-[data-theme="light"] .text-gray-700  { color: var(--ink-faint) !important; opacity: 0.8; }
+[data-theme="light"] .text-gray-600  { color: var(--ink-faint) !important; opacity: 0.8; }
 
 /* ── 3. 输入框边框（border-white/N → 可见边框）── */
 [data-theme="light"] input.border,
 [data-theme="light"] textarea.border,
-[data-theme="light"] .wb-tag-input-wrap,
-[data-theme="light"] .basic-field { border-color: var(--border) !important; }
+[data-theme="light"] .wb-tag-input-wrap { border-color: var(--border) !important; }
 
 /* ── 4. 滚动条轨道（深色背景的轨道在浅色下看不见）── */
 [data-theme="light"] ::-webkit-scrollbar-track { background: transparent; }
@@ -2419,42 +2315,8 @@ details.reasoning-block[open]>summary {
 
 /* ── 5. 分隔线 border-white/5 → 可见细线 ── */
 [data-theme="light"] .border-t { border-top-color: var(--border) !important; }
-[data-theme="light"] .border-b { border-bottom-color: var(--border) !important; }
 
 /* ── 6. 子组件 scoped 样式里的残余深色背景 ── */
-/* RoleBasicSettings */
-[data-theme="light"] .basic-field {
-  background: var(--brush) !important;
-  border-color: var(--border) !important;
-}
-[data-theme="light"] .basic-field:hover {
-  background: var(--paper-warm) !important;
-  border-color: var(--border-accent) !important;
-}
-[data-theme="light"] .basic-field:focus-within {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent) !important;
-}
-[data-theme="light"] .writing-style-option {
-  background: var(--brush) !important;
-  border-color: var(--border) !important;
-  color: var(--ink-faint) !important;
-}
-[data-theme="light"] .writing-style-option:hover {
-  background: var(--paper-warm) !important;
-  border-color: var(--border-accent) !important;
-  color: var(--ink) !important;
-}
-[data-theme="light"] .writing-style-option.active {
-  background: color-mix(in srgb, var(--accent) 15%, transparent) !important;
-  border-color: var(--accent) !important;
-  color: var(--ink) !important;
-}
-[data-theme="light"] .avatar-picker {
-  background: var(--brush) !important;
-  border-color: var(--border) !important;
-}
-
 /* MemoryManager */
 [data-theme="light"] .memory-edit-input,
 [data-theme="light"] .card-edit-input {
@@ -2548,7 +2410,6 @@ details.reasoning-block[open]>summary {
 /* ── 9. 颜色背景工具类（badge 等）── */
 [data-theme="light"] .bg-emerald-500\/20 { background: rgba(26, 122, 82, 0.12) !important; }
 [data-theme="light"] .bg-cyan-500\/15   { background: rgba(14, 107, 133, 0.1) !important; }
-[data-theme="light"] .bg-purple-400\/20 { background: color-mix(in srgb, var(--accent) 15%, transparent) !important; }
 
 /* ── 10. 原生 <select> 元素 ──
    半透明背景在 Windows/macOS 原生 select 渲染层会透出系统深色底色，
@@ -2567,11 +2428,9 @@ details.reasoning-block[open]>summary {
 [data-theme="light"] .border-white\/10 { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/5  { border-color: var(--border) !important; }
 [data-theme="light"] .border-white\/8  { border-color: var(--border) !important; }
-[data-theme="light"] .border-white\/12 { border-color: var(--border-accent) !important; }
 
 /* ── 12. hover:bg-white/* 在浅色背景上几乎不可见 → 改用 brush ── */
 [data-theme="light"] .hover\:bg-white\/5:hover  { background: var(--brush) !important; }
-[data-theme="light"] .hover\:bg-white\/10:hover { background: var(--paper-warm) !important; }
 
 /* ── 13. 滑块轨道（h-2 bg-glass-light 用在 range input 上）── */
 [data-theme="light"] input[type="range"].bg-glass-light {
@@ -2579,39 +2438,20 @@ details.reasoning-block[open]>summary {
 }
 
 
-/* ── 15. bg-white/5 通用半透明白背景 ── */
+/* ── 14. bg-white/5 通用半透明白背景 ── */
 [data-theme="light"] .bg-white\/5  { background: var(--brush) !important; }
-[data-theme="light"] .bg-white\/4  { background: var(--brush) !important; }
 [data-theme="light"] .bg-primary\/20 {
   background: color-mix(in srgb, var(--accent) 20%, transparent) !important;
 }
 
-/* ── 16. 思考内容块（reasoning-content）── */
-[data-theme="light"] .reasoning-content {
+/* ── 16. 思考内容块（reasoning-content）── */[data-theme="light"] .reasoning-content {
   color: var(--ink-faint) !important;
   background: rgba(0, 0, 0, 0.05) !important;
   border-left-color: var(--border-accent) !important;
 }
 
-/* ── 17. 欢迎屏（welcome screen）── */
+/* ── 17. 欢迎屏：基础样式已走主题 token，无需强制覆盖 ── */
 [data-theme="light"] .welcome-name {
-  color: var(--ink) !important;
-  text-shadow: none !important;
-}
-[data-theme="light"] .welcome-tagline { color: var(--ink-faint) !important; }
-[data-theme="light"] .welcome-bubble {
-  background: var(--brush) !important;
-  border-color: var(--border) !important;
-  color: var(--ink) !important;
-}
-[data-theme="light"] .suggestion-btn {
-  color: var(--accent) !important;
-  background: color-mix(in srgb, var(--accent) 10%, transparent) !important;
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent) !important;
-}
-[data-theme="light"] .suggestion-btn:hover {
-  background: color-mix(in srgb, var(--accent) 18%, transparent) !important;
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important;
-  color: var(--accent) !important;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 15%, transparent) !important;
+  color: var(--ink);
+  text-shadow: none;
 }

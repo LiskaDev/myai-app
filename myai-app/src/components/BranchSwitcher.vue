@@ -117,8 +117,8 @@ function handleDelete(branchId) {
 }
 
 .branch-current:hover {
-    background: rgba(99, 102, 241, 0.12);
-    border-color: rgba(99, 102, 241, 0.3);
+    background: rgba(191, 91, 59, 0.12);
+    border-color: rgba(191, 91, 59, 0.3);
 }
 
 .branch-icon {
@@ -180,8 +180,8 @@ function handleDelete(branchId) {
 }
 
 .branch-item.active {
-    background: rgba(99, 102, 241, 0.15);
-    border-left: 2px solid rgba(99, 102, 241, 0.6);
+    background: rgba(191, 91, 59, 0.15);
+    border-left: 2px solid rgba(191, 91, 59, 0.6);
 }
 
 .branch-item-left {
@@ -253,7 +253,7 @@ function handleDelete(branchId) {
 .branch-edit-input {
     width: 100%;
     background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(99, 102, 241, 0.4);
+    border: 1px solid rgba(191, 91, 59, 0.4);
     border-radius: 6px;
     color: white;
     font-size: 0.8rem;

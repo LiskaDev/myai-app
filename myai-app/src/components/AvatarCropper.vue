@@ -311,7 +311,7 @@ watch(() => props.imageSrc, initImage);
   width: 300px;
   height: 300px;
   flex-shrink: 0;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 0 3px rgba(191, 91, 59, 0.4);
 }
 
 .cropper-canvas {
@@ -347,11 +347,11 @@ watch(() => props.imageSrc, initImage);
   flex: 2;
   padding: 10px;
   border-radius: 12px;
-  background: rgba(99, 102, 241, 0.85);
+  background: rgba(191, 91, 59, 0.85);
   color: white;
   font-size: 0.875rem;
   font-weight: 600;
   transition: background 0.15s;
 }
-.btn-confirm:hover { background: rgba(99, 102, 241, 1); }
+.btn-confirm:hover { background: rgba(191, 91, 59, 1); }
 </style>

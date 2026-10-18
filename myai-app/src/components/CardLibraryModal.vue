@@ -196,7 +196,7 @@ function formatDate(iso) {
 
 .clm-template-tag {
   font-size: 10px;
-  color: #6366f1;
+  color: #bf5b3b;
   background: rgba(99,102,241,0.12);
   padding: 1px 7px;
   border-radius: 10px;

@@ -60,8 +60,8 @@ const chartData = computed(() => {
     datasets: [{
       label: `${currentPerspective.value?.name || ''} 的好感度`,
       data: values,
-      backgroundColor: 'rgba(99, 102, 241, 0.15)',
-      borderColor: 'rgba(99, 102, 241, 0.8)',
+      backgroundColor: 'rgba(191, 91, 59, 0.15)',
+      borderColor: 'rgba(191, 91, 59, 0.8)',
       borderWidth: 2,
       pointBackgroundColor: targets.value.map(t => affinityColor(t.value)),
       pointBorderColor: 'rgba(255, 255, 255, 0.6)',
@@ -276,8 +276,8 @@ const showDetails = ref(false);
   color: white;
 }
 .perspective-tab.active {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(191, 91, 59, 0.2);
+  border-color: rgba(191, 91, 59, 0.5);
   color: #818cf8;
 }
 
@@ -324,9 +324,9 @@ const showDetails = ref(false);
 .detail-info {
   margin-bottom: 12px;
   padding: 8px 12px;
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(191, 91, 59, 0.08);
   border-radius: 8px;
-  border: 1px solid rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(191, 91, 59, 0.15);
 }
 
 .perspective-label {

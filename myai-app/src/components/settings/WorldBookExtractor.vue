@@ -1123,7 +1123,7 @@ const progressPercent = computed(() => {
 .wbe-textarea-input::placeholder { color: #52525b; }
 .wbe-count-row { display: flex; align-items: center; gap: 12px; }
 .wbe-slider {
-  flex: 1; accent-color: #6366f1; height: 4px;
+  flex: 1; accent-color: #bf5b3b; height: 4px;
 }
 .wbe-count-value {
   font-size: 14px; color: #a5b4fc; font-weight: 600; min-width: 50px; text-align: right;
@@ -1191,7 +1191,7 @@ const progressPercent = computed(() => {
   height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;
 }
 .wbe-progress-fill {
-  height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  height: 100%; background: linear-gradient(90deg, #bf5b3b, #a14a2e);
   border-radius: 4px; transition: width 0.3s;
 }
 .wbe-progress-stats {
@@ -1208,7 +1208,7 @@ const progressPercent = computed(() => {
 }
 .wbe-spinner {
   width: 40px; height: 40px; border: 3px solid rgba(99,102,241,0.15);
-  border-top-color: #6366f1; border-radius: 50%;
+  border-top-color: #bf5b3b; border-radius: 50%;
   animation: wbe-spin 0.8s linear infinite;
 }
 @keyframes wbe-spin { to { transform: rotate(360deg); } }

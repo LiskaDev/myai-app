@@ -151,7 +151,7 @@ function handleKeydown(e) {
 }
 .persona-tag-purple {
     background: rgba(167, 139, 250, 0.12);
-    color: #c4b5fd;
+    color: #bf5b3b;
     border-color: rgba(167, 139, 250, 0.25);
 }
 .persona-tag-green {
