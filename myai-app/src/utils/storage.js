@@ -63,8 +63,6 @@ export const DEFAULT_GLOBAL_SETTINGS = {
     // v8.1: 世界书语义搜索开关
     semanticSearchEnabled: false,
     enableVectorMemory: false,
-    // v8.2: 界面风格（modern = 新版陶土 / classic = 原版暖纸）
-    uiStyle: 'modern',
 };
 
 // 保存数据到 IndexedDB（异步，调用方无需 await）

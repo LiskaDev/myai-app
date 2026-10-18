@@ -3,7 +3,6 @@ import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { renderMarkdown } from '../utils/markdown';
 import { parseDualLayerResponse } from '../utils/textParser';
 import { useLongPress } from '../composables/useGestures';
-import { uiStyle } from '../composables/useUiStyle';
 import BranchSwitcher from './BranchSwitcher.vue';
 
 const props = defineProps({
@@ -31,9 +30,6 @@ const props = defineProps({
   branches: { type: Array, default: () => [] },
   currentBranchId: { type: String, default: 'branch-main' }
 });
-
-// 原版风格下，占位头像沿用 👤 emoji
-const isClassicUi = computed(() => uiStyle.value === 'classic');
 
 const emit = defineEmits([
   'toggle-select',
@@ -549,7 +545,7 @@ function isCurrentMatch(originalIndex) {
               <div v-if="globalSettings.userAvatar" class="avatar flex-shrink-0">
                 <img :src="globalSettings.userAvatar" alt="User Avatar" class="w-full h-full rounded-full object-cover" @error="$event.target.style.display='none'">
               </div>
-              <div v-else class="avatar-placeholder avatar-user flex-shrink-0">{{ isClassicUi ? '👤' : '你' }}</div>
+              <div v-else class="avatar-placeholder avatar-user flex-shrink-0">你</div>
             </div>
           </div>
         </template>

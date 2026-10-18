@@ -9,7 +9,6 @@ import MemoryManager from './settings/MemoryManager.vue';
 import UserPersonaSettings from './settings/UserPersonaSettings.vue';
 import WorldBookSettings from './settings/WorldBookSettings.vue';
 import { MODEL_PRESETS } from '../composables/presets';
-import { UI_STYLE_OPTIONS, uiStyle } from '../composables/useUiStyle';
 
 // ===== 通用设置所需的模型列表（从 presets.js 导入） =====
 
@@ -136,9 +135,6 @@ const TABS = props.isGroupMode
 // 支持从外部指定初始 Tab（如「去设置」按钮直接跳转到通用 Tab）
 const defaultTab = props.isGroupMode ? 'general' : (props.initialTab || 'role');
 const activeTab = ref(defaultTab);
-
-// 界面风格（新版 / 原版）
-const currentUiStyle = computed(() => uiStyle.value);
 
 // 角色 Tab 的左侧二级导航
 const ROLE_SECTIONS = [
@@ -915,27 +911,6 @@ function showLocalToast(msg, type = 'info') {
                 </select>
               </div>
 
-              <!-- 界面风格 -->
-              <div>
-                <label class="block text-sm text-gray-300 mb-1.5">🎨 界面风格</label>
-                <div class="ui-style-group">
-                  <button v-for="opt in UI_STYLE_OPTIONS" :key="opt.id"
-                          type="button"
-                          class="ui-style-card"
-                          :class="{ active: currentUiStyle === opt.id }"
-                          @click="globalSettings.uiStyle = opt.id">
-                    <span class="ui-style-name">
-                      {{ opt.label }}
-                      <span v-if="currentUiStyle === opt.id" class="ui-style-check">✓</span>
-                    </span>
-                    <span class="ui-style-desc">{{ opt.desc }}</span>
-                  </button>
-                </div>
-                <p class="text-xs text-gray-500 mt-1.5">
-                  切换后立即生效，设置会跟随账号数据保存。若新版遇到问题，可随时切回原版。
-                </p>
-              </div>
-
               <!-- 开关组 -->
               <div class="space-y-1">
                 <div class="toggle-row">
@@ -944,7 +919,7 @@ function showLocalToast(msg, type = 'info') {
                 </div>
                 <div v-if="!globalSettings.soundMuted" class="pl-4 pb-1">
                   <label class="text-xs text-gray-400">音量: {{ Math.round((globalSettings.soundVolume || 0.2) * 100) }}%</label>
-                  <input type="range" min="0.05" max="0.5" step="0.05" :value="globalSettings.soundVolume || 0.2" @input="globalSettings.soundVolume = parseFloat($event.target.value)" class="w-full accent-purple-500 mt-1">
+                  <input type="range" min="0.05" max="0.5" step="0.05" :value="globalSettings.soundVolume || 0.2" @input="globalSettings.soundVolume = parseFloat($event.target.value)" class="w-full accent-primary mt-1">
                 </div>
                 <div class="toggle-row">
                   <div><div class="toggle-label">🔧 显示推理过程</div><div class="toggle-desc">显示 DeepSeek R1 的底层思维链 (&lt;think&gt;)</div></div>
@@ -992,7 +967,7 @@ function showLocalToast(msg, type = 'info') {
                     <input type="range" :min="slider.min" :max="slider.max" :step="slider.step"
                            :value="globalSettings[slider.key] || slider.default"
                            @input="globalSettings[slider.key] = (slider.key === 'chatFontSize' || slider.key === 'chatLineHeight') ? parseFloat($event.target.value) : parseInt($event.target.value)"
-                           class="flex-1 accent-purple-500">
+                           class="flex-1 accent-primary">
                     <span class="text-[10px] text-gray-600" :class="{ 'font-bold': slider.key === 'chatFontWeight' }">{{ slider.right }}</span>
                   </div>
                 </div>
@@ -1039,7 +1014,7 @@ function showLocalToast(msg, type = 'info') {
               </div>
               <div v-if="!globalSettings.soundMuted" class="pl-4">
                 <label class="text-xs text-gray-400">音量: {{ Math.round((globalSettings.soundVolume || 0.2) * 100) }}%</label>
-                <input type="range" min="0.05" max="0.5" step="0.05" :value="globalSettings.soundVolume || 0.2" @input="globalSettings.soundVolume = parseFloat($event.target.value)" class="w-full accent-purple-500 mt-1">
+                <input type="range" min="0.05" max="0.5" step="0.05" :value="globalSettings.soundVolume || 0.2" @input="globalSettings.soundVolume = parseFloat($event.target.value)" class="w-full accent-primary mt-1">
               </div>
             </div>
 
@@ -1798,34 +1773,5 @@ select.api-input option { background: var(--paper-card); color: var(--ink); }
 .prompt-token-footer {
   text-align: center; font-size: 12px; color: var(--ink-light);
   margin-top: 12px; padding: 8px 0; border-top: 1px solid var(--border);
-}
-
-/* ===== 界面风格切换 ===== */
-.ui-style-group { display: flex; gap: 8px; }
-.ui-style-card {
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column; gap: 3px;
-  padding: 11px 13px;
-  border-radius: 11px;
-  border: 1px solid var(--border);
-  background: var(--paper-card);
-  color: var(--text-primary);
-  font-family: inherit; text-align: left; cursor: pointer;
-  transition: border-color .18s ease, background .18s ease;
-}
-.ui-style-card:hover { border-color: var(--border-strong); }
-.ui-style-card.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-.ui-style-name {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 13px; font-weight: 600;
-}
-.ui-style-card.active .ui-style-name { color: var(--accent); }
-.ui-style-check { font-size: 11px; line-height: 1; }
-.ui-style-desc { font-size: 11px; line-height: 1.5; color: var(--text-faint); }
-@media (max-width: 640px) {
-  .ui-style-group { flex-direction: column; }
 }
 </style>

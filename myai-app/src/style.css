@@ -3,7 +3,6 @@
 @import "./styles/tokens.css";
 @import "./styles/theme-tokens.css";
 @import "./styles/decor-tokens.css";
-@import "./styles/classic-theme.css";
 
 @theme {
   --color-primary: #bf5b3b;
@@ -279,7 +278,7 @@ footer {
 .typing-cursor::after {
   content: '▋';
   animation: blink 1s infinite;
-  color: #a14a2e;
+  color: var(--accent-strong);
 }
 
 @keyframes blink {
@@ -396,9 +395,9 @@ footer {
 }
 
 .toggle-switch.active {
-  background: linear-gradient(135deg, #bf5b3b, #a14a2e);
-  border-color: rgba(191, 91, 59, 0.5);
-  box-shadow: 0 0 12px rgba(191, 91, 59, 0.4);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .toggle-switch::after {
@@ -1286,8 +1285,8 @@ details.reasoning-block[open]>summary {
 }
 
 .role-item.active {
-  background: rgba(191, 91, 59, 0.3);
-  border-left: 3px solid #bf5b3b;
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
 }
 
 /* ============== Memory System ============== */
@@ -1542,31 +1541,31 @@ details.reasoning-block[open]>summary {
 
 /* ============== Primary Color Classes ============== */
 .text-primary {
-  color: #bf5b3b;
+  color: var(--accent);
 }
 
 .text-secondary {
-  color: #a14a2e;
+  color: var(--accent-strong);
 }
 
 .bg-primary {
-  background-color: #bf5b3b;
+  background-color: var(--accent);
 }
 
 .from-primary {
-  --tw-gradient-from: #bf5b3b;
+  --tw-gradient-from: var(--accent);
 }
 
 .to-secondary {
-  --tw-gradient-to: #a14a2e;
+  --tw-gradient-to: var(--accent-strong);
 }
 
 .accent-primary {
-  accent-color: #bf5b3b;
+  accent-color: var(--accent);
 }
 
 .focus\:border-primary:focus {
-  border-color: #bf5b3b;
+  border-color: var(--accent);
 }
 
 /* ============== v5.6 UI Polish (from Design Critique) ============== */
@@ -2285,7 +2284,6 @@ details.reasoning-block[open]>summary {
    维护约定：
    - 只保留「源码里确实还在用」的选择器，删除前先确认无引用
    - 新版设计里已用 token 的元素，不要再在这里加 !important
-   - 「原版」风格的差异统一放在 styles/classic-theme.css
    ============================================================ */
 
 /* ── 1. 玻璃背景 → CSS 变量 ── */

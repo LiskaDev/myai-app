@@ -10,7 +10,6 @@ import { useSoundEffects } from './composables/useSoundEffects';
 import { useDiary } from './composables/useDiary';
 import { isAutoDiaryEnabled, useActiveMessage } from './composables/useActiveMessage';
 import { useBackgroundTasks } from './composables/useBackgroundTasks';
-import { applyUiStyle, readBootUiStyle, uiStyle } from './composables/useUiStyle';
 import { extractExpression, parseDualLayerResponse } from './utils/textParser';
 import { idbClearAll } from './utils/indexeddb';
 import { STYLE_QUICK_TAGS, WRITING_STYLE_PRESETS, createNewRoleData } from './composables/presets';
@@ -58,13 +57,8 @@ function toggleTheme() {
 // 初始化主题
 document.documentElement.setAttribute('data-theme', 'light');
 
-// ── 界面风格（新版 / 原版）──
-// 首帧先用 localStorage 的值，避免异步读 IDB 期间闪一下新版
-applyUiStyle(readBootUiStyle());
-watch(() => appState.globalSettings.uiStyle, (v) => {
-  if (v) applyUiStyle(v);
-}, { immediate: true });
-const isClassicUi = computed(() => uiStyle.value === 'classic');
+// 清理已废弃的界面风格开关留下的本地缓存
+try { localStorage.removeItem('myai_ui_style'); } catch { /* 忽略 */ }
 
 // ── 星星菜单面板 ──
 const showMenuPanel = ref(false);
@@ -783,16 +777,13 @@ function handleAvatarError(type, roleId) {
 
         <!-- 日夜切换 -->
         <button class="theme-btn" @click="toggleTheme" :title="isDark ? '切换日间' : '切换夜间'">
-          <template v-if="isClassicUi">{{ isDark ? '🌙' : '☀️' }}</template>
-          <template v-else>
-            <svg v-if="!isDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
-            </svg>
-            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
-              <circle cx="12" cy="12" r="4"/>
-              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
-            </svg>
-          </template>
+          <svg v-if="!isDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+          </svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+          </svg>
         </button>
 
         <!-- 星星菜单 -->

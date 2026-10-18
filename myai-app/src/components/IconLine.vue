@@ -1,6 +1,5 @@
 <script setup>
 import { computed } from 'vue';
-import { uiStyle } from '../composables/useUiStyle';
 
 const props = defineProps({
   emoji: { type: String, default: '' },
@@ -95,20 +94,10 @@ const paths = computed(() => {
   const key = String(props.emoji || '').replace(/\uFE0F/g, '');
   return ICONS[key] || FALLBACK;
 });
-
-// 原版风格沿用 emoji 图标，保持与旧界面一致
-const isClassic = computed(() => uiStyle.value === 'classic');
 </script>
 
 <template>
-  <span
-    v-if="isClassic"
-    class="legacy-emoji"
-    :style="{ fontSize: `${size}px`, lineHeight: 1 }"
-    aria-hidden="true"
-  >{{ emoji }}</span>
   <svg
-    v-else
     class="line-icon"
     :width="size"
     :height="size"
@@ -128,14 +117,5 @@ const isClassic = computed(() => uiStyle.value === 'classic');
 .line-icon {
   display: block;
   flex-shrink: 0;
-}
-
-.legacy-emoji {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-style: normal;
-  vertical-align: middle;
 }
 </style>

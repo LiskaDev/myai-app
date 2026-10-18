@@ -78,7 +78,7 @@
 - 右侧：`.modal-content`，内容列最大宽度 640–660px 并居中
 - 表单：`.bs-input` / `.bs-textarea`，`--paper-warm` 底、聚焦时变白 + 3px 光环
 - 字段之间只用 `border-top: 1px solid var(--border)` 分隔，**不要给 `.basic-field` 加背景色** ——
-  整行上底色后左右没有圆角，视觉上会像被裁掉一条。(`style.css` 里旧版浅色兼容块已限定在 `[data-ui-style="classic"]`)
+  整行上底色后左右没有圆角，视觉上会像被裁掉一条。
 
 ### 图标
 
@@ -89,38 +89,11 @@
 ```
 
 新增图标时在 `ICONS` 里加一条 emoji → path 数组的映射即可，未知 emoji 会退化为一个「+」占位。
+全站只有这一套图标；emoji 仅作为文案内容保留（例如角色说的话）。
 
 ---
 
-## 4. 界面风格切换（新版 / 原版）
-
-设置路径：**设置 → 通用 → 显示与交互 → 界面风格**
-
-用户可在两套界面之间随时切换，用来兜底新版的兼容性问题。
-
-| 值 | 名称 | 说明 |
-|---|---|---|
-| `modern` | 新版（默认） | 纸白 · 陶土，线性图标，本文档描述的样式 |
-| `classic` | 原版 | 重设计之前的界面：暖纸 / 深紫，Emoji 图标，圆头像，直角气泡尖角 |
-
-### 实现方式
-
-- 切换值保存在 `globalSettings.uiStyle`，跟随角色数据一起持久化。
-- 运行时写到 `<html data-ui-style="modern|classic">`，并镜像一份到
-  `localStorage.myai_ui_style`，保证首帧就是正确风格、不闪屏。
-- 原版样式全部集中在 `src/styles/classic-theme.css`，规则统一以
-  `html[data-ui-style="classic"]` 前缀提高特异性，覆盖组件 scoped 样式。
-- 图标组件 `IconLine` 在原版模式下直接渲染原始 emoji，因此选项卡、
-  侧栏、菜单会自动回到旧观感。
-
-### 新增界面时
-
-如果新写的组件在「原版」下需要不同表现，把覆盖规则加到
-`classic-theme.css`，不要改动组件自身的现代样式。
-
----
-
-## 4.1 样式分层与维护约定
+## 4. 样式分层与维护约定
 
 `style.css` 里有三类规则，改动前先确认归属：
 
@@ -129,7 +102,6 @@
 | 主题 token | `styles/theme-tokens.css` | 颜色的唯一来源，按 `html[data-theme]` 切换 |
 | 全局基础/工具 | `style.css` 上半部分 | 重置、滚动条、动画、Markdown 等 |
 | 浅色兼容层 | `style.css` 末段 `[data-theme="light"]` | 修正组件里写死的深色 Tailwind 工具类 |
-| 原版风格 | `styles/classic-theme.css` | 按 `html[data-ui-style="classic"]` 覆盖 |
 
 **清理历史**（2026-10）：删除了已无任何引用的死规则 ——
 `.settings-panel`（含移动端规则）、`.sidebar-panel`、`.story-export-modal`、
@@ -143,9 +115,14 @@ bg-white/4 / bg-purple-400\/20` 等选择器。
 - `.speech-bubble` 内边距被旧规则 `18px 22px` 覆盖，恢复为 token 里的 **13px 16px**
 - `.message-bubble` 的 `margin-bottom` 有两处 `!important` + 一处普通声明，合并为单一来源（桌面 20px / 移动端 16px）
 - 移动端 `.speech-bubble` 的 padding 声明了两遍，只保留一处
+- `.text-primary / .bg-primary / .accent-primary / .toggle-switch.active` 等
+  工具类改为引用 `var(--accent)`，深色模式下强调色才会跟着提亮
 
-> 经验：新版组件已经用 token 的元素，**不要再往 `style.css` 加 `!important` 覆盖**。
+> 经验：已经用 token 的元素，**不要再往 `style.css` 加 `!important` 覆盖**。
 > 之前 `.basic-field` 被强制上底色，导致整行看起来像被裁掉，就是这个原因。
+
+> 历史：2026-10 曾短暂提供过「原版（classic）」风格开关（`data-ui-style` +
+> `classic-theme.css`），已于同期移除，现在只有一套界面。
 
 ## 5. 移动端适配
 

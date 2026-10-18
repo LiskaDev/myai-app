@@ -3,8 +3,7 @@
     <!-- 顶部标题区 -->
     <div class="home-header">
       <div class="home-logo">
-        <span v-if="isClassicUi">✨</span>
-        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" />
           <path d="M19 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" />
         </svg>
@@ -145,13 +144,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import BookLibrary from './novel/BookLibrary.vue';
 import BookImport  from './novel/BookImport.vue';
 import SaveSelect  from './novel/SaveSelect.vue';
 import BookSettings from './novel/BookSettings.vue';
 import IconLine from './IconLine.vue';
-import { uiStyle } from '../composables/useUiStyle';
 import { useNovelStore } from '../composables/useNovelStore.js';
 import { exportAllBookMessages } from '../composables/useNovelDB.js';
 
@@ -167,9 +165,6 @@ const activeTab      = ref('role');
 const worldNav       = ref('library');   // 'library' | 'import' | 'save-select'
 const selectedBook   = ref(null);
 const showBookSettings = ref(false);
-
-// 原版风格下 logo 用 emoji
-const isClassicUi = computed(() => uiStyle.value === 'classic');
 
 // ── Novel Store ──
 const novelStore = useNovelStore();
